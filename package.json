@@ -1,0 +1,33 @@
+{
+  "name": "hackathon-usp",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "npm run build -w @hackathon/contracts && concurrently --kill-others -n web,api \"npm run dev -w @hackathon/web\" \"npm run dev -w @hackathon/api\"",
+    "dev:web": "npm run build -w @hackathon/contracts && npm run dev -w @hackathon/web",
+    "build": "npm run build -w @hackathon/contracts && npm run build -w @hackathon/api && npm run build -w @hackathon/web",
+    "typecheck": "npm run build -w @hackathon/contracts && npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run build -w @hackathon/contracts && npm run test --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run lint && npm run typecheck && npm test && npm run format:check",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "prettier": "^3.6.0"
+  },
+  "overrides": {
+    "@nestjs/platform-express": {
+      "multer": "2.5.0"
+    }
+  }
+}
