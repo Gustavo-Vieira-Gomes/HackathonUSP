@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 2,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "ac_gap::quando o check nomeia um status http que o cliente traduz 401 erro tipado a prova roda a funcao de traducao real contra uma resposta http nao um fetchtoken injetado que ja lanca o erro",
+      "text": "Quando o check nomeia um status HTTP que o cliente traduz (401 → erro tipado), a prova roda a função de tradução real contra uma resposta HTTP, não um fetchToken injetado que já lança o erro.",
+      "signal": "ac_gap",
+      "scope": "apps/web",
+      "status": "candidate",
+      "features": ["hack-38-tempo-real-websocket"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/web/core/shared/services/realtime-client.ts:48 (C27) (apps/web)"
+      ],
+      "created": "2026-11-08T03:37:47Z",
+      "last_seen": "2026-11-08T03:37:47Z"
+    }
+  ]
+}
