@@ -4,6 +4,7 @@ import {
   CHANNEL_ADAPTERS,
   type AlertContext,
   type ChannelAdapter,
+  type DeliveryInfo,
   type NotificationChannel,
   type NotificationMessage,
   type NotificationRecipient,
@@ -17,7 +18,12 @@ export const STALE_PENDING_MS = 2 * CHANNEL_TIMEOUT_MS;
 
 export interface ChannelOutcome {
   channel: NotificationChannel;
-  result: 'enviado' | 'falhou' | 'duplicado' | 'sem_adapter';
+  /**
+   * `sem_canal`: canal ativado pelo paciente sem como enviar (sem adapter ou
+   * WhatsApp sem telefone verificado). Fica gravado em `Alert` para o paciente
+   * sair da fila daquela vaga (HACK-48).
+   */
+  result: 'enviado' | 'falhou' | 'duplicado' | 'sem_canal';
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -63,11 +69,29 @@ export class NotificationsService {
       ...renderAlert(message),
       message,
     };
+    // Todo canal ativado gera um Alert, mesmo sem como enviar: senão o paciente
+    // volta em toda onda e trava a fila dos seguintes (HACK-48).
     return Promise.all(
-      recipient.channels.map((channel) =>
+      recipient.preferredChannels.map((channel) =>
         this.sendOnChannel(channel, recipient, notification, context),
       ),
     );
+  }
+
+  /**
+   * Cancela os alertas ainda pendentes de vagas que fecharam (RN-36): reservada,
+   * expirada ou cancelada. Enviado e falhou ficam como estão. Chamado a cada minuto
+   * pelo motor de vagas (HACK-32). Devolve quantos foram cancelados.
+   */
+  async cancelPendingOfClosedVacancies(): Promise<number> {
+    const { count } = await this.prisma.alert.updateMany({
+      where: {
+        result: 'pendente',
+        vacancy: { state: { in: ['reservada', 'expirada', 'cancelada'] } },
+      },
+      data: { result: 'cancelado' },
+    });
+    return count;
   }
 
   /**
@@ -86,7 +110,8 @@ export class NotificationsService {
       },
     });
     const verifiedPhone = patient.phoneVerifiedAt ? patient.phone : null;
-    const channels = [...new Set(patient.alertChannels)].filter(
+    const preferredChannels = [...new Set(patient.alertChannels)];
+    const channels = preferredChannels.filter(
       (channel) => channel !== 'whatsapp' || verifiedPhone !== null,
     );
     return {
@@ -95,6 +120,7 @@ export class NotificationsService {
       name: patient.user.name,
       email: patient.user.email,
       verifiedPhone,
+      preferredChannels,
       channels,
     };
   }
@@ -105,13 +131,25 @@ export class NotificationsService {
     notification: OutgoingNotification,
     context: AlertContext,
   ): Promise<ChannelOutcome> {
-    const adapter = this.adapters.get(channel);
-    if (!adapter) return { channel, result: 'sem_adapter' };
+    const adapter = recipient.channels.includes(channel)
+      ? this.adapters.get(channel)
+      : undefined;
 
     const alertId = await this.claimAlert(channel, context);
     if (!alertId) return { channel, result: 'duplicado' };
 
-    const sent = await this.callAdapter(adapter, recipient, notification);
+    if (!adapter) {
+      // Nada a enviar: só fecha o Alert reservado com o motivo.
+      await this.prisma.alert.update({
+        where: { id: alertId },
+        data: { result: 'sem_canal', sentAt: null },
+      });
+      return { channel, result: 'sem_canal' };
+    }
+
+    const sent = await this.callAdapter(adapter, recipient, notification, {
+      alertId,
+    });
     try {
       await this.prisma.alert.update({
         where: { id: alertId },
@@ -181,12 +219,13 @@ export class NotificationsService {
     adapter: ChannelAdapter,
     recipient: NotificationRecipient,
     notification: OutgoingNotification,
+    delivery: DeliveryInfo,
   ): Promise<boolean> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), CHANNEL_TIMEOUT_MS);
     try {
       await Promise.race([
-        adapter.send(recipient, notification, controller.signal),
+        adapter.send(recipient, notification, controller.signal, delivery),
         new Promise<never>((_, reject) =>
           controller.signal.addEventListener('abort', () =>
             reject(

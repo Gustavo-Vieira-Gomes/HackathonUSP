@@ -8,7 +8,18 @@ export const REQUIRED_ENV = [
 ] as const;
 
 /** Opcionais: ausentes valem o padrão do schema. */
-export const OPTIONAL_ENV = ['DEMO_CLOCK_ENABLED', 'DEMO_CLOCK_TOKEN'] as const;
+export const OPTIONAL_ENV = [
+  'DEMO_CLOCK_ENABLED',
+  'DEMO_CLOCK_TOKEN',
+  'RESEND_API_KEY',
+  'RESEND_API_URL',
+  'EMAIL_FROM',
+  'VACANCY_MOTOR_ENABLED',
+  'WHATSAPP_MODE',
+] as const;
+
+/** Vazio (como no .env.example) conta como ausente. */
+const blankAsUndefined = (value: unknown) => (value === '' ? undefined : value);
 
 const filled = z.string().trim().min(1);
 
@@ -29,10 +40,27 @@ const envSchema = z
       .default('false')
       .transform((value) => value === 'true'),
     // Segredo do operador da demo (HACK-46): só quem tem o token move o relógio global.
-    // Vazio (como no .env.example) conta como ausente.
-    DEMO_CLOCK_TOKEN: z.preprocess(
-      (value) => (value === '' ? undefined : value),
-      secret.optional(),
+    DEMO_CLOCK_TOKEN: z.preprocess(blankAsUndefined, secret.optional()),
+    // Liga o motor de vagas a cada minuto (HACK-32). Os testes desligam, para o cron
+    // real não mexer no banco compartilhado no meio de outro arquivo de teste.
+    VACANCY_MOTOR_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+    // E-mail transacional via Resend (HACK-36). Sem a chave, o canal de e-mail não é
+    // registrado e o Alert fica sem_canal, em vez de fingir que enviou.
+    RESEND_API_KEY: z.preprocess(blankAsUndefined, filled.min(10).optional()),
+    RESEND_API_URL: z.preprocess(
+      blankAsUndefined,
+      filled.pipe(z.url()).default('https://api.resend.com'),
+    ),
+    // Remetente verificado no Resend, por exemplo "Vagas <alertas@dominio.com.br>".
+    EMAIL_FROM: z.preprocess(blankAsUndefined, filled.optional()),
+    // WhatsApp no piloto (HACK-37): off não envia; simulated grava a mensagem para a
+    // tela /demo/whatsapp. Integração real (Evolution/WAHA) fica fora do escopo.
+    WHATSAPP_MODE: z.preprocess(
+      blankAsUndefined,
+      z.enum(['off', 'simulated']).default('off'),
     ),
   })
   .superRefine((env, ctx) => {
@@ -41,6 +69,13 @@ const envSchema = z
         code: 'custom',
         path: ['DEMO_CLOCK_TOKEN'],
         message: 'obrigatório com DEMO_CLOCK_ENABLED=true',
+      });
+    }
+    if (env.RESEND_API_KEY && !env.EMAIL_FROM) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['EMAIL_FROM'],
+        message: 'obrigatório com RESEND_API_KEY',
       });
     }
   });
@@ -71,6 +106,6 @@ export function loadEnv(
   ];
   throw new EnvValidationError(
     `Configuração inválida ou ausente: ${names.join(', ')}. ` +
-      'Confira o .env (modelo em .env.example); BETTER_AUTH_SECRET e DEMO_CLOCK_TOKEN exigem 32 caracteres ou mais e não podem ser o valor de exemplo; DEMO_CLOCK_TOKEN é obrigatório com DEMO_CLOCK_ENABLED=true.',
+      'Confira o .env (modelo em .env.example); BETTER_AUTH_SECRET e DEMO_CLOCK_TOKEN exigem 32 caracteres ou mais e não podem ser o valor de exemplo; DEMO_CLOCK_TOKEN é obrigatório com DEMO_CLOCK_ENABLED=true; EMAIL_FROM é obrigatório com RESEND_API_KEY.',
   );
 }
