@@ -46,7 +46,13 @@ test('C22 - rota sem @AllowAnonymous responde 401 sem cookie e 200 com cookie', 
   const signUp = await fetch(`${url}/api/sign-up/paciente`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', origin: env.WEB_ORIGIN },
-    body: JSON.stringify({ name: 'Guard', email, password: '12345678' }),
+    body: JSON.stringify({
+      name: 'Guard',
+      email,
+      password: '12345678',
+      phone: '+5511999999999',
+      healthDataConsent: true,
+    }),
   });
   assert.equal(signUp.status, 200);
   const cookie = signUp.headers

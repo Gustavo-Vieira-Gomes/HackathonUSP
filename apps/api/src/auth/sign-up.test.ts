@@ -33,11 +33,11 @@ function bodyFor(
 ): Record<string, unknown> {
   return role === 'clinica'
     ? clinicSignUpBody(account.email, account)
-    : account;
+    : { ...account, phone: '+5511999999999', healthDataConsent: true };
 }
 
-/** Erro de validação: 400 na rota de paciente (HACK-12), 422 na de clínica (HACK-16). */
-const validationStatus = (role: UserRole) => (role === 'clinica' ? 422 : 400);
+/** Cadastros com perfil completo respondem 422 em erro de validação. */
+const validationStatus = () => 422;
 
 async function assertCreated(role: UserRole) {
   const email = t.email();
@@ -82,7 +82,7 @@ test('C8 - corpo com role ou campo extra responde 400 (422 na clínica) e não c
       });
       assert.equal(
         response.status,
-        validationStatus(role),
+        validationStatus(),
         `${role} ${JSON.stringify(extra)}`,
       );
       assert.equal(await countByEmail(email), 0);
@@ -126,7 +126,7 @@ test('C10 - senha de 7 caracteres responde 400 (422 na clínica) nas duas rotas 
       role,
       bodyFor(role, { name: 'Fulana', email, password: '1234567' }),
     );
-    assert.equal(response.status, validationStatus(role), role);
+    assert.equal(response.status, validationStatus(), role);
     assert.equal(await countByEmail(email), 0);
   }
 });
