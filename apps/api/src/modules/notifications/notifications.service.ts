@@ -10,6 +10,8 @@ import {
 } from './notification.types';
 
 export const CHANNEL_TIMEOUT_MS = 5_000;
+/** Alerta pendente há mais que isso foi abandonado por um processo que caiu (HACK-45). */
+export const STALE_PENDING_MS = 2 * CHANNEL_TIMEOUT_MS;
 
 export interface ChannelOutcome {
   channel: NotificationChannel;
@@ -67,27 +69,73 @@ export class NotificationsService {
     const adapter = this.adapters.get(channel);
     if (!adapter) return { channel, result: 'sem_adapter' };
 
-    let alertId: string;
+    const alertId = await this.claimAlert(channel, context);
+    if (!alertId) return { channel, result: 'duplicado' };
+
+    const sent = await this.callAdapter(adapter, recipient, message);
+    try {
+      await this.prisma.alert.update({
+        where: { id: alertId },
+        data: {
+          result: sent ? 'enviado' : 'falhou',
+          sentAt: sent ? new Date() : null,
+        },
+      });
+    } catch (error) {
+      // O envio já aconteceu; o Alert fica pendente e é reivindicado depois de
+      // STALE_PENDING_MS. Preferimos reenviar uma vez a perder o alerta em silêncio.
+      this.logger.error(
+        `falha ao gravar resultado do alerta ${alertId} no canal ${channel}: ${
+          error instanceof Error ? error.message : 'erro desconhecido'
+        }`,
+      );
+    }
+    return { channel, result: sent ? 'enviado' : 'falhou' };
+  }
+
+  /**
+   * Reserva o direito de enviar por este canal. Cria o `Alert` pendente; se ele já
+   * existe, só o reivindica quando ficou pendente por mais de STALE_PENDING_MS,
+   * sinal de que o processo caiu entre gravar e enviar. O `updateMany` condicional
+   * é atômico: entre duas chamadas concorrentes, só uma reivindica. Devolve o id
+   * do alerta reservado, ou null quando outro envio já é dono dele.
+   */
+  private async claimAlert(
+    channel: NotificationChannel,
+    context: AlertContext,
+  ): Promise<string | null> {
     try {
       const alert = await this.prisma.alert.create({
         data: { ...context, channel, result: 'pendente' },
         select: { id: true },
       });
-      alertId = alert.id;
+      return alert.id;
     } catch (error) {
-      if (isUniqueViolation(error)) return { channel, result: 'duplicado' };
-      throw error;
+      if (!isUniqueViolation(error)) throw error;
     }
 
-    const sent = await this.callAdapter(adapter, recipient, message);
-    await this.prisma.alert.update({
-      where: { id: alertId },
-      data: {
-        result: sent ? 'enviado' : 'falhou',
-        sentAt: sent ? new Date() : null,
+    const key = {
+      vacancyId: context.vacancyId,
+      subscriptionId: context.subscriptionId,
+      channel,
+    };
+    const now = new Date();
+    // createdAt passa a marcar a última reivindicação, que é o que importa aqui.
+    const claimed = await this.prisma.alert.updateMany({
+      where: {
+        ...key,
+        result: 'pendente',
+        createdAt: { lt: new Date(now.getTime() - STALE_PENDING_MS) },
       },
+      data: { createdAt: now },
     });
-    return { channel, result: sent ? 'enviado' : 'falhou' };
+    if (claimed.count === 0) return null;
+
+    const alert = await this.prisma.alert.findUnique({
+      where: { vacancyId_subscriptionId_channel: key },
+      select: { id: true },
+    });
+    return alert?.id ?? null;
   }
 
   private async callAdapter(
