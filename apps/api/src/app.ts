@@ -1,13 +1,20 @@
 import 'reflect-metadata';
-import { type INestApplication } from '@nestjs/common';
+import { type INestApplication, type LoggerService } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { type AppConfig, loadConfig } from './config/app-config';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 
 export async function createApp(
-  options: { logger?: false } = {},
+  options: { logger?: false | LoggerService; config?: AppConfig } = {},
 ): Promise<INestApplication> {
-  const app = await NestFactory.create(AppModule, options);
+  const config = options.config ?? loadConfig(process.env);
+  const app = await NestFactory.create(
+    AppModule.register(config),
+    options.logger === undefined ? {} : { logger: options.logger },
+  );
   app.setGlobalPrefix('api');
+  app.useGlobalFilters(new ApiExceptionFilter());
   app.enableShutdownHooks();
   return app;
 }

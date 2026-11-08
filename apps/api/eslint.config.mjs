@@ -2,8 +2,22 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/**', '.test-dist/**', 'node_modules/**'] },
+  {
+    ignores: [
+      'dist/**',
+      '.test-dist/**',
+      'node_modules/**',
+      'src/generated/**',
+    ],
+  },
   js.configs.recommended,
+  {
+    // Scripts de automação rodam em Node.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly' },
+    },
+  },
   ...tseslint.configs.recommended,
   {
     rules: {

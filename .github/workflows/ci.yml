@@ -7,6 +7,22 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: hackathon
+          POSTGRES_PASSWORD: hackathon
+          POSTGRES_DB: hackathon_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hackathon -d hackathon_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql://hackathon:hackathon@127.0.0.1:5432/hackathon_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
