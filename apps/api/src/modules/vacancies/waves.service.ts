@@ -6,7 +6,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { MatchingService } from './matching.service';
 import { haversineMeters } from './matching-rules';
-import { VacanciesService } from './vacancies.service';
+import { VacanciesService, clockEpochLimit } from './vacancies.service';
 
 const MINUTE_MS = 60_000;
 const OPEN_STATES = ['publicada', 'alertando'] as const;
@@ -96,8 +96,14 @@ export class WavesService {
       if (slot.startsAt <= now) return null;
 
       if (vacancy.state === 'alertando') {
+        // Só a época atual do relógio: onda de antes de um recuo não segura a
+        // janela, e sem onda na época a janela está vencida.
         const last = await tx.transition.findFirst({
-          where: { vacancyId, toState: 'alertando' },
+          where: {
+            vacancyId,
+            toState: 'alertando',
+            occurredAt: { lte: clockEpochLimit(now) },
+          },
           orderBy: { occurredAt: 'desc' },
           select: { occurredAt: true },
         });
