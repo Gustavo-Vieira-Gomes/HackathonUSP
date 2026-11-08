@@ -1,0 +1,27 @@
+# HACK-14: importar somente após a primeira migration de domínio do HACK-13.
+services:
+  - type: web
+    name: hackathon-usp-api
+    runtime: node
+    plan: free
+    autoDeployTrigger: 'off'
+    buildCommand: npm ci --include=dev && npm run build -w @hackathon/contracts && npm run build -w @hackathon/api
+    # No plano free não há preDeployCommand. Uma única instância aplica migrations
+    # versionadas antes de escutar; falha de migration impede iniciar a API.
+    startCommand: npm run db:deploy -w @hackathon/api && npm run start -w @hackathon/api
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: WEB_ORIGIN
+        sync: false
