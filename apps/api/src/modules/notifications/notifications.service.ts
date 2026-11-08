@@ -79,15 +79,16 @@ export class NotificationsService {
   }
 
   /**
-   * Cancela os alertas ainda pendentes de vagas que fecharam (RN-36): reservada,
-   * expirada ou cancelada. Enviado e falhou ficam como estão. Chamado a cada minuto
-   * pelo motor de vagas (HACK-32). Devolve quantos foram cancelados.
+   * Cancela os alertas ainda pendentes de vagas em estado final (RN-36): realizada,
+   * expirada ou cancelada. Reservada não entra: a vaga pode voltar a `publicada`
+   * (T9) ou `alertando` (T11). Enviado e falhou ficam como estão. Chamado a cada
+   * minuto pelo motor de vagas (HACK-32). Devolve quantos foram cancelados.
    */
-  async cancelPendingOfClosedVacancies(): Promise<number> {
+  async cancelPendingOfFinishedVacancies(): Promise<number> {
     const { count } = await this.prisma.alert.updateMany({
       where: {
         result: 'pendente',
-        vacancy: { state: { in: ['reservada', 'expirada', 'cancelada'] } },
+        vacancy: { state: { in: ['realizada', 'expirada', 'cancelada'] } },
       },
       data: { result: 'cancelado' },
     });

@@ -787,7 +787,8 @@ test('C15 - etapa que falha não impede as seguintes', async (t) => {
     const due = await createVacancy({
       startsAt: new Date(NOW.getTime() - HOUR),
     });
-    const closed = await scenario(1, { state: 'reservada' });
+    // Estado final (continuação, 08/11): reservada não cancela mais pendentes.
+    const closed = await scenario(1, { state: 'realizada' });
     const pending = await prisma.alert.create({
       data: {
         vacancyId: closed.vacancy.id,
@@ -808,7 +809,11 @@ test('C15 - etapa que falha não impede as seguintes', async (t) => {
       prices: () => t.mock.method(pricing, 'recalculatePrices', reject),
       expire: () => t.mock.method(vacancies, 'expireDue', reject),
       'cancel-pending': () =>
-        t.mock.method(notifications, 'cancelPendingOfClosedVacancies', reject),
+        t.mock.method(
+          notifications,
+          'cancelPendingOfFinishedVacancies',
+          reject,
+        ),
       waves: () => t.mock.method(waves, 'dispatchDue', reject),
     }[failing]();
     const logs = captureLogs(t);
@@ -1108,11 +1113,13 @@ test('C28 - falha do socket não desfaz a onda', async (t) => {
   );
 });
 
-// S7 - pendentes de vaga fechada ------------------------------------------------
+// S7 - pendentes de vaga em estado final---------------------------------------------
 
-test('C30 - tick cancela pendentes de vaga fechada', async () => {
+// C30 mudado na continuação, 08/11: reservada não cancela (pode voltar por T9/T11).
+test('C30 - tick cancela pendentes de vaga em estado final', async () => {
   const states = [
     'reservada',
+    'realizada',
     'expirada',
     'cancelada',
     'publicada',
@@ -1144,7 +1151,7 @@ test('C30 - tick cancela pendentes de vaga fechada', async () => {
     seeded.push({ state, ids });
   }
   await job.tick(T0);
-  const closed = new Set(['reservada', 'expirada', 'cancelada']);
+  const closed = new Set(['realizada', 'expirada', 'cancelada']);
   for (const { state, ids } of seeded) {
     for (const [original, id] of Object.entries(ids)) {
       const { result } = await prisma.alert.findUniqueOrThrow({

@@ -355,11 +355,13 @@ test(
 
 // HACK-32 - porta 4: cancelamento de pendentes de vaga fechada (RN-36)
 
-test('HACK-32 C29 - cancela só pendentes de vaga fechada', async () => {
+// C29 mudado na continuação, 08/11: reservada não cancela (pode voltar por T9/T11).
+test('HACK-32 C29 - cancela só pendentes de vaga em estado final', async () => {
   const service = app.get(NotificationsService);
-  await service.cancelPendingOfClosedVacancies(); // drena sobra de outros arquivos
+  await service.cancelPendingOfFinishedVacancies(); // drena sobra de outros arquivos
   const states = [
     'reservada',
+    'realizada',
     'expirada',
     'cancelada',
     'publicada',
@@ -389,9 +391,9 @@ test('HACK-32 C29 - cancela só pendentes de vaga fechada', async () => {
     seeded.push({ state, ids });
   }
 
-  assert.equal(await service.cancelPendingOfClosedVacancies(), 3);
+  assert.equal(await service.cancelPendingOfFinishedVacancies(), 3);
 
-  const closed = new Set(['reservada', 'expirada', 'cancelada']);
+  const closed = new Set(['realizada', 'expirada', 'cancelada']);
   for (const { state, ids } of seeded) {
     for (const [original, id] of Object.entries(ids)) {
       const { result } = await prisma.alert.findUniqueOrThrow({
