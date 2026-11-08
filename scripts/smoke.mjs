@@ -238,6 +238,79 @@ try {
     'H16-C31: paciente em /clinica sem o aviso e o Sair',
   );
 
+  // HACK-17: /clinica/exames (SSR) e cadastro de exame pelo repasse do Next.
+  const { allowedExams } = require('@hackathon/contracts');
+  const mri = allowedExams.find(
+    (exam) => exam.questionnaireKey === 'mri-without-contrast',
+  );
+  const anonymousExams = await fetch(`${webUrl}/clinica/exames`, {
+    redirect: 'manual',
+  });
+  assert.ok(
+    [303, 307, 308].includes(anonymousExams.status),
+    `H17-C37: /clinica/exames sem cookie ${anonymousExams.status}`,
+  );
+  assert.match(
+    anonymousExams.headers.get('location') ?? '',
+    /\/clinica\/login$/,
+    'H17-C37: /clinica/exames sem cookie não vai ao login',
+  );
+  const patientExams = await fetch(`${webUrl}/clinica/exames`, {
+    headers: { cookie },
+  });
+  assert.ok(
+    (await patientExams.text()).includes('Esta conta não é de clínica'),
+    'H17-C37: paciente em /clinica/exames sem o aviso',
+  );
+  const emptyExams = await fetch(`${webUrl}/clinica/exames`, {
+    headers: { cookie: clinicCookie },
+  });
+  assert.equal(
+    emptyExams.status,
+    200,
+    `H17-C37: /clinica/exames ${emptyExams.status}`,
+  );
+  assert.ok(
+    (await emptyExams.text()).includes('Nenhum exame cadastrado ainda.'),
+    'H17-C37: clínica nova sem o estado vazio',
+  );
+  const createdExam = await fetch(`${webUrl}/api/clinic/exams`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      origin: webUrl,
+      cookie: clinicCookie,
+    },
+    body: JSON.stringify({
+      tussCode: mri.tussCode,
+      fullPriceCents: 72000,
+      floorPriceCents: 50000,
+      minLeadMinutes: 360,
+      preparationCondition: 'nenhum',
+      preparationHours: 0,
+      contraindications: ['pacemaker-or-defibrillator'],
+      toleranceMinutes: 15,
+      maxTravelMinutes: 45,
+      priceSteps: [
+        { leadMinutes: 2880, discountPercent: 10 },
+        { leadMinutes: 1440, discountPercent: 20 },
+        { leadMinutes: 360, discountPercent: 30 },
+      ],
+    }),
+  });
+  assert.equal(
+    createdExam.status,
+    201,
+    `H17-C37: cadastro de exame pelo Next ${createdExam.status}`,
+  );
+  const listedExams = await fetch(`${webUrl}/clinica/exames`, {
+    headers: { cookie: clinicCookie },
+  });
+  assert.ok(
+    (await listedExams.text()).includes(mri.name),
+    'H17-C37: exame cadastrado fora da lista',
+  );
+
   // HACK-38: token de uso único do socket pelo repasse /api/auth/* do Next.
   const generateUrl = `${webUrl}/api/auth/one-time-token/generate`;
   const generated = await fetch(generateUrl, { headers: { cookie } });
@@ -314,7 +387,7 @@ try {
   );
   assert.equal(offlineSignIn.status, 502, 'C32: repasse com a API desligada');
   console.log(
-    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e sessão pelo Next, cadastro e painel da clínica, token do socket, /demo/whatsapp só com credencial do operador, fallback e 502 com API desligada.',
+    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e sessão pelo Next, cadastro e painel da clínica, exames da clínica, token do socket, /demo/whatsapp só com credencial do operador, fallback e 502 com API desligada.',
   );
 } finally {
   await Promise.all(processes.map(stop));
