@@ -18,9 +18,9 @@ export const healthResponseSchema = z.object({
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
 /**
- * Corpo de `POST /api/sign-up/paciente` e dados de conta repassados ao Better Auth.
+ * Dados de conta repassados ao Better Auth pelos cadastros de cada perfil.
  * O papel não vem do corpo: campo extra, inclusive `role`, é recusado. A clínica
- * se cadastra com `clinicSignUpBodySchema` (perfil completo, HACK-16).
+ * se cadastra com `clinicSignUpBodySchema`; paciente usa `patientSignUpBodySchema`.
  */
 export const signUpBodySchema = z.strictObject({
   name: z.string().trim().min(1).max(120),
@@ -35,3 +35,5 @@ export const signUpResponseSchema = z.strictObject({
 });
 
 export type SignUpResponse = z.infer<typeof signUpResponseSchema>;
+
+export * from './patient';

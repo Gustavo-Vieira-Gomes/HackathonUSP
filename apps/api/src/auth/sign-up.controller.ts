@@ -1,10 +1,9 @@
 import {
   type SignUpResponse,
-  signUpBodySchema,
-  type UserRole,
+  patientSignUpBodySchema,
 } from '@hackathon/contracts';
 import {
-  BadRequestException,
+  UnprocessableEntityException,
   Body,
   Controller,
   HttpCode,
@@ -20,7 +19,7 @@ import type {
   ServerResponse as Response,
 } from 'node:http';
 import { SIGN_UP_RATE_LIMIT, SignUpRequestGuard } from './sign-up-protection';
-import { SignUpService } from './sign-up.service';
+import { PatientSignUpService } from '../modules/patients/patient-sign-up.service';
 
 /**
  * Cadastros separados por papel (D1): o papel vem da rota, nunca do corpo.
@@ -33,7 +32,7 @@ import { SignUpService } from './sign-up.service';
 @Throttle({ default: SIGN_UP_RATE_LIMIT })
 @Controller('sign-up')
 export class SignUpController {
-  constructor(private readonly signUpService: SignUpService) {}
+  constructor(private readonly signUpService: PatientSignUpService) {}
 
   @Post('paciente')
   @HttpCode(200)
@@ -42,21 +41,31 @@ export class SignUpController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignUpResponse> {
-    return this.handle('paciente', body, req, res);
+    return this.handle(body, req, res);
   }
 
   private async handle(
-    role: UserRole,
     body: unknown,
     req: Request,
     res: Response,
   ): Promise<SignUpResponse> {
-    const parsed = signUpBodySchema.safeParse(body);
+    if (
+      typeof body !== 'object' ||
+      body === null ||
+      !('healthDataConsent' in body) ||
+      body.healthDataConsent !== true
+    ) {
+      throw new UnprocessableEntityException({
+        code: 'CONSENT_REQUIRED',
+        message: 'consentimento obrigatório',
+      });
+    }
+    const parsed = patientSignUpBodySchema.safeParse(body);
     if (!parsed.success) {
-      throw new BadRequestException({
+      throw new UnprocessableEntityException({
         code: 'INVALID_BODY',
         message:
-          'Corpo inválido: envie apenas name, email e password (8 caracteres ou mais).',
+          'Corpo inválido: informe nome, e-mail, telefone, senha e consentimento.',
         fields: [
           ...new Set(
             parsed.error.issues.map((issue) => issue.path.join('.') || 'body'),
@@ -64,11 +73,7 @@ export class SignUpController {
         ],
       });
     }
-    const result = await this.signUpService.signUp(
-      role,
-      parsed.data,
-      req.headers,
-    );
+    const result = await this.signUpService.signUp(parsed.data, req.headers);
     res.setHeader('set-cookie', result.setCookie);
     return result.body;
   }

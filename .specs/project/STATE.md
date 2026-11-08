@@ -27,3 +27,14 @@ Políticas centralizadas em .claude/rules: project, engineering, security e desi
 - Catálogo HACK-17 é a fonte TUSS. Não semear abdome total com protocolo de abdome superior; excluir o TC de tórax fora da lista fechada vigente.
 - Substituir testes WIP de rotas retiradas por provas do seed, sem enfraquecer testes já presentes em main.
 - HACK-15 concluído no worktree: seed duplo, matching SQL com 12 candidatos, 10 clínicas/2 alvos; check 409 testes, build e smoke verdes. Publicação em PR para main, revisão/merge ficam com a esteira do maestro.
+
+## Decisões HACK-23
+
+- Autorizado executar a esteira e publicar PR sem pausas. Base HTTPS feat/hack-23-complete resolveu para 0d7ee6e, sem WIP/handoff mencionado no card.
+- Reutilizar Better Auth e os proxies existentes; cadastro de paciente passa a exigir telefone e aceite explícito.
+- Retenção usa fim do horário do exame para reserva e expiresAt da inscrição; excluir dependentes para não deixar histórico identificável nem FKs bloqueando.
+
+- Prova inicial: quatro cenários HACK-23 da API passaram. Check completo identificou import explícito de ClockModule ausente em AuthModule (consumidor isolado GoogleCalendarModule); corrigido sem alterar o teste existente. Nova página exigiu recompilar contracts antes dos testes frontend.
+- Artefatos de navegação e ownership ficam em README e spec; não há descoberta adicional que justifique duplicação em .notebook.
+
+- HACK-23 validado: check (414 testes sem falhas/ignorados), build e smoke verdes no banco hack_23. Inclui páginas por ID e smoke de 404 no Next. Sem dependências/migrations novas e sem deploy.

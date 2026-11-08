@@ -1,3 +1,5 @@
+import { ClockModule } from '../modules/clock/clock.module';
+import { PatientSignUpService } from '../modules/patients/patient-sign-up.service';
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
@@ -16,6 +18,7 @@ import { SignUpService } from './sign-up.service';
  */
 @Module({
   imports: [
+    ClockModule,
     BetterAuthModule.forRootAsync({
       inject: [APP_ENV, PrismaService],
       useFactory: (env: AppEnv, prisma: PrismaService) => ({
@@ -26,7 +29,12 @@ import { SignUpService } from './sign-up.service';
     ThrottlerModule.forRoot([SIGN_UP_RATE_LIMIT]),
   ],
   controllers: [SignUpController, MeController],
-  providers: [AuthSessionService, SignUpService, SignUpRequestGuard],
+  providers: [
+    AuthSessionService,
+    SignUpService,
+    SignUpRequestGuard,
+    PatientSignUpService,
+  ],
   exports: [AuthSessionService, SignUpService],
 })
 export class AuthModule {}
