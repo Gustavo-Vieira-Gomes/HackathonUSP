@@ -24,7 +24,9 @@ export interface NotificationRecipient {
   email: string;
   /** Só preenchido com o telefone verificado; sem isso o WhatsApp não é usado. */
   verifiedPhone: string | null;
-  /** Canais efetivos: a preferência do paciente menos os que ele não pode receber. */
+  /** Canais que o paciente ativou, na ordem da preferência. */
+  preferredChannels: readonly NotificationChannel[];
+  /** Canais efetivos: os ativados menos os que ele não pode receber. */
   channels: readonly NotificationChannel[];
 }
 

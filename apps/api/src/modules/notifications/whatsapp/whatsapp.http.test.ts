@@ -144,7 +144,7 @@ test('vaga publicada → mensagem aparece em /demo/whatsapp no mesmo ciclo, com 
     .enviar(patientId, message(url), context);
   assert.deepEqual(
     Object.fromEntries(outcome.map((o) => [o.channel, o.result])),
-    { push: 'sem_adapter', whatsapp: 'enviado' },
+    { push: 'sem_canal', whatsapp: 'enviado' },
   );
   const [received, ...rest] = await messagesTo(phone);
   assert.equal(rest.length, 0);
@@ -175,27 +175,25 @@ test('sem telefone verificado o WhatsApp não é usado', async () => {
     .get(NotificationsService)
     .enviar(patientId, message(url), context);
   assert.equal(
-    outcome.some((o) => o.channel === 'whatsapp'),
-    false,
+    outcome.find((o) => o.channel === 'whatsapp')?.result,
+    'sem_canal',
   );
   assert.equal((await messagesTo(phone)).length, 0);
 });
 
-test('WHATSAPP_MODE=off: canal sem_adapter, nenhum Alert de WhatsApp e tela 404', async () => {
+test('WHATSAPP_MODE=off: nenhuma mensagem, Alert de WhatsApp sem_canal e tela 404', async () => {
   const { patientId, context, url } = await scenario();
   const outcome = await off.app
     .get(NotificationsService)
     .enviar(patientId, message(url), context);
   assert.equal(
     outcome.find((o) => o.channel === 'whatsapp')?.result,
-    'sem_adapter',
+    'sem_canal',
   );
-  assert.equal(
-    await on.prisma.alert.count({
-      where: { vacancyId: context.vacancyId, channel: 'whatsapp' },
-    }),
-    0,
-  );
+  const alert = await on.prisma.alert.findFirstOrThrow({
+    where: { vacancyId: context.vacancyId, channel: 'whatsapp' },
+  });
+  assert.equal(alert.result, 'sem_canal');
   assert.equal((await listMessages(off)).status, 404);
 });
 

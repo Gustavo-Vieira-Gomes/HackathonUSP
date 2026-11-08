@@ -41,7 +41,7 @@ const envSchema = z
     // Segredo do operador da demo (HACK-46): só quem tem o token move o relógio global.
     DEMO_CLOCK_TOKEN: z.preprocess(blankAsUndefined, secret.optional()),
     // E-mail transacional via Resend (HACK-36). Sem a chave, o canal de e-mail não é
-    // registrado e responde sem_adapter, em vez de fingir que enviou.
+    // registrado e o Alert fica sem_canal, em vez de fingir que enviou.
     RESEND_API_KEY: z.preprocess(blankAsUndefined, filled.min(10).optional()),
     RESEND_API_URL: z.preprocess(
       blankAsUndefined,

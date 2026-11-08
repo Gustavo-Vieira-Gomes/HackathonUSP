@@ -155,16 +155,16 @@ test('Resend fora duas vezes → Alert de e-mail fica falhou', async () => {
   assert.equal(fake.calls.length, 2);
 });
 
-test('sem RESEND_API_KEY o canal de e-mail não existe: sem_adapter e nenhum Alert', async () => {
+test('sem RESEND_API_KEY o canal de e-mail não envia e o Alert fica sem_canal', async () => {
   fake.reset();
   const { patientId, context, url } = await scenario();
   const outcome = await withoutEmail
     .get(NotificationsService)
     .enviar(patientId, message(url), context);
-  assert.deepEqual(outcome, [{ channel: 'email', result: 'sem_adapter' }]);
+  assert.deepEqual(outcome, [{ channel: 'email', result: 'sem_canal' }]);
   assert.equal(fake.calls.length, 0);
-  assert.equal(
-    await prisma.alert.count({ where: { vacancyId: context.vacancyId } }),
-    0,
-  );
+  const alert = await prisma.alert.findFirstOrThrow({
+    where: { vacancyId: context.vacancyId, channel: 'email' },
+  });
+  assert.equal(alert.result, 'sem_canal');
 });

@@ -10,7 +10,7 @@ import { WhatsappService } from './whatsapp/whatsapp.service';
 /**
  * Canais do alerta de vaga. Cada adapter só entra quando o fornecedor está
  * configurado: sem `RESEND_API_KEY` o e-mail, e com `WHATSAPP_MODE=off` o WhatsApp,
- * respondem `sem_adapter` em vez de fingir que enviaram. Push (4.2) entra aqui no
+ * ficam `sem_canal` em vez de fingir que enviaram. Push (4.2) entra aqui no
  * card dele.
  *
  * `EmailService` e `WhatsappService` são exportados para as outras mensagens do

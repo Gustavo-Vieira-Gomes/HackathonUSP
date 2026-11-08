@@ -280,6 +280,10 @@ enum AlertResult {
   enviado
   falhou
   cancelado
+  // Canal ativo do paciente sem como enviar: sem adapter (fornecedor não
+  // configurado) ou WhatsApp sem telefone verificado. Tira o paciente da fila
+  // daquela vaga, como um alerta enviado (HACK-48).
+  sem_canal
 }
 
 enum TransitionOrigin {
