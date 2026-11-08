@@ -325,3 +325,54 @@ test(
     });
   },
 );
+
+// HACK-32 - porta 4: cancelamento de pendentes de vaga fechada (RN-36)
+
+test('HACK-32 C29 - cancela só pendentes de vaga fechada', async () => {
+  const service = app.get(NotificationsService);
+  await service.cancelPendingOfClosedVacancies(); // drena sobra de outros arquivos
+  const states = [
+    'reservada',
+    'expirada',
+    'cancelada',
+    'publicada',
+    'alertando',
+  ] as const;
+  const seeded: {
+    state: (typeof states)[number];
+    ids: Record<string, string>;
+  }[] = [];
+  for (const state of states) {
+    const { context } = await scenario();
+    await prisma.vacancy.update({
+      where: { id: context.vacancyId },
+      data: { state },
+    });
+    const ids: Record<string, string> = {};
+    for (const [channel, result] of [
+      ['push', 'pendente'],
+      ['email', 'enviado'],
+      ['whatsapp', 'falhou'],
+    ] as const) {
+      const alert = await prisma.alert.create({
+        data: { ...context, channel, result },
+      });
+      ids[result] = alert.id;
+    }
+    seeded.push({ state, ids });
+  }
+
+  assert.equal(await service.cancelPendingOfClosedVacancies(), 3);
+
+  const closed = new Set(['reservada', 'expirada', 'cancelada']);
+  for (const { state, ids } of seeded) {
+    for (const [original, id] of Object.entries(ids)) {
+      const { result } = await prisma.alert.findUniqueOrThrow({
+        where: { id },
+      });
+      const expected =
+        original === 'pendente' && closed.has(state) ? 'cancelado' : original;
+      assert.equal(result, expected, `${state}/${original}`);
+    }
+  }
+});
