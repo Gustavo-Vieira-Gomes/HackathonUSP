@@ -6,7 +6,6 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { afterEach, test } from 'node:test';
 import { Server, type Socket } from 'socket.io';
 import {
-  NaoAutenticadoError,
   RealtimeClient,
   type RealtimeStatus,
   getRealtimeClient,
@@ -220,15 +219,36 @@ test('C26 - estado conectado, reconectando com o servidor caído e conectado de 
 });
 
 test('C27 - geração 401 ou handshake unauthorized: nao_autenticado e sem novas tentativas', async () => {
-  // Caso 1: a geração do token responde 401.
+  // Caso 1: a geração do token responde 401. Usa o fetchSocketToken real (default
+  // do cliente); o fetch global resolve o caminho relativo contra um HTTP local
+  // que responde 401, no lugar do repasse /api/auth/* do Next.
   const server = await startServer();
   abertos.push(server);
-  const semSessao = cliente(server, async () => {
-    throw new NaoAutenticadoError();
+  const geracoes: string[] = [];
+  const auth = createServer((req, res) => {
+    geracoes.push(`${req.method} ${req.url}`);
+    res.writeHead(401).end();
   });
+  auth.listen(0, '127.0.0.1');
+  await once(auth, 'listening');
+  const { port: authPort } = auth.address() as AddressInfo;
+  abertos.push({
+    close: () => new Promise<void>((resolve) => auth.close(() => resolve())),
+  });
+  const fetchOriginal = globalThis.fetch;
+  globalThis.fetch = (input, init) =>
+    fetchOriginal(new URL(String(input), `http://127.0.0.1:${authPort}`), init);
+  abertos.push({ close: () => (globalThis.fetch = fetchOriginal) });
+  const semSessao = new RealtimeClient({
+    url: server.url,
+    retryMinMs: 50,
+    retryMaxMs: 400,
+  });
+  abertos.push({ close: () => semSessao.close() });
   semSessao.acquire();
   await until(() => semSessao.status === 'nao_autenticado');
   await sleep(1000);
+  assert.deepEqual(geracoes, ['GET /api/auth/one-time-token/generate']);
   assert.equal(server.handshakes, 0);
   assert.equal(semSessao.status, 'nao_autenticado');
 
