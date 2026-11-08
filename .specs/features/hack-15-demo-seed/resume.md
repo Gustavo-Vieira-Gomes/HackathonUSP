@@ -1,3 +1,5 @@
+> Registro histórico do WIP 909a786. Para o escopo final e prova atual, consulte `spec.md` e `verification.md`. Busca web/API e IDs determinísticos deste registro foram retirados.
+
 # Retomada HACK-15
 
 Checkout /tmp/HackathonUSP-hack15, branch feat/hack-15-demo-seed, HEAD cec54eac3ab52d1dcac766c741e106f7fbb743cc. Pull --ff-only origin main GitHub exit0 comprovado. Main alheia não modificada.

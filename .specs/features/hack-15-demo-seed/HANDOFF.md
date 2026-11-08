@@ -1,3 +1,5 @@
+> Registro histórico do WIP 909a786. Para o escopo final e prova atual, consulte `spec.md` e `verification.md`. Busca web/API e IDs determinísticos deste registro foram retirados.
+
 # HANDOFF — HACK-15 (checkpoint WIP, 08/11/2026)
 
 **Card Linear:** HACK-15 — dados de demonstração; integra a associação do catálogo HACK-41.

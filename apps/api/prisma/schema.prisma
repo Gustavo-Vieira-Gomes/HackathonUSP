@@ -91,9 +91,9 @@ model Clinic {
   longitude          Float
   cnes               String               @unique
   technicalManager   String
-  // Teto diário de vagas com desconto (RN-28).
   // Alvo para conexão manual na demo; não indica OAuth conectado.
   demoCalendarTarget Boolean              @default(false)
+  // Teto diário de vagas com desconto (RN-28).
   dailyDiscountCap   Int                  @default(5)
   // Percentual do sinal sobre o preço do momento (RN-40, D1).
   depositPercent     Int                  @default(20)

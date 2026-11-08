@@ -1,3 +1,5 @@
+> Registro histórico do WIP 909a786. Para o escopo final e prova atual, consulte `spec.md` e `verification.md`. Busca web/API e IDs determinísticos deste registro foram retirados.
+
 # HACK-15 checks
 
 Build: `npm run build`; `npm run lint`; `npm run typecheck`
@@ -48,15 +50,15 @@ Proof: walk - visitar /buscar, submeter formulário por teclado, conferir quanti
 
 ## Coverage
 
-| Set (size) | Member -> proof | Unproven |
-| --- | --- | --- |
-| GET /api/clinics statuses (3) | 200 C8 · 400 C8 · 500 C9 | - |
-| GET /buscar statuses (1) | 200 C12 | - |
-| Landing doors (3) | snapshot C5 · alvo agenda C3 · identidade estável C1 C10 | - |
-| Entidades persistidas (8) | User C6 · Clinic C1 · Exam C4 C5 · PriceStep C1 C4 · Patient C6 · Subscription C6 · SubscriptionWindow C6 · ClinicOpeningHours C1 | - |
-| Protocolos (10) | abdome superior C5 · pelve transabdominal C5 · tireoide C5 · mamas C5 · US articular C5 · eco C5 · mamografia C5 · TC crânio C5 · TC tórax C5 · RM joelho C5 | - |
-| Startup (2) | API createApp C8 · CLI C1 C11 | - |
-| UI controls (1) | Buscar C12 | - |
+| Set (size)                    | Member -> proof                                                                                                                                              | Unproven |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| GET /api/clinics statuses (3) | 200 C8 · 400 C8 · 500 C9                                                                                                                                     | -        |
+| GET /buscar statuses (1)      | 200 C12                                                                                                                                                      | -        |
+| Landing doors (3)             | snapshot C5 · alvo agenda C3 · identidade estável C1 C10                                                                                                     | -        |
+| Entidades persistidas (8)     | User C6 · Clinic C1 · Exam C4 C5 · PriceStep C1 C4 · Patient C6 · Subscription C6 · SubscriptionWindow C6 · ClinicOpeningHours C1                            | -        |
+| Protocolos (10)               | abdome superior C5 · pelve transabdominal C5 · tireoide C5 · mamas C5 · US articular C5 · eco C5 · mamografia C5 · TC crânio C5 · TC tórax C5 · RM joelho C5 | -        |
+| Startup (2)                   | API createApp C8 · CLI C1 C11                                                                                                                                | -        |
+| UI controls (1)               | Buscar C12                                                                                                                                                   | -        |
 
 ## Swept
 

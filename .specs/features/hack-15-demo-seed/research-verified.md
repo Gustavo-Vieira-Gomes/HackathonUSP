@@ -4,18 +4,18 @@ Consulta em 2026-11-08 via Firecrawl search/scrape e Maps. Dez unidades reais no
 
 ## Seleção final
 
-| Unidade | CNES | RT explicitamente publicado |
-| --- | --- | --- |
-| SCOPP Pompéia | 7330847 | Luiz Carlos Donoso Scoppetta, CRM-SP 37686 |
+| Unidade           | CNES    | RT explicitamente publicado                |
+| ----------------- | ------- | ------------------------------------------ |
+| SCOPP Pompéia     | 7330847 | Luiz Carlos Donoso Scoppetta, CRM-SP 37686 |
 | SCOPP Santo Amaro | 9472940 | Luiz Carlos Donoso Scoppetta, CRM-SP 37686 |
-| CURA Jardins | 3451682 | Luci Mara Barbiero, CRM 120.433/SP |
-| CURA Moema | 5665558 | Luci Mara Barbiero, CRM 120.433/SP |
-| ZDI Padre Adelino | 9547231 | Iman Hassan Zoghbi, CRM-SP 74483 |
-| CDB Ana Rosa | 9060774 | Luci Mara Barbiero, CRM 120.433/SP |
-| CDB Brasil 350 | 3094146 | Luci Mara Barbiero, CRM 120.433/SP |
-| CDB Borba Gato | 7841272 | Luci Mara Barbiero, CRM 120.433/SP |
-| CDB Marselhesa | 3094162 | Luci Mara Barbiero, CRM 120.433/SP |
-| CDB Mooca | 9182772 | Luci Mara Barbiero, CRM 120.433/SP |
+| CURA Jardins      | 3451682 | Luci Mara Barbiero, CRM 120.433/SP         |
+| CURA Moema        | 5665558 | Luci Mara Barbiero, CRM 120.433/SP         |
+| ZDI Padre Adelino | 9547231 | Iman Hassan Zoghbi, CRM-SP 74483           |
+| CDB Ana Rosa      | 9060774 | Luci Mara Barbiero, CRM 120.433/SP         |
+| CDB Brasil 350    | 3094146 | Luci Mara Barbiero, CRM 120.433/SP         |
+| CDB Borba Gato    | 7841272 | Luci Mara Barbiero, CRM 120.433/SP         |
+| CDB Marselhesa    | 3094162 | Luci Mara Barbiero, CRM 120.433/SP         |
+| CDB Mooca         | 9182772 | Luci Mara Barbiero, CRM 120.433/SP         |
 
 SCOPP Pompéia e CURA Jardins são os únicos demoCalendarTarget:true.
 
@@ -38,6 +38,7 @@ Cinco coordenadas CDB foram observadas em [Firecrawl Maps](https://maps.firecraw
 SCOPP, CURA e ZDI preservam as coordenadas e links da consulta Firecrawl Maps documentada em research.md no mesmo dia. São pontos de estabelecimentos, não aferições topográficas; essa procedência está explícita no manifesto.
 
 CNES prevalece para endereço:
+
 - CURA Jardins: site oficial e CNES concordam em 4469; descartar “4417/4469”.
 - CURA Moema: CEP 04516-010 (CNES), em vez de 04516-012 do mapa inicial.
 - SCOPP Santo Amaro: número principal 1178, complemento cadastral 1166 e CEP 04734-002.
@@ -54,3 +55,7 @@ Pró Exame: CNES por unidade não identificado seguramente. Hcor Cidade Jardim: 
 ## Prova do manifesto
 
 Verificação local: JSON parseável, dez objetos, dez CNES distintos de sete dígitos, coordenadas dentro de São Paulo, endereço e RT preenchidos, fontes separadas para CNES e RT, proveniência por campo, duas unidades-alvo. Esta pesquisa só alterou research-verified.md e clinics-researched.json. Checks/build/Verifier pertencem à implementação do card.
+
+## Retomada local (2026-11-08)
+
+Consulta dos sites oficiais SCOPP, CURA e CDB confirmou novamente as unidades e endereços publicados. CURA/CDB redirecionam agora as URLs antigas de unidade para `/unidades`, que lista os endereços do manifesto. Coordenadas e CNES preservam a pesquisa documentada no handoff; não houve nova geocodificação. Preços e disponibilidade dos exames são simulados, sem alegar catálogo comercial ou parceria.
