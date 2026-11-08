@@ -59,6 +59,7 @@ Proof: `RUN --test-name-pattern="^H16-C11 - " CSU`
 
 **C12** - Em `POST /api/sign-up/clinica` com o corpo novo de clínica, origem estranha responde 403, corpo não JSON responde 415 e a 31ª tentativa do mesmo IP na janela responde 429, sem criar `User` (S1, AC 11)
 Proof: `RUN --test-name-pattern="^C(1|2|3|6) - " PROT` (testes do HACK-12 que já iteram as 2 rotas, passando a mandar o corpo de clínica válido)
+Proof: `RUN --test-name-pattern="^H16-C12 - " PROT` (retrabalho: 30 cadastros de clínica em `/clinica` e a 31ª tentativa → 429, sem cookie, 0 `User`, 0 `Clinic`; vermelho sob o mutante sem `ThrottlerGuard` no `ClinicSignUpController`)
 
 **C13** - `GeocodingService.geocode` registra exatamente uma linha `warn` por falha, contendo o motivo (`status=500`, `timeout`, `network`, `invalid_body`) e a duração no formato `<n>ms`, e a linha não contém o endereço enviado; uma chamada com sucesso não registra `warn` (S4, AC 29)
 Proof: `RUN --test-name-pattern="^H16-C13 - " GEO` (tabela: 4 motivos + 1 sucesso, logger capturado)
@@ -148,6 +149,14 @@ Proof: `PORTAL` passo P6, registrado em `portal.md`
 Proof: `RUN --test-name-pattern="^H16-C13 - " CSU`
 Proof: `! grep -rnE "logger\.(log|warn|error|debug)\(.*(email|password|address)" apps/api/src/modules/clinics`
 
+### R1 - retrabalho da verificação · 3 arquivos · ~3k
+
+**C39** - Com `GEOCODER_MIN_INTERVAL_MS = 1000` e a chamada anterior levando 4500 ms, a chamada seguinte na fila responde 503 `GEOCODING_UNAVAILABLE` entre 4900 e 5600 ms depois de começar, sem requisição ao fornecedor, com `warn` de `timeout`; a fila não trava e a chamada depois dela sai normalmente (porta 5: o tempo na fila conta nos 5000 ms)
+Proof: `RUN --test-name-pattern="^H16-C39 - " GEO`
+
+**C40** - Se a gravação do `Clinic` falha e a remoção compensatória do `User` também falha, `ClinicSignUpService.signUp` rejeita com o erro original da gravação e registra uma linha `error` com o id do `User`, sem o e-mail (S4)
+Proof: `RUN --test-name-pattern="^H16-C40 - " .test-dist/modules/clinics/clinic-sign-up.service.test.js`
+
 ## Coverage
 
 | Set (size)                                           | Member -> proof                                                                                                     | Unproven |
@@ -204,9 +213,9 @@ Cost: 7 provas na própria camada (CT ×2, PIPE, GEO ×3, WEB ×4 contando C27 a
 - authorization: C19, C21, C22, C23, C24, C25 (guard global do Better Auth existente para o 401, `@Roles` e `ClinicGuard` novos)
 - concurrency: C11
 - data lifecycle: C11 (compensação apaga o `User` perdedor, cascade em `Session`/`Account`); conta `clinica` antiga sem perfil: C24
-- dependency failure: C8, C13, C16, C30
+- dependency failure: C8, C13, C16, C30, C39
 - state transitions: n/a - o card não muda estado de vaga nem de conta; só cria `User`/`Clinic` e lê
-- observability: C13, C14, C38
+- observability: C13, C14, C38, C40
 
 ## Out of scope
 

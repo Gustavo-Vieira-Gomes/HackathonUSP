@@ -8,7 +8,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { z } from 'zod';
 import { APP_ENV, type AppEnv } from '../../config/env';
 
-/** Tempo máximo por chamada ao geocodificador; sem retentativa. */
+/** Tempo máximo por chamada ao geocodificador, fila incluída; sem retentativa. */
 export const GEOCODING_TIMEOUT_MS = 5_000;
 
 export interface GeoPoint {
@@ -53,27 +53,64 @@ export class GeocodingService {
 
   /**
    * Uma chamada por vez; a seguinte começa `minIntervalMs` depois do fim desta.
-   * Com intervalo 0 (testes), as chamadas saem sem fila.
+   * O tempo na fila conta nos `GEOCODING_TIMEOUT_MS` da chamada: vencido antes da
+   * vez, é 503 (`timeout`) sem chamar o fornecedor. Com intervalo 0 (testes), as
+   * chamadas saem sem fila.
    */
   async geocode(address: string): Promise<GeoPoint | null> {
-    if (this.minIntervalMs === 0) return this.request(address);
+    const started = performance.now();
+    const remaining = () =>
+      GEOCODING_TIMEOUT_MS - (performance.now() - started);
+    if (this.minIntervalMs === 0) {
+      return this.request(address, started, remaining());
+    }
     const previous = this.turns;
-    let done!: () => void;
+    let release!: () => void;
     this.turns = new Promise<void>((resolve) => {
-      done = resolve;
+      release = resolve;
     });
-    await previous;
-    const wait = this.nextStartAt - Date.now();
-    if (wait > 0) await sleep(wait);
+    const turn = previous.then(async () => {
+      const wait = this.nextStartAt - Date.now();
+      if (wait > 0) await sleep(wait);
+    });
+    const expired = new AbortController();
+    const outcome = await Promise.race([
+      turn.then(() => 'ready' as const),
+      sleep(Math.max(0, remaining()), 'expired' as const, {
+        signal: expired.signal,
+      }).catch(() => 'ready' as const),
+    ]);
+    expired.abort();
+    if (outcome === 'expired') {
+      // Não ocupa a vez: a fila segue quando a chamada anterior terminar.
+      void turn.finally(release);
+      return this.fail('timeout', started);
+    }
     try {
-      return await this.request(address);
+      return await this.request(address, started, remaining());
     } finally {
       this.nextStartAt = Date.now() + this.minIntervalMs;
-      done();
+      release();
     }
   }
 
-  private async request(address: string): Promise<GeoPoint | null> {
+  private fail(reason: FailureReason, started: number): never {
+    const ms = Math.round(performance.now() - started);
+    this.logger.warn(`Geocodificação indisponível: ${reason} em ${ms}ms`);
+    throw new ServiceUnavailableException({
+      code: 'GEOCODING_UNAVAILABLE',
+      message:
+        'Não foi possível localizar o endereço agora. Tente de novo em instantes.',
+    });
+  }
+
+  private async request(
+    address: string,
+    started: number,
+    timeoutMs: number,
+  ): Promise<GeoPoint | null> {
+    const fail = (reason: FailureReason): never => this.fail(reason, started);
+    if (timeoutMs <= 0) return fail('timeout');
     const url = new URL('search', withTrailingSlash(this.baseUrl));
     url.search = new URLSearchParams({
       format: 'jsonv2',
@@ -81,22 +118,12 @@ export class GeocodingService {
       countrycodes: 'br',
       q: address,
     }).toString();
-    const started = performance.now();
-    const fail = (reason: FailureReason): never => {
-      const ms = Math.round(performance.now() - started);
-      this.logger.warn(`Geocodificação indisponível: ${reason} em ${ms}ms`);
-      throw new ServiceUnavailableException({
-        code: 'GEOCODING_UNAVAILABLE',
-        message:
-          'Não foi possível localizar o endereço agora. Tente de novo em instantes.',
-      });
-    };
 
     let response: globalThis.Response;
     try {
       response = await fetch(url, {
         headers: { 'user-agent': this.userAgent, accept: 'application/json' },
-        signal: AbortSignal.timeout(GEOCODING_TIMEOUT_MS),
+        signal: AbortSignal.timeout(Math.ceil(timeoutMs)),
       });
     } catch (error) {
       return fail(isTimeout(error) ? 'timeout' : 'network');

@@ -177,3 +177,43 @@ test('H16-C16 - com intervalo de 1000 ms as chamadas chegam espaçadas e falha n
   );
   fake.reset();
 });
+
+test('H16-C39 - espera na fila conta nos 5000 ms: estourando, 503 GEOCODING_UNAVAILABLE sem chamar o fornecedor', async () => {
+  fake.reset();
+  let calls = 0;
+  fake.respond(async (_req, res) => {
+    calls++;
+    if (calls === 1) await sleep(4500);
+    json(res, 200, [{ lat: '-23.5617', lon: '-46.6560' }]);
+  });
+  const queued = service({ GEOCODER_MIN_INTERVAL_MS: '1000' });
+  const warn = mock.method(Logger.prototype, 'warn', () => undefined);
+  try {
+    const first = queued.geocode(ADDRESS);
+    const started = Date.now();
+    // A 2ª espera 4500 ms da 1ª + 1000 ms de intervalo: passa dos 5000 ms.
+    await assert.rejects(queued.geocode(ADDRESS), (error) => {
+      assert.ok(error instanceof ServiceUnavailableException);
+      assert.equal(
+        (error.getResponse() as { code: string }).code,
+        'GEOCODING_UNAVAILABLE',
+      );
+      return true;
+    });
+    const elapsed = Date.now() - started;
+    assert.ok(elapsed >= 4900 && elapsed < 5600, `503 em ${elapsed} ms`);
+    assert.ok(
+      warn.mock.calls.some((call) =>
+        call.arguments.map(String).join(' ').includes('timeout'),
+      ),
+    );
+    assert.ok(await first);
+    assert.equal(fake.requests.length, 1, 'a chamada vencida na fila saiu');
+    // A fila não trava: a chamada seguinte sai depois do intervalo.
+    assert.ok(await queued.geocode(ADDRESS));
+    assert.equal(fake.requests.length, 2);
+  } finally {
+    warn.mock.restore();
+    fake.reset();
+  }
+});

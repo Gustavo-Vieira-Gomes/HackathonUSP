@@ -80,7 +80,15 @@ export class ClinicSignUpService {
         setCookie: account.setCookie,
       };
     } catch (error) {
-      await this.prisma.user.delete({ where: { id: userId } });
+      try {
+        await this.prisma.user.delete({ where: { id: userId } });
+      } catch {
+        // A conta ficou sem perfil (o guard responde 403 CLINIC_PROFILE_MISSING).
+        this.logger.error(
+          `Compensação do cadastro de clínica falhou: User não removido userId=${userId}`,
+        );
+        throw error;
+      }
       if (!isUniqueViolation(error)) throw error;
       this.logger.warn(
         `Cadastro de clínica desfeito: CNES_TAKEN userId=${userId}`,
