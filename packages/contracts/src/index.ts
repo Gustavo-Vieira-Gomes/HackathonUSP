@@ -1,8 +1,11 @@
 import { z } from 'zod';
+import { sessionUserSchema } from './session';
 
 export * from './exam-questionnaires';
 export * from './realtime';
 export * from './demo-clock';
+export * from './session';
+export * from './clinic';
 
 export const healthResponseSchema = z.object({
   status: z.literal('ok'),
@@ -11,24 +14,10 @@ export const healthResponseSchema = z.object({
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
-/** Papel da conta. Uma conta tem um papel só (D2); quem fixa é a rota de cadastro. */
-export const userRoleSchema = z.enum(['paciente', 'clinica']);
-
-export type UserRole = z.infer<typeof userRoleSchema>;
-
-/** Usuário da sessão devolvido por `GET /api/me`. */
-export const sessionUserSchema = z.strictObject({
-  id: z.string().min(1),
-  name: z.string(),
-  email: z.email(),
-  role: userRoleSchema,
-});
-
-export type SessionUser = z.infer<typeof sessionUserSchema>;
-
 /**
- * Corpo de `POST /api/sign-up/paciente` e `/api/sign-up/clinica`.
- * O papel não vem do corpo: campo extra, inclusive `role`, é recusado.
+ * Corpo de `POST /api/sign-up/paciente` e dados de conta repassados ao Better Auth.
+ * O papel não vem do corpo: campo extra, inclusive `role`, é recusado. A clínica
+ * se cadastra com `clinicSignUpBodySchema` (perfil completo, HACK-16).
  */
 export const signUpBodySchema = z.strictObject({
   name: z.string().trim().min(1).max(120),
