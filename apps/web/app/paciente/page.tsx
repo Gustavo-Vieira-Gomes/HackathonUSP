@@ -24,8 +24,11 @@ export default async function PatientPage() {
       <p className="eyebrow">Minha conta</p>
       <h1 className="clinic-title">Olá, {user.name}</h1>
       <p className="intro">
-        Você entrou na plataforma com sua conta de paciente.
+        Encontre oportunidades de encaixe nos horários em que você pode ir.
       </p>
+      <Link className="primary-link" href="/paciente/inscricoes">
+        Minha lista de encaixe
+      </Link>
     </section>
   );
 }
