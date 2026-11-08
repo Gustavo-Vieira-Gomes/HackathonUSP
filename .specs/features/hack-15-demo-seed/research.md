@@ -1,0 +1,18 @@
+# Pesquisa HACK-15
+
+São Paulo é proposta pendente de aprovação. Consulta em 08/11/2026 via Firecrawl Maps e páginas oficiais. Coordenadas observadas, não aferição topográfica. Valores de exames serão demonstrativos.
+
+| Clínica | Endereço | Latitude | Longitude | Fonte |
+| --- | --- | --- | --- | --- |
+| Pró Exame Medicina Diagnóstica | Rua Vergueiro, 413 - Liberdade, São Paulo - SP, 01504-001 | -23.5657032 | -46.6393136 | [Mapa](https://maps.firecrawl.dev/place/0x94ce59a309763edb%3A0x5ec1ef6b4c1594f6) / [Site](http://www.proexame.com/) |
+| SCOPP Diagnósticos — Unidade Pompéia | Av. Pompéia, 1137 - Pompeia, São Paulo - SP, 05023-000 | -23.5340373 | -46.6874997 | [Mapa](https://maps.firecrawl.dev/place/0x94ce57e720dd82ab%3A0xed0957a12b0e645a) / [Site](http://www.scoppdiagnosticos.com.br/) |
+| CURA Medicina Diagnóstica - Jardins | Av. Brigadeiro Luís Antônio, 4417/4469 - Jardins, São Paulo - SP, 01401-000 | -23.5808842 | -46.6642361 | [Mapa](https://maps.firecrawl.dev/place/0x94ce59ba6b0f9a4f%3A0xceb6d2cb9fee3095) / [Site](https://www.cura.com.br/) |
+| Clínica Diffusion Barra Funda | R. Dona Germaine Burchard, 286 - Água Branca, São Paulo - SP, 05002-061 | -23.5289941 | -46.6719668 | [Mapa](https://maps.firecrawl.dev/place/0x94ce57f8ea11d929%3A0x6b7fe05f22989e3e) / [Site](http://www.diffusion.com.br/) |
+| Clínica Diffusion Tucuruvi | Av. Nova Cantareira, 2575 - Tucuruvi, São Paulo - SP, 02341-001 | -23.4757408 | -46.6127288 | [Mapa](https://maps.firecrawl.dev/place/0x94cef6429d635357%3A0x38238977910d0f4f) / [Site](https://clinicadiffusion.com.br/diffusion-tucuruvi/) |
+| Hcor Diagnóstico - Unidade Cidade Jardim | Av. Cidade Jardim, 318 - Jardim Paulistano, São Paulo - SP, 01454-000 | -23.5804309 | -46.6838607 | [Mapa](https://maps.firecrawl.dev/place/0x94ce5769465847d5%3A0x8d5db525e3d529a) / [Site](http://www.hcor.com.br/) |
+| Ato Medicina Diagnostica Paaf Punção Biopsia Ultrassom em São Paulo | Av. Lins de Vasconcelos, 3282 - 8 andar conj 84 - Vila Mariana, São Paulo - SP, 04112-002 | -23.5885459 | -46.6326016 | [Mapa](https://maps.firecrawl.dev/place/0x94ce5b6e1135a9d1%3A0x7bdcd625a3ddc67d) / [Site](https://www.atodiagnosticos.com.br/exames) |
+| Clínica ZDI Diagnósticos & Imagens | R. Padre Adelino, 735 - Quarta Parada, São Paulo - SP, 03303-000 | -23.5445395 | -46.586881 | [Mapa](https://maps.firecrawl.dev/place/0x94ce5ecf19b54a3d%3A0x4ca3d7e1a2e5c111) / [Site](https://www.zdidiagnosticos.com.br/) |
+| SCOPP Diagnósticos — Santo Amaro | Av. Adolfo Pinheiro, 1178 - Santo Amaro, São Paulo - SP, 04734-003 | -23.6434861 | -46.6993819 | [Mapa](https://maps.firecrawl.dev/place/0x94ce51552fd5821b%3A0x8dfa2ca9705c6a35) / [Site](http://www.scoppdiagnosticos.com.br/) |
+| CURA Medicina Diagnóstica - Moema | Av. Pavão, 322 - Moema, São Paulo - SP, 04516-012 | -23.6038081 | -46.6719417 | [Mapa](https://maps.firecrawl.dev/place/0x94ce50aa23cfc4db%3A0xbd035f703c902c31) / [Site](https://www.cura.com.br/) |
+
+Pendências técnicas antes do seed: conferir CNES e responsável técnico por unidade, resolver divergências de endereço nas fontes e validar TUSS em publicação oficial da ANS. Nenhum identificador ou profissional será inventado. Preços não são propostas comerciais dos estabelecimentos. Provas propostas: banco Postgres isolado, duas execuções do CLI com comparação de IDs/contagens e registro sentinela alheio; snapshot canônico por exame; MatchingService com 12 candidatos; HTTP de busca e caminhada UI nas duas larguras; check, build, smoke e Verifier independente.

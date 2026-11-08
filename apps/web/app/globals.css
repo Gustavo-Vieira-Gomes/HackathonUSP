@@ -207,3 +207,89 @@ footer {
     scroll-behavior: auto;
   }
 }
+
+.clinic-search .search-intro {
+  padding: 48px 0 32px;
+}
+.clinic-search h1 {
+  font-size: clamp(36px, 5vw, 60px);
+}
+.clinic-search .intro {
+  margin: 20px 0;
+}
+.demo-notice {
+  max-width: 75ch;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.clinic-search-form {
+  max-width: 640px;
+  margin-top: 28px;
+}
+.clinic-search-form label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+.search-controls {
+  display: flex;
+  gap: 12px;
+}
+.search-controls input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--muted);
+  border-radius: 7px;
+  padding: 14px;
+  background: #fffefa;
+  color: var(--foreground);
+  font: inherit;
+}
+.search-controls button {
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+.clinic-search :is(input, button):focus {
+  outline: 3px solid #497528;
+  outline-offset: 3px;
+}
+.search-results {
+  padding-bottom: 64px;
+}
+.clinic-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  list-style: none;
+  padding: 0;
+}
+.clinic-list > li {
+  min-width: 0;
+}
+.clinic-list .card {
+  height: 100%;
+  overflow-wrap: anywhere;
+}
+.exam-list {
+  padding-left: 20px;
+}
+.exam-list li {
+  margin-top: 16px;
+  line-height: 1.6;
+}
+.exam-list span {
+  display: block;
+}
+.exam-list span + span {
+  color: var(--muted);
+  font-size: 14px;
+}
+@media (max-width: 760px) {
+  .clinic-list {
+    grid-template-columns: 1fr;
+  }
+  .search-controls {
+    flex-wrap: wrap;
+  }
+}
