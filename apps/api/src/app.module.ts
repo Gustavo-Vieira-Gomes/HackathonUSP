@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import type { AppEnv } from './config/env';
 import { HealthController } from './health/health.controller';
+import { ClinicVacanciesModule } from './modules/clinic-vacancies/clinic-vacancies.module';
 import { ClinicsModule } from './modules/clinics/clinics.module';
 import { ClockModule } from './modules/clock/clock.module';
 import { ExamsModule } from './modules/exams/exams.module';
@@ -30,6 +31,7 @@ export class AppModule {
         NotificationsModule,
         ClinicsModule,
         ExamsModule,
+        ClinicVacanciesModule,
         PhoneVerificationModule,
         GoogleCalendarModule,
       ],
