@@ -82,27 +82,29 @@ model Verification {
 
 // Perfil de clínica de um User (role "clinica"), um para um (RN-01).
 model Clinic {
-  id                String               @id @default(uuid()) @db.Uuid
-  userId            String               @unique
-  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name              String
-  address           String
-  latitude          Float
-  longitude         Float
-  cnes              String               @unique
-  technicalManager  String
+  id                 String               @id @default(uuid()) @db.Uuid
+  userId             String               @unique
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  address            String
+  latitude           Float
+  longitude          Float
+  cnes               String               @unique
+  technicalManager   String
   // Teto diário de vagas com desconto (RN-28).
-  dailyDiscountCap  Int                  @default(5)
+  dailyDiscountCap   Int                  @default(5)
   // Percentual do sinal sobre o preço do momento (RN-40, D1).
-  depositPercent    Int                  @default(20)
+  depositPercent     Int                  @default(20)
   // Tamanho da onda de alertas e Z, a espera por onda (RN-34, D3).
-  waveSize          Int                  @default(5)
-  waveWindowMinutes Int                  @default(10)
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  openingHours      ClinicOpeningHours[]
-  exams             Exam[]
-  slots             Slot[]
+  waveSize           Int                  @default(5)
+  waveWindowMinutes  Int                  @default(10)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  openingHours       ClinicOpeningHours[]
+  exams              Exam[]
+  slots              Slot[]
+  // Google Agenda conectada por OAuth (HACK-18); ausência = nunca conectou.
+  calendarConnection CalendarConnection?
 }
 
 // Faixa de expediente num dia da semana, em hora local.
@@ -452,4 +454,35 @@ model PhoneVerification {
   attempts  Int      @default(0)
   expiresAt DateTime
   sentAt    DateTime @default(now())
+}
+
+// Status da conexão com a Google Agenda (HACK-18). EXPIRED cobre expirado e revogado:
+// o Google devolve o mesmo invalid_grant nos dois casos.
+enum CalendarConnectionStatus {
+  DISCONNECTED
+  AWAITING_CALENDAR
+  CONNECTED
+  EXPIRED
+}
+
+// Autorização Google de uma clínica e a agenda escolhida (HACK-18, porta 1). Tokens só
+// cifrados no formato v1.<iv>.<tag>.<cifra> (AES-256-GCM, AAD = clinicId, porta 2).
+// O state OAuth pendente mora na mesma linha: só o SHA-256 dele, a sessão que o gerou
+// e a validade (relógio real); é zerado ao ser consumido.
+model CalendarConnection {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  clinicId             String                   @unique @db.Uuid
+  clinic               Clinic                   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  status               CalendarConnectionStatus @default(DISCONNECTED)
+  refreshToken         String?
+  accessToken          String?
+  accessTokenExpiresAt DateTime?
+  calendarId           String?
+  calendarName         String?
+  connectedAt          DateTime?
+  oauthStateHash       String?
+  oauthStateSessionId  String?
+  oauthStateExpiresAt  DateTime?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
 }

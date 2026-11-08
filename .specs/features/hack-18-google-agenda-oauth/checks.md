@@ -13,7 +13,7 @@ Perfil `standard` e não `light`: o card guarda um segredo de longa duração (r
 
 **Como as provas rodam.**
 
-- API, em `apps/api`, com o Postgres do worktree no ar e o `DATABASE_URL` efetivo de `apps/api/.env` lido antes (nunca banco compartilhado), depois de `npx prisma generate && npx tsc -p tsconfig.json --outDir .test-dist` (o mesmo passo do `npm run test`). O `--test-name-pattern` vem **antes** do arquivo. Cada teste começa pelo id do check (`C9 - …`). Abreviações: `RUN` = `node --env-file-if-exists=.env --test`; `ENV` = `.test-dist/config/env.test.js`; `BOOT` = `.test-dist/config/boot.test.js`; `HTTP` = `.test-dist/modules/google-calendar/google-calendar.http.test.js` (API real em porta efêmera por `startTestApp`, com o provider `GoogleOAuthClient` trocado por um falso que conta chamadas e devolve o que o teste manda); `SVC` = `.test-dist/modules/google-calendar/google-calendar-connection.service.test.js` (serviço do módulo real contra o Postgres, mesmo cliente falso); `CRY` = `.test-dist/modules/google-calendar/token-cipher.test.js`; `GOC` = `.test-dist/modules/google-calendar/google-oauth.client.test.js` (o adaptador real com `googleapis`, sem rede externa: URL montada localmente e servidor HTTP local de teste).
+- API, em `apps/api`, com o Postgres do worktree no ar e o `DATABASE_URL` efetivo de `apps/api/.env` lido antes (nunca banco compartilhado), depois de `npx prisma generate && npx tsc -p tsconfig.json --outDir .test-dist` (o mesmo passo do `npm run test`). O `--test-name-pattern` vem **antes** do arquivo. Cada teste começa pelo id do check com o prefixo do card (`H18-C9 - …`), porque `env.test.ts` e `boot.test.ts` já têm `C4`, `C5`… do HACK-12. Abreviações: `RUN` = `node --env-file-if-exists=.env --test`; `ENV` = `.test-dist/config/env.test.js`; `BOOT` = `.test-dist/config/boot.test.js`; `HTTP` = `.test-dist/modules/google-calendar/google-calendar.http.test.js` (API real em porta efêmera por `startTestApp`, com o provider `GoogleOAuthClient` trocado por um falso que conta chamadas e devolve o que o teste manda); `SVC` = `.test-dist/modules/google-calendar/google-calendar-connection.service.test.js` (serviço do módulo real contra o Postgres, mesmo cliente falso); `CRY` = `.test-dist/modules/google-calendar/token-cipher.test.js`; `GOC` = `.test-dist/modules/google-calendar/google-oauth.client.test.js` (o adaptador real com `googleapis`, sem rede externa: URL montada localmente e servidor HTTP local de teste).
 - Web, em `apps/web`: `npx tsx --conditions=react-server --test --test-name-pattern="^C<n> " <arquivo>`. A API é o `startFakeApi` de `core/shared/services/fake-api.test-helper.ts`. Abreviações: `WCB` = `core/modules/clinic-calendar/google-calendar-callback.test.ts` (route handler do callback); `WVM` = `core/modules/clinic-calendar/clinic-calendar-view.test.ts` (o que a tela decide mostrar, a partir da resposta da API e do `?google=`); `WACT` = `core/modules/clinic-calendar/clinic-calendar-actions.test.ts` (os serviços que as Server Actions chamam). Os testes do web ficam em `core/**` porque é o que o `npm run test` do web roda.
 - Smoke: `npm run smoke` (`scripts/smoke.mjs`), Next e Nest de pé com o Postgres do worktree e **sem** variáveis `GOOGLE_*`; cada asserção nova leva o id do check na mensagem.
 - Fake de tempo e de corrida: validade do state movida no banco (nunca `sleep`); corrida sincronizada por promessa liberada pelo próprio cliente falso (L-003).
@@ -23,152 +23,152 @@ Perfil `standard` e não `light`: o card guarda um segredo de longa duração (r
 ### S1 - configuração e indisponibilidade · 6 arquivos · ~30 KB · ~8k
 
 **C1** - `loadEnv` com exatamente uma ou três das quatro variáveis `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI`, `GOOGLE_TOKEN_ENCRYPTION_KEY` preenchidas lança `EnvValidationError`; a mensagem cita o nome de cada variável faltante e não contém nenhum dos valores preenchidos (S1, AC 1)
-Proof: `RUN --test-name-pattern="^C1 " ENV` (tabela: cada variável sozinha = 4 casos, cada variável faltando = 4 casos)
+Proof: `RUN --test-name-pattern="^H18-C1 " ENV` (tabela: cada variável sozinha = 4 casos, cada variável faltando = 4 casos)
 
 **C2** - Com as outras três válidas, `GOOGLE_TOKEN_ENCRYPTION_KEY` que decodifica para 31 bytes, para 33 bytes, ou que não é base64 lança `EnvValidationError` citando `GOOGLE_TOKEN_ENCRYPTION_KEY` e sem o valor; 32 bytes em base64 passa (S1, AC 1)
-Proof: `RUN --test-name-pattern="^C2 " ENV` (4 casos)
+Proof: `RUN --test-name-pattern="^H18-C2 " ENV` (4 casos)
 
 **C3** - `loadEnv` sem nenhuma `GOOGLE_*` (ausentes e as quatro como string vazia) passa e marca a integração como indisponível; com as quatro válidas passa e marca como disponível (S1, AC 2)
-Proof: `RUN --test-name-pattern="^C3 " ENV`
+Proof: `RUN --test-name-pattern="^H18-C3 " ENV`
 
 **C4** - O `main.js` compilado com só `GOOGLE_OAUTH_CLIENT_ID` preenchida sai com código diferente de 0 antes de escutar a porta, e a saída de erro cita `GOOGLE_OAUTH_CLIENT_SECRET` e não contém o valor do client id (S1, AC 1)
-Proof: `RUN --test-name-pattern="^C4 " BOOT`
+Proof: `RUN --test-name-pattern="^H18-C4 " BOOT`
 
 **C5** - Com a API de teste sem nenhuma `GOOGLE_*`, `GET /health` responde `200` e, com cookie de sessão de clínica, as cinco rotas (`GET /api/clinic/google-calendar`, `POST .../connect`, `GET .../callback?code=x&state=y`, `GET .../calendars`, `PUT .../calendar`) respondem `503` com corpo `{ code: 'GOOGLE_CALENDAR_UNAVAILABLE', message }`; o cliente Google falso recebe 0 chamadas (S1, AC 2)
-Proof: `RUN --test-name-pattern="^C5 " HTTP` (tabela sobre as 5 rotas)
+Proof: `RUN --test-name-pattern="^H18-C5 " HTTP` (tabela sobre as 5 rotas)
 
 **C6** - Resposta da API `503` com `GOOGLE_CALENDAR_UNAVAILABLE` faz a tela mostrar «Integração com a Google Agenda indisponível neste ambiente» e não oferecer o botão «Conectar Google Agenda» nem a lista de agendas (S1, AC 3)
-Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^C6 " WVM`
-Proof: `npm run smoke` (asserção `C6`: HTML de `/clinica/agenda` com cookie de clínica contém o texto e não contém «Conectar Google Agenda»)
+Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^H18-C6 " WVM`
+Proof: `npm run smoke` (asserção `H18-C6`: HTML de `/clinica/agenda` com cookie de clínica contém o texto e não contém «Conectar Google Agenda»)
 
 ### S2 - autorizar com state ligado à sessão · 9 arquivos · ~55 KB · ~14k
 
 **C7** - `GoogleOAuthClient.buildAuthUrl(state)` devolve URL de `accounts.google.com` cuja query tem `access_type=offline`, `prompt=consent`, `include_granted_scopes=false`, `response_type=code`, `client_id` e `redirect_uri` iguais às variáveis, `state` igual ao argumento e `scope` com exatamente os dois escopos `https://www.googleapis.com/auth/calendar.events.owned` e `https://www.googleapis.com/auth/calendar.calendarlist.readonly` (S2, AC 4; portas 6 e 7)
-Proof: `RUN --test-name-pattern="^C7 " GOC`
+Proof: `RUN --test-name-pattern="^H18-C7 " GOC`
 
 **C8** - Clínica logada chama `POST /api/clinic/google-calendar/connect` e recebe `200` com `authorizationUrl`; o `state` passado ao `buildAuthUrl` falso tem 43 caracteres de `[A-Za-z0-9_-]`; a linha `CalendarConnection` da clínica tem `oauthStateHash` = SHA-256 desse state (diferente do state), `oauthStateSessionId` = `session.id` do cookie e `oauthStateExpiresAt` entre agora + 9 min 55 s e agora + 10 min 5 s; um segundo `connect` troca o hash (um state pendente por clínica) (S2, AC 4)
-Proof: `RUN --test-name-pattern="^C8 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C8 " HTTP`
 
 **C9** - Sem cookie as cinco rotas respondem `401`; com cookie de sessão de paciente respondem `403`; nos dois casos o cliente falso recebe 0 chamadas e nenhuma linha `CalendarConnection` é criada (S2, AC 5)
-Proof: `RUN --test-name-pattern="^C9 " HTTP` (tabela: 5 rotas × 2 sessões, com a integração configurada)
+Proof: `RUN --test-name-pattern="^H18-C9 " HTTP` (tabela: 5 rotas × 2 sessões, com a integração configurada)
 
 **C10** - Callback com o `state` devolvido pelo `connect`, mesma clínica e mesma sessão, dentro da validade, com o falso devolvendo refresh e access token: `exchangeCode` é chamado 1 vez com o `code` da query; a linha fica com status `AWAITING_CALENDAR`, os dois tokens no formato da porta 2 que decifram para os valores do falso, `oauthStateHash`, `oauthStateSessionId` e `oauthStateExpiresAt` nulos; a resposta é `302` com `Location` igual a `{WEB_ORIGIN}/clinica/agenda?google=awaiting_calendar` (S2, AC 6)
-Proof: `RUN --test-name-pattern="^C10 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C10 " HTTP`
 
 **C11** - Callback com state inválido responde `302` para `{WEB_ORIGIN}/clinica/agenda?google=invalid_state`, `exchangeCode` recebe 0 chamadas e status e tokens ficam iguais aos de antes, em 5 casos: sem `state` na query; state que nunca foi gerado; state com `oauthStateExpiresAt` movido para 1 s no passado; state já consumido por um callback que deu certo; state gerado por outra sessão da mesma conta de clínica (S2, AC 7)
-Proof: `RUN --test-name-pattern="^C11 " HTTP` (tabela sobre os 5 casos, partindo de uma conexão `CONNECTED` com tokens para ver que nada muda)
+Proof: `RUN --test-name-pattern="^H18-C11 " HTTP` (tabela sobre os 5 casos, partindo de uma conexão `CONNECTED` com tokens para ver que nada muda)
 
 **C12** - Clínica A gera o state; o callback chega com o cookie da Clínica B e esse state: `302` com `google=invalid_state`, `exchangeCode` 0 chamadas, a linha da A continua com o state pendente e o status de antes e a B continua sem linha (S2, AC 8)
-Proof: `RUN --test-name-pattern="^C12 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C12 " HTTP`
 
 **C13** - Dois callbacks com o mesmo state válido, disparados juntos, com o `exchangeCode` falso retido até os dois pedidos terem chegado ao serviço: `exchangeCode` é chamado 1 vez; uma resposta tem `google=awaiting_calendar` e a outra `google=invalid_state`; a linha termina `AWAITING_CALENDAR` com um único par de tokens (S2, AC 9)
-Proof: `RUN --test-name-pattern="^C13 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C13 " HTTP`
 
 **C14** - Callback com `error=access_denied` e state válido, partindo de `CONNECTED` com tokens: `302` com `google=denied`, `exchangeCode` 0 chamadas, state zerado, status, tokens e agenda iguais aos de antes (S2, AC 10)
-Proof: `RUN --test-name-pattern="^C14 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C14 " HTTP`
 
 **C15** - Troca do `code` que devolve só access token (sem refresh): `302` com `google=no_refresh_token`; nenhuma coluna de token muda e o status fica o de antes (S2, AC 11)
-Proof: `RUN --test-name-pattern="^C15 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C15 " HTTP`
 
 **C16** - `exchangeCode` falso que lança o erro traduzido de falha do Google e o de timeout: nos dois casos `302` com `google=google_unavailable`, nenhuma coluna de token muda e o status fica o de antes (S2, AC 12)
-Proof: `RUN --test-name-pattern="^C16 " HTTP` (2 casos)
+Proof: `RUN --test-name-pattern="^H18-C16 " HTTP` (2 casos)
 
 **C17** - Reconectar: a partir de `CONNECTED`, `POST .../connect` responde `200` e deixa status, tokens e agenda intactos; o callback que dá certo troca os dois tokens pelos novos e o status volta a `AWAITING_CALENDAR` (S2; Assumptions, reconectar com conexão ativa)
-Proof: `RUN --test-name-pattern="^C17 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C17 " HTTP`
 
 **C18** - Route handler `GET /api/google-calendar/callback` do Next: com cookie, repassa `code`, `state` e `error` e o cookie para `GET /api/clinic/google-calendar/callback` da API e devolve `302` com o mesmo `Location` da API; sem cookie de sessão responde `302` para `/clinica/login` sem chamar a API; API fora do ar responde `502`; API que não responde em `API_PROXY_TIMEOUT_MS` responde `504` (S2; Surface, rota do Next)
-Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^C18 " WCB` (4 casos)
+Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^H18-C18 " WCB` (4 casos)
 
 **C19** - O serviço da Server Action de conectar, com a API falsa devolvendo `200` e `authorizationUrl`, devolve essa URL para o redirect; com `503` devolve o estado indisponível; com `200` fora do contrato (sem `authorizationUrl` ou URL inválida) devolve erro e nenhuma URL (S2, AC 4 e AC 3 do lado do Next)
-Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^C19 " WACT` (3 casos)
+Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^H18-C19 " WACT` (3 casos)
 
 ### S3 - escolher a agenda e ver o status · 9 arquivos · ~50 KB · ~13k
 
 **C20** - Clínica em `AWAITING_CALENDAR` e em `CONNECTED` chama `GET .../calendars`, com o falso devolvendo agendas de `accessRole` `owner` (uma primária, não primeira), `writer`, `reader` e `freeBusyReader`: `200` com `calendars` só das `owner`, cada item com exatamente `id`, `name` e `primary`, a primária primeiro e as outras na ordem do Google (S3, AC 13; Observable, densidade e ordem)
-Proof: `RUN --test-name-pattern="^C20 " HTTP` (2 status)
+Proof: `RUN --test-name-pattern="^H18-C20 " HTTP` (2 status)
 
 **C21** - `GET .../calendars` e `PUT .../calendar` com a clínica sem linha (`DISCONNECTED`) e com status `EXPIRED` respondem `409` com `code` `CALENDAR_NOT_AUTHORIZED`, o falso com 0 chamadas e a linha igual (S3, AC 14)
-Proof: `RUN --test-name-pattern="^C21 " HTTP` (2 rotas × 2 status)
+Proof: `RUN --test-name-pattern="^H18-C21 " HTTP` (2 rotas × 2 status)
 
 **C22** - `PUT .../calendar` com `{ calendarId }` de uma agenda `owner` da lista: `200` com `status` `connected`, `calendarName` igual ao nome da agenda e `connectedAt`; a linha tem o id e o nome da agenda e status `CONNECTED` (S3, AC 15)
-Proof: `RUN --test-name-pattern="^C22 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C22 " HTTP`
 
 **C23** - `PUT .../calendar` com `calendarId` fora da lista e com `calendarId` de agenda `writer` da conta responde `422` com `code` `CALENDAR_NOT_AVAILABLE`; corpo sem `calendarId`, com `calendarId` `''` e com `calendarId` numérico responde `422` com `code` `VALIDATION_FAILED` e `fields` igual a `['calendarId']` (`ZodBodyPipe` do HACK-16) e o falso recebe 0 chamadas; a linha fica igual nos 5 casos (S3, AC 16)
-Proof: `RUN --test-name-pattern="^C23 " HTTP` (5 casos)
+Proof: `RUN --test-name-pattern="^H18-C23 " HTTP` (5 casos)
 
 **C24** - Com o falso de listagem lançando o erro de credencial recusada (`invalid_grant` e `401`), `GET .../calendars` e `PUT .../calendar` respondem `409` com `CALENDAR_NOT_AUTHORIZED`, e a linha fica `EXPIRED` com os dois tokens nulos (S3, AC 17)
-Proof: `RUN --test-name-pattern="^C24 " HTTP` (2 erros × 2 rotas)
+Proof: `RUN --test-name-pattern="^H18-C24 " HTTP` (2 erros × 2 rotas)
 
 **C25** - Com o falso de listagem lançando o erro traduzido de falha do Google, `GET .../calendars` e `PUT .../calendar` respondem `502` com `code` `GOOGLE_UNAVAILABLE`; com o de timeout respondem `504` com `code` `GOOGLE_TIMEOUT`; a linha fica igual nos quatro casos (S3, AC 18)
-Proof: `RUN --test-name-pattern="^C25 " HTTP` (2 erros × 2 rotas)
+Proof: `RUN --test-name-pattern="^H18-C25 " HTTP` (2 erros × 2 rotas)
 
 **C26** - `GET /api/clinic/google-calendar` responde `200` e o corpo passa no schema do contrato em cada status: sem linha `{ status: 'disconnected' }`; `AWAITING_CALENDAR` `{ status: 'awaiting_calendar' }`; `CONNECTED` com `calendarName` e `connectedAt`; `EXPIRED` com `status` `expired` (S3; Surface, `GET` de status)
-Proof: `RUN --test-name-pattern="^C26 " HTTP` (4 status)
+Proof: `RUN --test-name-pattern="^H18-C26 " HTTP` (4 status)
 
 **C27** - A tela decide, por status recebido: `connected` mostra «Conectada» e o nome da agenda, sem botão de conectar; `disconnected` mostra «Desconectada» e o botão «Conectar Google Agenda»; `expired` mostra «Agenda desconectada: a autorização expirou ou foi revogada. Reautorize.» e o botão «Conectar Google Agenda»; `awaiting_calendar` com agendas mostra uma opção de rádio com label por agenda, na ordem recebida, e o botão «Usar esta agenda» (S3, AC 19 a AC 22)
-Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^C27 " WVM` (4 status)
+Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^H18-C27 " WVM` (4 status)
 
 **C28** - `awaiting_calendar` com a lista vazia mostra «Nenhuma agenda própria encontrada nesta conta Google» e nenhum botão «Usar esta agenda» (S3, AC 22)
-Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^C28 " WVM`
+Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^H18-C28 " WVM`
 
 **C29** - Ao carregar o status, API fora do ar, resposta `500` e `200` com corpo fora do contrato (`status: 'conectada'`) fazem a tela mostrar «Não foi possível carregar o status da agenda. Tente de novo.» e nenhum dos quatro textos de status (S3, AC 23)
-Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^C29 " WVM` (3 casos)
+Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^H18-C29 " WVM` (3 casos)
 
 **C30** - `?google=denied`, `invalid_state`, `no_refresh_token` e `google_unavailable` produzem, cada um, uma mensagem de alerta diferente das outras três e não vazia; `?google=awaiting_calendar`, valor desconhecido e ausência do parâmetro não produzem alerta (S3, AC 24)
-Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^C30 " WVM` (7 casos)
-Proof: `npm run smoke` (asserção `C30`: HTML de `/clinica/agenda?google=denied` com cookie de clínica tem `role="alert"` com a mensagem de `denied`)
+Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^H18-C30 " WVM` (7 casos)
+Proof: `npm run smoke` (asserção `H18-C30`: HTML de `/clinica/agenda?google=denied` com cookie de clínica tem `role="alert"` com a mensagem de `denied`)
 
 **C31** - O serviço da Server Action de escolher envia `PUT .../calendar` com `{ calendarId }` e o cookie; `200` dentro do contrato é sucesso; `409`, `422` (`CALENDAR_NOT_AVAILABLE` e `VALIDATION_FAILED`), `502` e `504` devolvem erro com o `code` da API e nunca sucesso (S3, AC 15 e AC 16 do lado do Next)
-Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^C31 " WACT` (6 casos)
+Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^H18-C31 " WACT` (6 casos)
 
 **C32** - Sem cookie, `GET /clinica/agenda` no Next redireciona para `/clinica/login` (S3; Observable, não autorizado)
-Proof: `npm run smoke` (asserção `C32`)
+Proof: `npm run smoke` (asserção `H18-C32`)
 
 ### S4 - tokens nunca saem do módulo · 4 arquivos · ~20 KB · ~5k
 
 **C33** - No fluxo completo (connect, callback que dá certo, calendars, PUT, GET de status) e nos callbacks de erro de C11, C14 a C16, nenhum corpo de resposta e nenhum `Location` contém o refresh token, o access token, o `code` nem o state usados pelo teste (S4, AC 25)
-Proof: `RUN --test-name-pattern="^C33 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C33 " HTTP`
 
 **C34** - Lidas cruas por `$queryRaw` (`SELECT * FROM` a tabela), as colunas de token casam `^v1\.[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]+$` e nenhuma coluna da linha contém o refresh nem o access token em texto puro (S4, AC 26; porta 2)
-Proof: `RUN --test-name-pattern="^C34 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C34 " HTTP`
 
 **C35** - A cifra decifra o que cifrou com o mesmo `clinicId`; duas cifras do mesmo texto diferem (IV aleatório); lança erro, sem devolver texto, quando decifrada com o `clinicId` de outra clínica, com o IV adulterado, com a tag adulterada, com a cifra adulterada e com prefixo `v2.`; chave de 32 bytes vem de `GOOGLE_TOKEN_ENCRYPTION_KEY` (S4, AC 27; porta 2)
-Proof: `RUN --test-name-pattern="^C35 " CRY` (1 ida e volta, 1 IV, 5 recusas)
+Proof: `RUN --test-name-pattern="^H18-C35 " CRY` (1 ida e volta, 1 IV, 5 recusas)
 
 **C36** - Com o `Logger` capturado, nas falhas de C16, C24 e C25, cujos erros falsos carregam um objeto no formato do erro do `googleapis` com `config.headers.Authorization: 'Bearer <token>'` e `config.data` com o `code` e o refresh token: o texto registrado contém o `code` traduzido e o status HTTP, e não contém o token, o `code` OAuth, o state, `Bearer` nem `Authorization` (S4, AC 28)
-Proof: `RUN --test-name-pattern="^C36 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C36 " HTTP`
 
 **C37** - O adaptador traduz um `GaxiosError` real (com `config.headers.Authorization` e `config.data`) para um erro próprio cujo `JSON.stringify` e `String()` não contêm o token nem o corpo da requisição; nos casos `invalid_grant`, `401`, `500`, `403` e erro de rede (S4, AC 28; porta 4)
-Proof: `RUN --test-name-pattern="^C37 " GOC` (5 casos)
+Proof: `RUN --test-name-pattern="^H18-C37 " GOC` (5 casos)
 
 ### S5 - API para o sincronizador · 6 arquivos · ~35 KB · ~9k
 
 **C38** - `getAuthorizedCalendar(clinicId)` de uma clínica `CONNECTED` devolve `calendarId` igual ao escolhido e o `calendar` que o `calendarFor` falso montou; o falso recebeu credenciais com o refresh e o access token decifrados e a validade gravada (S5, AC 29; porta 3)
-Proof: `RUN --test-name-pattern="^C38 " SVC`
+Proof: `RUN --test-name-pattern="^H18-C38 " SVC`
 
 **C39** - `calendarFor` real devolve um `calendar_v3.Calendar` cujas chamadas, contra um servidor HTTP local que nunca responde, rejeitam com o erro traduzido de timeout entre 10 s e 12 s; o mesmo vale para `exchangeCode` e `listOwnedCalendars` (S5, AC 29; S2, AC 12; S3, AC 18; Assumptions, timeout do `googleapis`)
-Proof: `RUN --test-name-pattern="^C39 " GOC` (3 chamadas; o Construtor confirma na versão instalada como apontar `googleapis` para o servidor local - `rootUrl` / endpoints do `OAuth2Client`; sem forma documentada, para e pergunta ao Maestro)
+Proof: `RUN --test-name-pattern="^H18-C39 " GOC` (3 chamadas; o Construtor confirma na versão instalada como apontar `googleapis` para o servidor local - `rootUrl` / endpoints do `OAuth2Client`; sem forma documentada, para e pergunta ao Maestro)
 
 **C40** - `getAuthorizedCalendar` de clínica sem linha, em `AWAITING_CALENDAR` e em `EXPIRED` lança `CalendarNotConnectedError` e o falso recebe 0 chamadas (S5, AC 30)
-Proof: `RUN --test-name-pattern="^C40 " SVC` (3 casos)
+Proof: `RUN --test-name-pattern="^H18-C40 " SVC` (3 casos)
 
 **C41** - Quando o cliente devolvido dispara o `onTokens` com novo access token e nova validade, a coluna do access token passa a decifrar para o novo, a validade é a nova e o refresh token decifra para o mesmo de antes (S5, AC 31)
-Proof: `RUN --test-name-pattern="^C41 " SVC`
+Proof: `RUN --test-name-pattern="^H18-C41 " SVC`
 
 **C42** - `markCredentialsRejected(clinicId)` numa clínica `CONNECTED` deixa status `EXPIRED`, os dois tokens nulos e id e nome da agenda iguais; a segunda chamada deixa a linha idêntica e não lança (S5, AC 32)
-Proof: `RUN --test-name-pattern="^C42 " SVC`
+Proof: `RUN --test-name-pattern="^H18-C42 " SVC`
 
 **C43** - `isCredentialsRejectedError` devolve `true` para o erro do Google com `invalid_grant` e para o com status `401`, e `false` para `403`, `500`, erro de rede, timeout, `Error` comum, `null` e string (S5, AC 33)
-Proof: `RUN --test-name-pattern="^C43 " GOC` (tabela, 9 casos)
+Proof: `RUN --test-name-pattern="^H18-C43 " GOC` (tabela, 9 casos)
 
 **C44** - Revogação: `calendar` do falso lança `invalid_grant`; `isCredentialsRejectedError` desse erro é `true`; depois de `markCredentialsRejected`, `GET /api/clinic/google-calendar` da clínica responde `status` `expired` (S5, AC 33)
-Proof: `RUN --test-name-pattern="^C44 " HTTP`
+Proof: `RUN --test-name-pattern="^H18-C44 " HTTP`
 
 **C45** - `listConnectedClinicIds()`, com quatro clínicas de teste em `DISCONNECTED` (sem linha), `AWAITING_CALENDAR`, `CONNECTED` e `EXPIRED`, devolve entre os ids dessas quatro só o da `CONNECTED` (S5, AC 34)
-Proof: `RUN --test-name-pattern="^C45 " SVC`
+Proof: `RUN --test-name-pattern="^H18-C45 " SVC`
 
 **C46** - Esquema e módulo: o enum `CalendarConnectionStatus` tem exatamente `DISCONNECTED`, `AWAITING_CALENDAR`, `CONNECTED`, `EXPIRED`; uma segunda linha para o mesmo `clinicId` falha por unicidade; apagar a `Clinic` apaga a linha; um módulo de teste que importa `GoogleCalendarModule` resolve `GoogleCalendarConnectionService` e chama os quatro nomes da porta 3; `googleapis` é importado só por `google-oauth.client.ts` (`GoogleOAuthClient`) e está em `apps/api/package.json` e no lock (portas 1, 3, 4 e 5)
-Proof: `RUN --test-name-pattern="^C46 " SVC`
+Proof: `RUN --test-name-pattern="^H18-C46 " SVC`
 Proof: `test -z "$(grep -rl --include='*.ts' "from 'googleapis'" apps/api/src | grep -v 'google-oauth.client.ts$')"` (da raiz)
 Proof: `npm ls googleapis -w @hackathon/api` (da raiz; sai 0 só com a dependência no lock)
 
