@@ -7,6 +7,7 @@ import { ExamplesModule } from './examples/examples.module';
 import { HealthController } from './health/health.controller';
 import { ClockModule } from './modules/clock/clock.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PhoneVerificationModule } from './modules/phone-verification/phone-verification.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { VacanciesModule } from './modules/vacancies/vacancies.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -26,6 +27,7 @@ export class AppModule {
         RealtimeModule,
         VacanciesModule,
         NotificationsModule,
+        PhoneVerificationModule,
       ],
       controllers: [HealthController],
     };
