@@ -52,3 +52,4 @@ HACK-19 validado: check (429 testes, zero falhas/ignorados), build e smoke verde
 - Manifest e worker sem cache offline de dados pessoais. Clique aceita apenas rota de vaga na mesma origem.
 - Dependência HACK-35: web-push 3.x compatível com @types/web-push 3 e com o cliente CJS da API. A instalação inicial de 4.x trouxe exports ESM imutáveis incompatíveis com o transporte falso dos testes; mantida a API estável 3.6.7, sem alterar a lógica para contornar testes.
 - Autorização reutiliza PatientOnly/CurrentPatientId do HACK-23; validação HTTP mantém o status 422 do ZodBodyPipe existente.
+- HACK-35 concluído: main integrado até HACK-19; check 448 testes sem falhas/ignorados, build e smoke verdes. Migration local hack_35; prova de envio com web-push falso. Cliente real localhost mostrou worker/notificação, mas subscription foi recusada pelo Chrome automatizado; limite aceito pelo maestro e documentado. HACK-24 fará montagem pós-inscrição.
