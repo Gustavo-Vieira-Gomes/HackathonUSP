@@ -747,7 +747,9 @@ test('HACK-32 C22 - serviço de vagas usa o relógio da demo', async () => {
   }
 });
 
-test('HACK-32 C23 - occurredAt continua crescente quando o relógio recua', async () => {
+// C23 mudado na continuação, 08/11, decisão do Gustavo via maestro: depois de um
+// recuo de mais de 1 s, a transição grava o agora, não a anterior + 1 ms.
+test('HACK-32 C23 - depois do recuo do relógio occurredAt volta ao agora', async () => {
   const clock = app.get(ClockService);
   await clock.reset();
   try {
@@ -757,11 +759,30 @@ test('HACK-32 C23 - occurredAt continua crescente quando o relógio recua', asyn
     assert.equal(ahead.state, 'alertando');
     await clock.reset();
     await service.transition(vacancy.id, 'alertando', meta());
-    const rows = await service.timeline(vacancy.id);
-    const [, first, second] = rows;
+    // A linha do tempo ordena por relógio: a transição nova vem antes da adiantada.
+    const [second, first] = (await service.timeline(vacancy.id)).filter(
+      (row) => row.toState === 'alertando',
+    );
     assert.ok(first && second);
     assert.ok(first.occurredAt.getTime() - Date.now() > 50 * MINUTE);
-    assert.equal(second.occurredAt.getTime(), first.occurredAt.getTime() + 1);
+    assert.ok(Math.abs(second.occurredAt.getTime() - Date.now()) <= 1_000);
+
+    // Dentro da tolerância de 1 s não é recuo: a D6 vale e grava anterior + 1 ms.
+    const other = await publishVacancy(new Date(Date.now() + 48 * HOUR));
+    const base = clock.now();
+    await service.transition(other.id, 'alertando', meta(), undefined, base);
+    await service.transition(
+      other.id,
+      'alertando',
+      meta(),
+      undefined,
+      new Date(base.getTime() - 500),
+    );
+    const rows = (await service.timeline(other.id)).filter(
+      (row) => row.toState === 'alertando',
+    );
+    assert.equal(rows.length, 2);
+    assert.equal(rows[1]!.occurredAt.getTime(), base.getTime() + 1);
   } finally {
     await clock.reset();
   }

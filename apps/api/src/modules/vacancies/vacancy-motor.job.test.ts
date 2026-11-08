@@ -1074,6 +1074,46 @@ test('C26 - avançar 10 min dispara a onda 2 com occurredAt 10 min depois', asyn
   }
 });
 
+test('K1 - recuo do relógio dispara a próxima onda e respeita Z no relógio novo', async () => {
+  await clock.reset();
+  try {
+    const noon = new Date(
+      localDayStart(new Date(Date.now() + 3 * 24 * HOUR)).getTime() + 12 * HOUR,
+    );
+    const { clinic, exam, vacancy } = await createVacancy({ startsAt: noon });
+    await subscribe(clinic, exam, 15, { windows: ALL_DAY });
+    await clock.advance(600);
+    const first = await sendsDuring(vacancy.id, () => job.tick(clock.now()));
+    assert.equal(first.length, 5);
+    assert.ok(first.every((s) => s.context.wave === 1));
+
+    // Recuo: a onda 1 ficou 10 h no futuro; o tick seguinte não espera por ela.
+    await clock.reset();
+    const second = await sendsDuring(vacancy.id, () => job.tick(clock.now()));
+    assert.equal(second.length, 5);
+    assert.ok(second.every((s) => s.context.wave === 2));
+    const rows = await waveTransitions(vacancy.id);
+    assert.equal(rows.length, 2);
+    const wave2 = rows.find((r) => r.reason === 'Onda 2');
+    assert.ok(wave2);
+    assert.ok(Math.abs(wave2.occurredAt.getTime() - Date.now()) <= 1_000);
+
+    // No relógio novo, a janela Z volta a valer: nada a +1 min.
+    const early = await sendsDuring(vacancy.id, () =>
+      job.tick(new Date(clock.now().getTime() + MINUTE)),
+    );
+    assert.equal(early.length, 0);
+    assert.equal((await waveTransitions(vacancy.id)).length, 2);
+
+    await clock.advance(10);
+    const third = await sendsDuring(vacancy.id, () => job.tick(clock.now()));
+    assert.equal(third.length, 5);
+    assert.ok(third.every((s) => s.context.wave === 3));
+  } finally {
+    await clock.reset();
+  }
+});
+
 // S6 - tempo real a quem foi alertado --------------------------------------------
 
 test('C27 - vagaPublicada recebe User.id dos pacientes da onda', async () => {
