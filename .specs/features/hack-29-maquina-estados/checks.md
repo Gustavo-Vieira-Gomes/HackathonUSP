@@ -144,3 +144,7 @@ Dimensões da casa: tenant - não se aplica, igual a autorização; dinheiro - n
 
 - S1 a S5 tocam os mesmos 6 arquivos novos/alterados (`vacancies.module.ts`, `vacancies.service.ts`, `vacancy-transitions.ts`, os 2 testes e `app.module.ts`) e leem `schema.prisma` da fatia 2 (~7 KB), `prisma.service.ts`, `app.ts` e `test-app.ts` (~5 KB): ~12 KB lidos + ~45 KB escritos + plan e checks (~50 KB) = ~107 KB / 4 ≈ 27k, abaixo do orçamento de 150k - um construtor, sem pergunta.
 - Ordem: só depois da PR da fatia 2 do HACK-13 em `main` → `git merge origin/main`, `docker compose up -d`, `npm run db:migrate -w @hackathon/api`; o primeiro commit leva `plan.md` e `checks.md`.
+- Mecanismo: um construtor (dentro do orçamento, sem pergunta).
+- **Boundary:** C1-C23 fechados em `a7abaa2` (base `b1bc276`).
+- **Settled mid-build:** motivo inválido lança `BadRequestException` (400) e o motivo é gravado sem espaços nas pontas (o plano só pedia «recusar antes de gravar»; C7 não fixa o status); fixtures já seguem as regras da continuação da Fundação (horário e exame da mesma clínica, `Reservation.slotId` = horário da vaga, limpeza filho → pai), pedido do Maestro Motor; os testes de `expireDue` usam uma era própria (1981-1985) e drenam a era antes das fixtures, para não contar vaga de outro arquivo ou de execução anterior.
+- **Abandoned:** `mock.method(prisma, '$transaction')` (o node:test não acha o método no cliente Prisma); C13 e C15 trocam o método à mão e restauram no `finally`.
