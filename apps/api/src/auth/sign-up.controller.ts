@@ -11,16 +11,24 @@ import {
   Post,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import type {
   IncomingMessage as Request,
   ServerResponse as Response,
 } from 'node:http';
+import { SIGN_UP_RATE_LIMIT, SignUpRequestGuard } from './sign-up-protection';
 import { SignUpService } from './sign-up.service';
 
-/** Cadastros separados por papel (D1): o papel vem da rota, nunca do corpo. */
+/**
+ * Cadastros separados por papel (D1): o papel vem da rota, nunca do corpo.
+ * Origem e tipo (403/415) antes do limite de taxa (429), nessa ordem.
+ */
 @AllowAnonymous()
+@UseGuards(SignUpRequestGuard, ThrottlerGuard)
+@Throttle({ default: SIGN_UP_RATE_LIMIT })
 @Controller('sign-up')
 export class SignUpController {
   constructor(private readonly signUpService: SignUpService) {}
