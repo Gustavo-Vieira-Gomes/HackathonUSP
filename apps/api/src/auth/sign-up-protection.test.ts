@@ -38,7 +38,13 @@ const jsonBody = (email: string, role: UserRole = 'paciente') =>
   JSON.stringify(
     role === 'clinica'
       ? clinicSignUpBody(email, { name: 'Fulana', password: '12345678' })
-      : { name: 'Fulana', email, password: '12345678' },
+      : {
+          name: 'Fulana',
+          email,
+          password: '12345678',
+          phone: '+5511999999999',
+          healthDataConsent: true,
+        },
   );
 
 test('C1 - formulário urlencoded de origem estranha responde 403, sem cookie e sem User', async () => {
