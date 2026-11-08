@@ -769,7 +769,11 @@ test('HACK-32 C23 - depois do recuo do relógio occurredAt volta ao agora', asyn
 
     // Dentro da tolerância de 1 s não é recuo: a D6 vale e grava anterior + 1 ms.
     const other = await publishVacancy(new Date(Date.now() + 48 * HOUR));
-    const base = clock.now();
+    // A base sai do occurredAt real da T1 (publicada), estritamente depois dele: no
+    // mesmo ms da T1 a 1ª alertando viraria T1 + 1 e o assert abaixo ficaria instável.
+    const [published] = await service.timeline(other.id);
+    assert.equal(published?.toState, 'publicada');
+    const base = new Date(published.occurredAt.getTime() + 10);
     await service.transition(other.id, 'alertando', meta(), undefined, base);
     await service.transition(
       other.id,
