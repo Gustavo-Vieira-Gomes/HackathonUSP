@@ -140,15 +140,28 @@ try {
   );
   const webResponse = await ready(`${webUrl}/api/health`, web);
   assert.deepEqual(await webResponse.json(), { status: 'ok', service: 'web' });
+  const account = await fetch(`${webUrl}/minha-conta`, {
+    headers: { cookie },
+    redirect: 'manual',
+  });
+  assert.equal(account.status, 200);
+  assert.match(await account.text(), /Paciente Smoke/);
+  const anonymous = await fetch(`${webUrl}/minha-conta`, {
+    redirect: 'manual',
+  });
+  assert.equal(anonymous.status, 307);
+  assert.match(anonymous.headers.get('location') ?? '', /\/entrar$/);
   const page = await fetch(webUrl);
   assert.equal(page.status, 200);
-  assert.match(await page.text(), /API conectada/);
+  const home = await page.text();
+  assert.match(home, /API conectada/);
+  assert.match(home, /href="\/cadastro"/);
   await stop(api.child);
   const offlinePage = await fetch(webUrl);
   assert.equal(offlinePage.status, 200);
   assert.match(await offlinePage.text(), /API indisponível neste momento/);
   console.log(
-    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e /me na API, integração e fallback com API desligada.',
+    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e /me na API, /minha-conta pelo Next, integração e fallback com API desligada.',
   );
 } finally {
   await Promise.all(processes.map(stop));

@@ -14,6 +14,12 @@ export default async function HomeScreen() {
           Hackathon USP
         </Link>
         <span className="edition">Da ideia à entrega</span>
+        <nav className="account-nav" aria-label="Conta">
+          <Link href="/entrar">Entrar</Link>
+          <Link className="account-nav-primary" href="/cadastro">
+            Criar conta
+          </Link>
+        </nav>
       </header>
 
       <section className="hero" aria-labelledby="headline">
