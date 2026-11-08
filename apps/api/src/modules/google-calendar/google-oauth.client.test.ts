@@ -257,3 +257,59 @@ test('H18-C43 - isCredentialsRejectedError: invalid_grant e 401 são true; 403, 
     assert.equal(isCredentialsRejectedError(error), expected, label);
   }
 });
+
+test('H18-C50 - adaptador real repassa o access token renovado pelo /token a onTokens', async () => {
+  const NEW_ACCESS = 'ya29.access-renovado-pelo-servidor-local';
+  const renewer = await listen((req, res) => {
+    if (req.url?.startsWith('/token')) {
+      json(res, 200, {
+        access_token: NEW_ACCESS,
+        expires_in: 3600,
+        token_type: 'Bearer',
+      });
+    } else {
+      json(res, 200, {
+        items: [{ id: 'exames@x', summary: 'Exames', accessRole: 'owner' }],
+      });
+    }
+  });
+  try {
+    const client = clientAt(`${renewer.url}/token`, renewer.url);
+    const expired = {
+      refreshToken: REFRESH,
+      accessToken: ACCESS,
+      expiryDate: Date.now() - 60_000,
+    };
+    const check = async (
+      label: string,
+      run: (
+        onTokens: (tokens: {
+          accessToken: string;
+          expiryDate?: number;
+        }) => Promise<void>,
+      ) => Promise<unknown>,
+    ) => {
+      const received: { accessToken: string; expiryDate?: number }[] = [];
+      const before = Date.now();
+      await run(async (tokens) => {
+        received.push(tokens);
+      });
+      assert.equal(received.length, 1, label);
+      assert.equal(received[0]?.accessToken, NEW_ACCESS, label);
+      const expiry = received[0]?.expiryDate ?? 0;
+      assert.ok(
+        expiry >= before + 3_590_000 && expiry <= Date.now() + 3_610_000,
+        `${label}: ${expiry - before}`,
+      );
+    };
+    await check('listOwnedCalendars', (onTokens) =>
+      client.listOwnedCalendars(expired, onTokens),
+    );
+    await check('calendarFor', (onTokens) =>
+      client.calendarFor(expired, onTokens).calendarList.list(),
+    );
+  } finally {
+    renewer.server.closeAllConnections();
+    renewer.server.close();
+  }
+});

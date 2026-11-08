@@ -5,7 +5,7 @@ Plan: `.specs/features/hack-18-google-agenda-oauth/plan.md`
 
 Perfil `standard` e não `light`: o card guarda um segredo de longa duração (refresh token, acesso permanente à agenda com nome de paciente, RN-06), tem cifra com AAD, um state consumido uma vez sob corrida e uma tabela de decisão de erro do Google que o HACK-19 reusa. Na dúvida entre dois perfis, o mais alto.
 
-49 checks em 5 fatias (C47 a C49 do retrabalho da verificação) · 7 portas de uma via · 2 perguntas abertas, das quais 1 bloqueia o build (guard e sessão de clínica do HACK-16 em `main`) e 1 bloqueia só o go-live (credenciais OAuth reais, providenciadas pelo time)
+50 checks em 5 fatias (C47 a C50 dos retrabalhos da verificação) · 7 portas de uma via · 2 perguntas abertas, das quais 1 bloqueia o build (guard e sessão de clínica do HACK-16 em `main`) e 1 bloqueia só o go-live (credenciais OAuth reais, providenciadas pelo time)
 
 **Decisões do Gustavo que valem aqui:** plano aprovado; código testado só com `GoogleOAuthClient` falso (nenhuma prova chama o Google real); sem `GOOGLE_*` a API responde `503` e a tela diz «indisponível»; revogado e expirado são um status só, `EXPIRED`, com a cópia «a autorização expirou ou foi revogada. Reautorize.».
 
@@ -183,6 +183,9 @@ Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^H18-C48 "
 **C49** - Quando o Google renova o access token durante `GET .../calendars` (clínica em `AWAITING_CALENDAR`), a coluna do access token passa a decifrar para o novo e a validade é a nova, pelo mesmo caminho do `getAuthorizedCalendar` (C41); o refresh token decifra para o mesmo de antes (S3; R6)
 Proof: `RUN --test-name-pattern="^H18-C49 " HTTP`
 
+**C50** - O adaptador real, contra o servidor local, com credenciais de access token vencido (`expiryDate` no passado) e o `/token` devolvendo um access token novo com `expires_in` 3600: `listOwnedCalendars(cred, onTokens)` e uma chamada do cliente de `calendarFor(cred, onTokens)` chamam `onTokens` cada um com o access token novo e validade entre agora + 3590 s e agora + 3610 s (S3, S5; L-007; bloqueio da rodada 2)
+Proof: `RUN --test-name-pattern="^H18-C50 " GOC` (2 chamadas)
+
 ## Coverage
 
 | Set (size)                                                                       | Member -> proof                                                                                                                                                                                                             | Unproven |
@@ -208,7 +211,7 @@ Proof: `RUN --test-name-pattern="^H18-C49 " HTTP`
 | chamadas ao Google com timeout (3)                                               | `exchangeCode` C39 · `listOwnedCalendars` C39 · `calendarFor` C39                                                                                                                                                           | -        |
 | portas de uma via em `Landing` (7)                                               | porta 1 C46 · porta 2 C34, C35 · porta 3 C46 · porta 4 C46 · porta 5 C46 · porta 6 C7 · porta 7 C7                                                                                                                          | -        |
 | ramos do callback com state válido (5)                                           | `error=access_denied` C14 · outro `error` C47 · sem `code` C47 · troca sem refresh C15 · troca com falha C16                                                                                                                | -        |
-| quem grava o access token renovado (2)                                           | `getAuthorizedCalendar` C41 · listagem de agendas C49                                                                                                                                                                       | -        |
+| quem grava o access token renovado (3)                                           | `getAuthorizedCalendar` C41 · listagem de agendas C49 · repasse no adaptador real C50                                                                                                                                       | -        |
 | startup config: env das `GOOGLE_*` (2 montagens)                                 | `main.js` C4 · `startTestApp` C5                                                                                                                                                                                            | -        |
 | startup config: `GoogleCalendarModule` no `AppModule` (1 montagem compartilhada) | `createApp`, usada por `main.ts` e `startTestApp` C5                                                                                                                                                                        | -        |
 
@@ -259,3 +262,4 @@ Dimensões da casa: tenant - C12 (state de uma clínica não serve a outra) e AA
 - **Abandoned:** servidor de teste roteando o status pelo caminho (`/401/...`): o `rootUrl` do `googleapis` descarta o caminho, então virou um servidor por status; `loading.tsx` em `/clinica/agenda` (quebrava o redirect sem sessão, C32).
 - **Boundary (retrabalho):** C47-C49 fechados em `75450e9`; C9 passou a contar só as linhas das contas do arquivo (R1); `npm test` da API com `--test-timeout=60000` (R2).
 - **Settled mid-build (retrabalho):** as clínicas do teste HTTP passaram a ser criadas pelo `ClinicSignUpService` (sessão real do Better Auth), porque a rota de cadastro limita 30 por minuto e o arquivo passou desse número; `listOwnedCalendars` ganhou o `onTokens` opcional como segundo parâmetro (R6), e a gravação do token renovado vale em `AWAITING_CALENDAR` e `CONNECTED`.
+- **Boundary (retrabalho 2):** C50 no teste do adaptador real (servidor local com `/token` renovando); os mutantes da rodada 2 (`listOwnedCalendars` com `onTokens` vazio; evento `tokens` sem chamar `onTokens`) fazem o C50 falhar.
