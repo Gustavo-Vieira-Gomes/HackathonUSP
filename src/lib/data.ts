@@ -92,6 +92,12 @@ export type Reservation = {
   deposit_cents: number;
   payment_method: "pix" | "card";
   status: "reservada" | "cancelada";
+  /** Confirmação pelo WhatsApp: null (ainda não enviada ou dispensada), pendente, confirmada, cancelada ou sem_resposta. */
+  confirmation: "pendente" | "confirmada" | "cancelada" | "sem_resposta" | null;
+  confirmation_sent_at: string | null;
+  confirmation_deadline: string | null;
+  confirmation_answered_at: string | null;
+  cancel_reason: "clinica" | "paciente" | "sem_resposta" | null;
   created_at: string;
   /** Lado pedido: esquerdo, direito, ambos (bilateral) ou null (a conferir no pedido). */
   side: "esquerdo" | "direito" | "ambos" | null;
@@ -329,7 +335,9 @@ export async function listClinicInfo(ids: string[]): Promise<Record<string, Clin
 
 export async function getClinic() {
   await connection();
-  return must(await db().from("clinics").select("id, name, address, opening_hours, agency:agencies(name)").eq("id", CLINIC_ID).single()) as unknown as {
+  return must(await db().from("clinics").select("id, name, address, opening_hours, confirm_send_hours, confirm_deadline_hours, agency:agencies(name)").eq("id", CLINIC_ID).single()) as unknown as {
+    confirm_send_hours: number;
+    confirm_deadline_hours: number;
     id: string;
     name: string;
     address: string;
@@ -366,7 +374,7 @@ export async function listAgenda(day: string, opts: { googleConnected: boolean }
     db().from("vacancies_live").select("*").eq("clinic_id", CLINIC_ID).in("status", ["publicada", "alertando"]).gte("starts_at", from).lt("starts_at", to),
     db()
       .from("reservations")
-      .select("id, starts_at, kind, price_cents, clinic_exam:clinic_exams!inner(clinic_id, room, display_name)")
+      .select("id, starts_at, kind, price_cents, confirmation, clinic_exam:clinic_exams!inner(clinic_id, room, display_name)")
       .eq("status", "reservada")
       .eq("clinic_exam.clinic_id", CLINIC_ID)
       .gte("starts_at", from)
@@ -389,7 +397,14 @@ export async function listAgenda(day: string, opts: { googleConnected: boolean }
       source: "vagacerta",
     });
   }
-  for (const r of must(reservations) as unknown as { id: string; starts_at: string; kind: string; clinic_exam: { room: string; display_name: string } }[]) {
+  const CONFIRMATION: Record<string, string> = { pendente: "aguardando confirmação", confirmada: "confirmado no WhatsApp" };
+  for (const r of must(reservations) as unknown as {
+    id: string;
+    starts_at: string;
+    kind: string;
+    confirmation: string | null;
+    clinic_exam: { room: string; display_name: string };
+  }[]) {
     blocks.push({
       id: r.id,
       room: r.clinic_exam.room,
@@ -397,7 +412,7 @@ export async function listAgenda(day: string, opts: { googleConnected: boolean }
       ends_at: new Date(Date.parse(r.starts_at) + 40 * 60_000).toISOString(),
       kind: "booked",
       title: r.kind === "encaixe" ? "Encaixe reservado" : "Reserva pelo app",
-      detail: `${r.clinic_exam.display_name} · sinal pago`,
+      detail: `${r.clinic_exam.display_name} · ${(r.confirmation && CONFIRMATION[r.confirmation]) || "sinal pago"}`,
       source: "vagacerta",
     });
   }
@@ -493,3 +508,28 @@ export async function listClinicExams() {
 
 /** Minutos desde 00:00 em São Paulo (atalho para a grade da agenda). */
 export { spMinutes };
+
+// ---------- WhatsApp ----------
+
+export type WhatsAppMessage = {
+  id: string;
+  reservation_id: string | null;
+  direction: "out" | "in";
+  body: string;
+  provider: "evolution" | "simulado";
+  error: string | null;
+  created_at: string;
+};
+
+/** Conversa do paciente com o remark no WhatsApp (real ou simulada), da mais antiga para a mais nova. */
+export async function listWhatsAppMessages(patientId: string): Promise<WhatsAppMessage[]> {
+  await connection();
+  return must(
+    await db()
+      .from("whatsapp_messages")
+      .select("id, reservation_id, direction, body, provider, error, created_at")
+      .eq("patient_id", patientId)
+      .order("created_at")
+      .order("id"),
+  ) as WhatsAppMessage[];
+}

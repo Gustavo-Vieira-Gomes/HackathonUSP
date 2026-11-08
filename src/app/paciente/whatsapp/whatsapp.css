@@ -1,0 +1,75 @@
+/* Conversa de confirmação (WhatsApp real ou simulado) dentro da moldura do celular */
+.scr-wa .wa-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 10px 10px;
+  background: var(--ink);
+  color: #fff;
+}
+.scr-wa .wa-head .btn { background: transparent; color: #fff; box-shadow: none; }
+.scr-wa .wa-avatar {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.scr-wa .wa { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #eef6f3; }
+.scr-wa .wa-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 18px; display: flex; flex-direction: column; gap: 8px; }
+.scr-wa .wa-note {
+  align-self: center;
+  max-width: 300px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.scr-wa .wa-empty { text-align: center; color: var(--mute); font-size: 14px; padding: 24px 12px; }
+.scr-wa .wa-day {
+  align-self: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: var(--mint);
+  border-radius: 8px;
+  padding: 4px 10px;
+  margin-top: 6px;
+  text-transform: capitalize;
+}
+.scr-wa .wa-msg {
+  max-width: 84%;
+  padding: 8px 10px 6px;
+  border-radius: 14px;
+  font-size: 14.5px;
+  line-height: 1.42;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-wrap: anywhere;
+  box-shadow: 0 1px 0 rgba(23, 54, 58, 0.08);
+}
+.scr-wa .wa-msg.out { align-self: flex-start; background: #fff; border-top-left-radius: 4px; }
+.scr-wa .wa-msg.in { align-self: flex-end; background: var(--mint-2); border-top-right-radius: 4px; }
+.scr-wa .wa-msg.sending { opacity: 0.7; }
+.scr-wa .wa-time { align-self: flex-end; font-size: 11px; color: var(--mute); }
+.scr-wa .wa-bottom {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: #fff;
+  border-top: 1px solid var(--line);
+}
+.scr-wa .wa-quick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.scr-wa .wa-form { display: flex; gap: 8px; }
+.scr-wa .wa-form .input { min-height: 44px; border-radius: 22px; }
+.scr-wa .wa-form .btn { flex: none; width: 44px; min-height: 44px; padding: 0; border-radius: 50%; }

@@ -4,7 +4,7 @@ import { getDemoNow, getPatient, listOpenVacancies, listPatientReservations, lis
 import { currentPatientId } from "@/lib/session";
 import { PatientHeader } from "@/components/paciente/PatientHeader";
 import { brl, relDay, spDay, spTime, TZ } from "@/lib/format";
-import { IconBell, IconCalendar } from "@/components/icons";
+import { IconBell, IconCalendar, IconChat } from "@/components/icons";
 import { TabBar } from "@/components/TabBar";
 import { Screen, ScreenLoading } from "@/components/paciente/Screen";
 import { ExamPicker } from "@/components/paciente/ExamPicker";
@@ -35,6 +35,7 @@ async function Inicio() {
     getDemoNow(),
   ]);
   const next = reservations.find((r) => Date.parse(r.starts_at) > now.getTime()) ?? null;
+  const toConfirm = reservations.find((r) => r.confirmation === "pendente") ?? null;
   const activeWaitlist = waitlist.filter((w) => Date.parse(w.expires_at) > now.getTime());
 
   // Vaga aberta que atende um aviso ativo: mesma busca, dentro da distância e do preço máximo.
@@ -54,6 +55,25 @@ async function Inicio() {
       footer={<TabBar />}
     >
       <h1 className="sr-only">Início</h1>
+
+      {toConfirm && (
+        <Link href="/paciente/whatsapp" className="confirm-card rise" aria-label={`Confirme sua ida: ${toConfirm.clinic_exam.display_name}, ${relDay(toConfirm.starts_at, now)} às ${spTime(toConfirm.starts_at)}`}>
+          <span className="home-ico" aria-hidden="true">
+            <IconChat />
+          </span>
+          <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+            <strong style={{ fontSize: 16 }}>Confirme sua ida ao exame</strong>
+            <span className="small" style={{ color: "var(--ink-2)" }}>
+              {toConfirm.clinic_exam.display_name}, {relDay(toConfirm.starts_at, now)}, {spTime(toConfirm.starts_at)}
+            </span>
+            {toConfirm.confirmation_deadline ? (
+              <span className="small" style={{ fontWeight: 600, color: "var(--red)" }}>
+                Responda no WhatsApp até {relDay(toConfirm.confirmation_deadline, now).toLowerCase()}, {spTime(toConfirm.confirmation_deadline)}
+              </span>
+            ) : null}
+          </span>
+        </Link>
+      )}
 
       {match && (
         <Link href={vagaHref(match)} className="match rise" aria-label={`Vaga para você: ${match.display_name}, ${relDay(match.starts_at, now)} às ${spTime(match.starts_at)}, ${brl(match.price_cents)}`}>
@@ -106,8 +126,8 @@ async function Inicio() {
               </span>
               <span className="small muted">{next.clinic_exam.clinic.name}</span>
             </span>
-            <span className="chip st-reservada" style={{ flex: "none", alignSelf: "flex-start" }}>
-              Reservada
+            <span className={next.confirmation === "confirmada" ? "chip st-realizada" : "chip st-reservada"} style={{ flex: "none", alignSelf: "flex-start" }}>
+              {next.confirmation === "confirmada" ? "Confirmada" : "Reservada"}
             </span>
           </Link>
         ) : (

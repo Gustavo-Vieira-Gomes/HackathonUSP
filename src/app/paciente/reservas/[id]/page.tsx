@@ -31,7 +31,9 @@ async function Reserva({ params }: { params: Promise<{ id: string }> }) {
               <strong style={{ fontSize: 18 }}>{exam.display_name}</strong>
               <div className="muted">{exam.clinic.name}</div>
             </div>
-            <span className="chip st-cancelada">Cancelada pela clínica</span>
+            <span className="chip st-cancelada">
+              {reservation.cancel_reason === "paciente" ? "Você cancelou" : reservation.cancel_reason === "sem_resposta" ? "Sem confirmação" : "Cancelada pela clínica"}
+            </span>
           </div>
           <hr className="hr" />
           <div className="row">
@@ -46,6 +48,13 @@ async function Reserva({ params }: { params: Promise<{ id: string }> }) {
             <span className="k">Sinal</span>
             <span className="v">{brl(reservation.deposit_cents, { decimals: true })} devolvido inteiro</span>
           </div>
+          {reservation.cancel_reason === "sem_resposta" || reservation.cancel_reason === "paciente" ? (
+            <p className="small" style={{ color: "var(--ink-2)" }}>
+              {reservation.cancel_reason === "paciente"
+                ? "Você cancelou pela confirmação do WhatsApp. O horário voltou para a fila."
+                : "Não recebemos a confirmação pelo WhatsApp até o prazo da clínica, então o horário voltou para a fila."}
+            </p>
+          ) : null}
         </div>
         <Link className="btn btn-primary btn-block" href="/paciente">
           Buscar outro horário
@@ -115,6 +124,21 @@ async function Reserva({ params }: { params: Promise<{ id: string }> }) {
             <span className="v">{exam.clinic.address}</span>
           </div>
           <div className="row">
+            <span className="k">Presença</span>
+            <span className="v">
+              {reservation.confirmation === "confirmada" ? (
+                <strong style={{ color: "var(--teal-d)" }}>Confirmada pelo WhatsApp</strong>
+              ) : reservation.confirmation === "pendente" ? (
+                <Link href="/paciente/whatsapp" style={{ fontWeight: 700, color: "var(--red)" }}>
+                  Confirme no WhatsApp até {relDay(reservation.confirmation_deadline ?? reservation.starts_at, now).toLowerCase()},{" "}
+                  {spTime(reservation.confirmation_deadline ?? reservation.starts_at)}
+                </Link>
+              ) : (
+                "Pedimos a sua confirmação pelo WhatsApp antes do exame"
+              )}
+            </span>
+          </div>
+          <div className="row">
             <span className="k">Levar</span>
             <span className="v">Pedido médico e documento com foto</span>
           </div>
@@ -138,7 +162,7 @@ async function Reserva({ params }: { params: Promise<{ id: string }> }) {
         </div>
 
         <p className="small muted" style={{ padding: "0 6px" }}>
-          Se a clínica cancelar, o sinal volta inteiro. Se você cancelar ou faltar, a clínica fica com ele.
+          O sinal volta inteiro se a clínica cancelar ou se a reserva cair na confirmação pelo WhatsApp. Se você faltar ao exame, a clínica fica com ele.
         </p>
 
         <div style={{ flex: 1 }} />

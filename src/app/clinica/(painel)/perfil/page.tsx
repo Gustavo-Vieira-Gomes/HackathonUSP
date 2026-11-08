@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { ClinicInfoForm } from "@/components/clinica/ClinicInfoForm";
+import { WhatsAppSettings } from "@/components/clinica/WhatsAppSettings";
 import { getClinic } from "@/lib/data";
+import { whatsappStatus } from "@/lib/whatsapp/evolution";
 
 export default function PerfilClinicaPage() {
   return (
@@ -17,6 +19,11 @@ export default function PerfilClinicaPage() {
 }
 
 async function Perfil() {
-  const clinic = await getClinic();
-  return <ClinicInfoForm initial={{ name: clinic.name, address: clinic.address, openingHours: clinic.opening_hours }} />;
+  const [clinic, wa] = await Promise.all([getClinic(), whatsappStatus(true)]);
+  return (
+    <>
+      <ClinicInfoForm initial={{ name: clinic.name, address: clinic.address, openingHours: clinic.opening_hours }} />
+      <WhatsAppSettings sendHours={clinic.confirm_send_hours} deadlineHours={clinic.confirm_deadline_hours} state={wa.state} />
+    </>
+  );
 }

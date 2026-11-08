@@ -83,6 +83,12 @@ export const IconUser = (p: P) => (
     <path d="M5 20a7 7 0 0 1 14 0" />
   </Ico>
 );
+export const IconChat = (p: P) => (
+  <Ico {...p}>
+    <path d="M4 19.5l1.4-4.1A8 8 0 1 1 8.6 18.6z" />
+    <path d="M9 10.5h6M9 13.5h4" />
+  </Ico>
+);
 export const IconInfo = (p: P) => (
   <Ico {...p}>
     <circle cx="12" cy="12" r="9" />

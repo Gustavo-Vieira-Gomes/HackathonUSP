@@ -86,7 +86,13 @@ async function Reservas() {
                 ) : (
                   <span className="tag-nor"><IconCal />Horário normal</span>
                 )}
-                <span className="chip st-reservada">Reservada</span>
+                {p.confirmation === "pendente" ? (
+                  <Link href="/paciente/whatsapp" className="chip st-alertando" style={{ textDecoration: "none" }}>Confirmar</Link>
+                ) : p.confirmation === "confirmada" ? (
+                  <span className="chip st-realizada">Confirmada</span>
+                ) : (
+                  <span className="chip st-reservada">Reservada</span>
+                )}
               </div>
               <strong style={{ fontSize: 18, lineHeight: 1.25 }}>{p.clinic_exam.display_name}</strong>
               {sideSummary(p.clinic_exam.region_key, p.side) ? (
@@ -177,7 +183,7 @@ async function Reservas() {
             : r.kind === "encaixe"
               ? `Encaixe por ${brl(r.price_cents)}${economia > 0 ? ` · você economizou ${brl(economia)}` : ""}`
               : `Horário normal por ${brl(r.price_cents)}`;
-          const estado = cancelada ? "Cancelada pela clínica" : "Realizada";
+          const estado = cancelada ? (r.cancel_reason === "paciente" ? "Você cancelou" : r.cancel_reason === "sem_resposta" ? "Sem confirmação" : "Cancelada pela clínica") : "Realizada";
           return (
             <Link
               key={r.id}

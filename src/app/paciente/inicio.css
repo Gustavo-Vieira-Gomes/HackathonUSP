@@ -33,3 +33,7 @@
 .scr-inicio .home-when{flex:none;width:52px;border-radius:14px;background:var(--mint);color:var(--teal-d);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 0;line-height:1.1}
 .scr-inicio .home-when .d{font:700 20px var(--f-display),var(--f-body),sans-serif;letter-spacing:-.02em}
 .scr-inicio .home-when .m{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+
+/* Confirmação pendente pelo WhatsApp: leva para a conversa */
+.scr-inicio .confirm-card{display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--r-l);background:#fff;color:var(--ink);text-decoration:none;box-shadow:inset 0 0 0 2px var(--teal),var(--shadow)}
+.scr-inicio .confirm-card:focus-visible{outline:3px solid var(--ink);outline-offset:2px}

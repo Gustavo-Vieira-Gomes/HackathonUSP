@@ -1,4 +1,5 @@
 import { ClinicNav } from "@/components/ClinicNav";
+import { ConfirmationTicker } from "@/components/clinica/ConfirmationTicker";
 import { getClinic, getGoogleConnection } from "@/lib/data";
 import "../clinica.css";
 
@@ -15,6 +16,7 @@ export default async function ClinicaLayout({ children }: { children: React.Reac
           google: { connected: !!google?.connected, email: google?.account_email ?? null },
         }}
       />
+      <ConfirmationTicker />
       {children}
     </div>
   );

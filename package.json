@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "whatsapp:up": "docker compose --env-file .env.local up -d",
+    "whatsapp:down": "docker compose --env-file .env.local down",
+    "whatsapp:logs": "docker compose --env-file .env.local logs -f evolution"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

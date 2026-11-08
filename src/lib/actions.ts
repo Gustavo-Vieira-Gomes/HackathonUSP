@@ -14,6 +14,8 @@ import {
   endClinicSession,
 } from "./session";
 import { safeNext } from "./auth-cookies";
+import { handleInbound, tickQuietly } from "./whatsapp/flow";
+import { whatsappConnect, whatsappLogout } from "./whatsapp/evolution";
 
 // Protótipo com login simulado: qualquer e-mail e senha entram. O paciente vem do cookie
 // (cadastrado neste navegador ou a Marina da demo) e a clínica é a de demonstração.
@@ -127,7 +129,7 @@ export async function reserveVacancy(
   } catch (e) {
     return fail(e);
   }
-  await paymentPause();
+  await Promise.all([paymentPause(), tickQuietly()]);
   revalidatePath("/", "layout");
   redirect(`/paciente/reservas/${id}`);
 }
@@ -140,7 +142,7 @@ export async function reserveNormal(clinicExamId: string, startsAt: string, paym
   } catch (e) {
     return fail(e);
   }
-  await paymentPause();
+  await Promise.all([paymentPause(), tickQuietly()]);
   revalidatePath("/", "layout");
   redirect(`/paciente/reservas/${id}`);
 }
@@ -272,6 +274,7 @@ export async function deleteClinicExam(id: string): Promise<ActionResult> {
 export async function advanceDemoClock(hours: number): Promise<ActionResult> {
   try {
     await rpc("demo_advance", { p_hours: hours });
+    await tickQuietly();
     revalidatePath("/", "layout");
     return { ok: true };
   } catch (e) {
@@ -291,4 +294,48 @@ export async function resetDemo(): Promise<ActionResult> {
 
 export async function resetDemoClock(): Promise<ActionResult> {
   return advanceDemoClock(-100000);
+}
+
+// ---------- Confirmação pelo WhatsApp ----------
+
+/** Resposta do paciente no simulador de WhatsApp do app: passa pelo mesmo fluxo do webhook. */
+export async function sendSimulatedReply(text: string): Promise<ActionResult> {
+  if (!text.trim()) return { ok: false, error: "Escreva uma mensagem." };
+  try {
+    await handleInbound({ patientId: await currentPatientId(), text: text.trim(), provider: "simulado" });
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function saveConfirmationSettings(sendHours: number, deadlineHours: number): Promise<ActionResult> {
+  try {
+    await rpc("update_clinic_confirmation", { p_clinic: CLINIC_ID, p_send_hours: sendHours, p_deadline_hours: deadlineHours });
+    await tickQuietly();
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Gera o QR code para parear o número da clínica na Evolution API. */
+export async function connectWhatsApp(): Promise<ActionResult<{ qr: string | null; pairingCode: string | null }>> {
+  try {
+    return { ok: true, data: await whatsappConnect() };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function disconnectWhatsApp(): Promise<ActionResult> {
+  try {
+    await whatsappLogout();
+    revalidatePath("/clinica", "layout");
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
 }
