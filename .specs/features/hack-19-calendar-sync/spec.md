@@ -21,3 +21,7 @@ Escopo médio: RN-05 a RN-10, RN-23, RN-50; cenários F3. Sem UI, deploy ou cred
 ## Premissas / arquivos
 
 Sem duração de exame no modelo: fatias de 30 minutos (padrão das fixtures), somente dentro do expediente de São Paulo; sem publicar encaixe por mero vazio. Arquivos: vacancies.service.ts/test.ts, google-calendar/calendar-sync*.ts e google-calendar.module.ts. Sucesso: critérios F3 e testes de falha, check/build verdes.
+
+## Resultado
+
+H19-01 a H19-07 verificados. Evidências, contagens e limites em [validation.md](validation.md). Sem desvio das regras do card; a duração de Slot é a premissa registrada acima.

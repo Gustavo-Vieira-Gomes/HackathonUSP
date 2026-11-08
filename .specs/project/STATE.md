@@ -22,6 +22,8 @@ Políticas centralizadas em .claude/rules: project, engineering, security e desi
 
 Autorizado pelo Gustavo: execução sem aprovação entre etapas, commits/push/PR main e aviso ao maestro; sem merge pelo implementador. Slots comuns em fatias de 30 minutos porque Exam não define duração. Snapshot completo antes de efeitos; falha de API suspende conexão e não usa leitura parcial. Nenhuma mudança em Vacancy.slotId ou Exam.clinicId. Banco local isolado hack_19 na porta 54319.
 
+HACK-19 validado: check (429 testes, zero falhas/ignorados), build e smoke verdes. Snapshot completo, eventos idempotentes e revalidação da conexão sob trava de clínica. E-mails após commit usam tentativas existentes, sem nova outbox; Google/Resend reais não homologados. Dependências copiadas sem instalar; donor HACK-17 tem package-lock idêntico ao da base.
+
 ## Decisões HACK-23
 
 - Autorizado executar a esteira e publicar PR sem pausas. Base HTTPS feat/hack-23-complete resolveu para 0d7ee6e, sem WIP/handoff mencionado no card.
