@@ -22,6 +22,9 @@ import { safeNext } from "./auth-cookies";
 // Pausa curta para o "Entrando…" aparecer e o login parecer um login.
 const loginPause = () => new Promise((r) => setTimeout(r, 450));
 
+// Pausa curta depois de reservar: dá tempo de a animação de pagamento aparecer na demo.
+const paymentPause = () => new Promise((r) => setTimeout(r, 1800));
+
 // ---------- Login simulado ----------
 
 export async function loginPatient(formData: FormData) {
@@ -124,6 +127,7 @@ export async function reserveVacancy(
   } catch (e) {
     return fail(e);
   }
+  await paymentPause();
   revalidatePath("/", "layout");
   redirect(`/paciente/reservas/${id}`);
 }
@@ -136,6 +140,7 @@ export async function reserveNormal(clinicExamId: string, startsAt: string, paym
   } catch (e) {
     return fail(e);
   }
+  await paymentPause();
   revalidatePath("/", "layout");
   redirect(`/paciente/reservas/${id}`);
 }

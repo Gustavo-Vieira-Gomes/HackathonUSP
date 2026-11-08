@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { reserveVacancy } from "@/lib/actions";
 import { StepHeader } from "@/components/paciente/Screen";
 import { Countdown } from "@/components/paciente/Countdown";
+import { PaymentLoading } from "@/components/paciente/PaymentLoading";
 
 export function PaymentForm({
   vacancyId,
@@ -45,6 +46,7 @@ export function PaymentForm({
 
   return (
     <div className="vc scr-pagamento" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      {pending && <PaymentLoading />}
       <main style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", padding: "20px 20px 24px", gap: 14 }}>
         <StepHeader backHref={backHref} backLabel="Voltar ao questionário" step={2} total={2} />
 

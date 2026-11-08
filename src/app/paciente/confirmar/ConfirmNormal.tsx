@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { reserveNormal } from "@/lib/actions";
+import { PaymentLoading } from "@/components/paciente/PaymentLoading";
 
 const METHODS = [
   { id: "pix", label: "Pix", hint: "Pague agora pelo app" },
@@ -23,6 +24,7 @@ export function ConfirmNormal({ examId, startsAt, depositLabel, pct, past, side 
 
   return (
     <>
+      {pending && <PaymentLoading title="Confirmando a reserva" />}
       <fieldset style={{ border: 0, margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
         <legend className="lbl" style={{ padding: "0 0 8px" }}>
           Como você quer pagar o sinal?

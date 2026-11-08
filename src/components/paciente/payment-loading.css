@@ -1,0 +1,87 @@
+/* Carregamento do pagamento: cobre a moldura do celular (o .phone fixa o position:fixed nele) */
+.pay-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 24px;
+  animation: pay-fade 0.2s ease-out both;
+}
+
+/* Escada: 4 degraus de 44 px com 8 px entre eles (176 × 120) */
+.pay-stage {
+  position: relative;
+  width: 200px;
+  height: 140px;
+}
+.pay-step {
+  position: absolute;
+  bottom: 0;
+  width: 44px;
+  border-radius: 10px 10px 4px 4px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.pay-step.s1 { left: 0; height: 120px; }
+.pay-step.s2 { left: 52px; height: 98px; }
+.pay-step.s3 { left: 104px; height: 77px; }
+.pay-step.s4 { left: 156px; height: 55px; background: var(--amber); animation: pay-glow 2.4s ease-in-out infinite; }
+
+/* Bolinha: pula de degrau em degrau, descendo, e recomeça */
+.pay-ball {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f7fbfa;
+  box-shadow: 0 0 0 4px rgba(92, 200, 176, 0.25);
+  left: 12px;
+  top: 0;
+  animation: pay-hop 2.4s infinite;
+}
+
+@keyframes pay-hop {
+  0%   { left: 12px;  top: 0;     opacity: 0; animation-timing-function: ease-out; }
+  6%   { left: 12px;  top: 0;     opacity: 1; animation-timing-function: ease-out; }
+  15%  { left: 40px;  top: -26px; animation-timing-function: ease-in; }
+  25%  { left: 64px;  top: 22px;  animation-timing-function: ease-out; }
+  34%  { left: 92px;  top: -2px;  animation-timing-function: ease-in; }
+  44%  { left: 116px; top: 43px;  animation-timing-function: ease-out; }
+  53%  { left: 144px; top: 19px;  animation-timing-function: ease-in; }
+  63%  { left: 168px; top: 65px;  animation-timing-function: ease-out; }
+  70%  { left: 168px; top: 55px;  animation-timing-function: ease-in; }
+  77%  { left: 168px; top: 65px;  opacity: 1; }
+  92%  { left: 168px; top: 65px;  opacity: 0; }
+  100% { left: 12px;  top: 0;     opacity: 0; }
+}
+@keyframes pay-glow {
+  0%, 55% { box-shadow: none; }
+  65% { box-shadow: 0 0 0 6px rgba(92, 200, 176, 0.35); }
+  100% { box-shadow: none; }
+}
+@keyframes pay-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.pay-dots i {
+  font-style: normal;
+  animation: pay-dot 1.2s infinite;
+}
+.pay-dots i:nth-child(2) { animation-delay: 0.2s; }
+.pay-dots i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes pay-dot {
+  0%, 20% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pay-ball, .pay-step.s4, .pay-dots i, .pay-loading { animation: none; }
+  .pay-ball { left: 168px; top: 65px; opacity: 1; }
+}
