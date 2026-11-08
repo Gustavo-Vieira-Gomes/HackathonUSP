@@ -95,24 +95,24 @@ M4. Log por vaga: publicada, alertada, reservada, expirada
 
 ## Decisões
 
-| ID | Decisão | Porquê |
-| --- | --- | --- |
-| D1 | Nicho: exames de imagem | Pedido padronizado (TUSS), preço comparável, resultado em um passo |
-| D2 | Web mobile first para paciente e clínica; WhatsApp segundo canal se sobrar tempo | Distribuição por link, um código só; web push cobre a demo |
-| D3 | Receita: taxa fixa por agendamento, cobrada da clínica no comparecimento | Decisão do time, reafirmada após alerta do art. 58 do CEM (doc Mateus propunha assinatura) |
-| D4 | Núcleo: marketplace de vagas (oferta primeiro), modelo Mateus | Vaga publicada → alerta → reserva |
-| D5 | Sem opções gratuitas nem fila do SUS no fluxo | Modelo Mateus; democratização por preço e tempo |
-| D6 | Exames: USG, ecocardiograma, mamografia, TC e RM sem contraste; raio-X e contraste fora | Raio-X sem agendamento quase não gera vaga; contraste exige triagem |
-| D7 | Dinheiro: pagamento pelo app com taxa descontada, ou no local com cobrança posterior; parcelamento Capim | Doc Capim |
-| D8 | Web mobile first (PWA) em vez de RN + Expo | Sem build nativo na última noite; push web no Android e iOS instalado |
-| D9 | Agenda = Google Agenda | Reservas criam eventos padronizados; leitura a cada minuto |
-| D10 | No-show com tolerância X, deslocamento Y, onda Z | Padrões X=15, Y=45, Z=10 min — **delegados**, clínica edita |
-| D11 | Sinal obrigatório em encaixe e no-show; pagamento no local só na reserva comum | Financia a retenção por falta |
-| D12 | Cadastro com login | Paciente precisa voltar à reserva; substitui "sem login" |
-| D13 | Janelas de disponibilidade governam todo alerta | Ninguém é notificado fora do horário em que pode ir |
-| D14 | Foto do pedido como atalho opcional no P1 | Evita o abandono na escolha do exame; sobrevivente do doc Capim |
-| D15 | Canais na demo: push web + e-mail reais; WhatsApp simulado | Custo zero; API oficial exige aprovação |
-| — | Degraus de preço, retenção 30 dias, log por vaga, trava transacional | Lote de engenharia adotado sem objeção |
+| ID  | Decisão                                                                                                  | Porquê                                                                                     |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| D1  | Nicho: exames de imagem                                                                                  | Pedido padronizado (TUSS), preço comparável, resultado em um passo                         |
+| D2  | Web mobile first para paciente e clínica; WhatsApp segundo canal se sobrar tempo                         | Distribuição por link, um código só; web push cobre a demo                                 |
+| D3  | Receita: taxa fixa por agendamento, cobrada da clínica no comparecimento                                 | Decisão do time, reafirmada após alerta do art. 58 do CEM (doc Mateus propunha assinatura) |
+| D4  | Núcleo: marketplace de vagas (oferta primeiro), modelo Mateus                                            | Vaga publicada → alerta → reserva                                                          |
+| D5  | Sem opções gratuitas nem fila do SUS no fluxo                                                            | Modelo Mateus; democratização por preço e tempo                                            |
+| D6  | Exames: USG, ecocardiograma, mamografia, TC e RM sem contraste; raio-X e contraste fora                  | Raio-X sem agendamento quase não gera vaga; contraste exige triagem                        |
+| D7  | Dinheiro: pagamento pelo app com taxa descontada, ou no local com cobrança posterior; parcelamento Capim | Doc Capim                                                                                  |
+| D8  | Web mobile first (PWA) em vez de RN + Expo                                                               | Sem build nativo na última noite; push web no Android e iOS instalado                      |
+| D9  | Agenda = Google Agenda                                                                                   | Reservas criam eventos padronizados; leitura a cada minuto                                 |
+| D10 | No-show com tolerância X, deslocamento Y, onda Z                                                         | Padrões X=15, Y=45, Z=10 min — **delegados**, clínica edita                                |
+| D11 | Sinal obrigatório em encaixe e no-show; pagamento no local só na reserva comum                           | Financia a retenção por falta                                                              |
+| D12 | Cadastro com login                                                                                       | Paciente precisa voltar à reserva; substitui "sem login"                                   |
+| D13 | Janelas de disponibilidade governam todo alerta                                                          | Ninguém é notificado fora do horário em que pode ir                                        |
+| D14 | Foto do pedido como atalho opcional no P1                                                                | Evita o abandono na escolha do exame; sobrevivente do doc Capim                            |
+| D15 | Canais na demo: push web + e-mail reais; WhatsApp simulado                                               | Custo zero; API oficial exige aprovação                                                    |
+| —   | Degraus de preço, retenção 30 dias, log por vaga, trava transacional                                     | Lote de engenharia adotado sem objeção                                                     |
 
 ## Bordas por classificação
 

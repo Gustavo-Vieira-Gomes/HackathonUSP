@@ -5,3 +5,4 @@ coverage
 package-lock.json
 next-env.d.ts
 .test-dist
+graphify-out
