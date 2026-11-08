@@ -28,3 +28,14 @@ Políticas centralizadas em .claude/rules: project, engineering, security e desi
 - Artefatos de navegação e ownership ficam em README e spec; não há descoberta adicional que justifique duplicação em .notebook.
 
 - HACK-23 validado: check (414 testes sem falhas/ignorados), build e smoke verdes no banco hack_23. Inclui páginas por ID e smoke de 404 no Next. Sem dependências/migrations novas e sem deploy.
+
+## Decisões HACK-50-51-52
+
+- Cadastro incompleto se recupera repetindo formulário com credencial validada pelo Better Auth; conta completa não é sobrescrita e conta recuperada nunca é apagada pela compensação.
+- Painel usa uma única chamada clinic/me para preservar distinção entre 401 e indisponibilidade.
+- Escopo médio, três passos atômicos; sem novas dependências ou arquitetura.
+- TUSS 40901122 removido do catálogo até existir protocolo específico para abdome total; não reutilizar preparo de abdome superior.
+- Dependências do checkout principal estavam incompletas para main; cópia complementada com node_modules já existente da worktree HACK-17, sem instalar dependências. Banco local hack_50_51_52 na porta 55452.
+- Primeira rodada: lint/tipos passaram; duas regressões HTTP novas excederam a cota compartilhada de 30 cadastros/min do arquivo antigo (429). Movidas para aplicação de teste própria; rate limit de produção preservado.
+- Integrado main f59b350 (HACK-23) antes dos gates finais; teste de paciente usa telefone e aceite explícito do contrato novo.
+- Gates sobre main f59b350: check verde (API 353, web 52, contratos 20), build e smoke verdes. Smoke inclui painel com API desligada sem redirecionamento.
