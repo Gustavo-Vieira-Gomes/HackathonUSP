@@ -19,44 +19,43 @@ export const MAX_ATTEMPTS = 5;
 /**
  * Verificação do telefone do paciente por código de 6 dígitos (HACK-37), para o
  * WhatsApp não mandar dado de saúde a um número errado. O código sai pelo
- * `WhatsappService` (simulado no piloto) e só o HMAC dele fica no banco, com o
- * segredo da aplicação como chave. Vale 10 min, aceita 5 tentativas e só pode ser
- * reenviado depois de 60 s.
+ * `WhatsappService` (simulado no piloto) e só o HMAC dele fica no banco, com uma
+ * chave derivada do segredo da aplicação. Vale 10 min, aceita 5 tentativas e só
+ * pode ser reenviado depois de 60 s; os dois limites são conferidos na própria
+ * gravação, para pedidos simultâneos não furarem (HACK-49).
+ *
+ * Quando existir edição de telefone (HACK-23), ela precisa zerar `phoneVerifiedAt`:
+ * este serviço invalida o código pendente se o telefone mudar, mas não um telefone
+ * já verificado.
  *
  * Tudo usa o relógio real, não o da demo: prazo de código é segurança, e adiantar
  * o relógio da demo não pode expirar nem liberar códigos.
  */
 @Injectable()
 export class PhoneVerificationService {
+  /** Chave própria, derivada do segredo da aplicação, só para estes códigos. */
+  private readonly key: Buffer;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly whatsapp: WhatsappService,
-    @Inject(APP_ENV) private readonly env: AppEnv,
-  ) {}
+    @Inject(APP_ENV) env: AppEnv,
+  ) {
+    this.key = createHmac('sha256', env.BETTER_AUTH_SECRET)
+      .update('hackathon/phone-verification/v1')
+      .digest();
+  }
 
   async sendCode(patientId: string): Promise<{ expiresAt: Date }> {
     const patient = await this.prisma.patient.findUnique({
       where: { id: patientId },
-      select: { phone: true, phoneVerification: { select: { sentAt: true } } },
+      select: { phone: true },
     });
     if (!patient) throw new NotFoundException('Paciente não encontrado.');
-    const now = new Date();
-    const lastSent = patient.phoneVerification?.sentAt;
-    if (lastSent && now.getTime() - lastSent.getTime() < RESEND_COOLDOWN_MS) {
-      const retryAfterSeconds = Math.ceil(
-        (RESEND_COOLDOWN_MS - (now.getTime() - lastSent.getTime())) / 1000,
-      );
-      throw new HttpException(
-        {
-          code: 'RESEND_TOO_SOON',
-          message: 'Aguarde antes de pedir outro código.',
-          retryAfterSeconds,
-        },
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
-    }
     // Antes de gravar um código que ninguém vai receber.
     this.whatsapp.assertEnabled();
+
+    const now = new Date();
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const expiresAt = new Date(now.getTime() + CODE_TTL_MS);
     const data = {
@@ -66,11 +65,25 @@ export class PhoneVerificationService {
       expiresAt,
       sentAt: now,
     };
-    await this.prisma.phoneVerification.upsert({
-      where: { patientId },
-      create: { patientId, ...data },
-      update: data,
+    // O intervalo de 60 s é conferido na própria gravação: dois pedidos
+    // simultâneos não geram dois códigos.
+    const replaced = await this.prisma.phoneVerification.updateMany({
+      where: {
+        patientId,
+        sentAt: { lt: new Date(now.getTime() - RESEND_COOLDOWN_MS) },
+      },
+      data,
     });
+    if (replaced.count === 0) {
+      try {
+        await this.prisma.phoneVerification.create({
+          data: { patientId, ...data },
+        });
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error;
+        throw await this.resendTooSoon(patientId, now);
+      }
+    }
     await this.whatsapp.sendText({
       patientId,
       phone: patient.phone,
@@ -88,12 +101,7 @@ export class PhoneVerificationService {
       where: { patientId },
       include: { patient: { select: { phone: true } } },
     });
-    if (!pending) {
-      throw new UnprocessableEntityException({
-        code: 'NO_PENDING_CODE',
-        message: 'Peça um código antes de confirmar.',
-      });
-    }
+    if (!pending) throw this.noPendingCode();
     const now = new Date();
     if (pending.expiresAt <= now || pending.phone !== pending.patient.phone) {
       await this.discard(patientId);
@@ -102,30 +110,35 @@ export class PhoneVerificationService {
         message: 'O código expirou. Peça um novo.',
       });
     }
-    if (pending.attempts >= MAX_ATTEMPTS) {
-      await this.discard(patientId);
-      throw this.tooManyAttempts();
+
+    // Reserva a tentativa antes de comparar (HACK-49). O UPDATE condicional é
+    // atômico e devolve o número desta tentativa: palpites simultâneos disputam as
+    // mesmas 5 vagas, e o resto nem chega a ser comparado.
+    const reserved = await this.prisma.$queryRaw<{ attempts: number }[]>`
+      UPDATE "PhoneVerification"
+      SET "attempts" = "attempts" + 1
+      WHERE "patientId" = ${patientId}::uuid
+        AND "codeHash" = ${pending.codeHash}
+        AND "attempts" < ${MAX_ATTEMPTS}
+        AND "expiresAt" > ${now}
+      RETURNING "attempts"`;
+    const attempt = reserved[0]?.attempts;
+    if (attempt === undefined) {
+      const current = await this.attemptsOf(patientId);
+      if (current === null) throw this.noPendingCode();
+      if (current >= MAX_ATTEMPTS) throw this.tooManyAttempts();
+      // Outro código foi emitido no meio: este não vale mais.
+      throw this.noPendingCode();
     }
 
     if (!this.matches(pending.codeHash, this.hash(patientId, code))) {
-      // Incremento atômico: tentativas concorrentes não passam do limite.
-      const counted = await this.prisma.phoneVerification.updateMany({
-        where: { patientId, attempts: { lt: MAX_ATTEMPTS } },
-        data: { attempts: { increment: 1 } },
-      });
-      const after = await this.prisma.phoneVerification.findUnique({
-        where: { patientId },
-        select: { attempts: true },
-      });
-      const used = after?.attempts ?? MAX_ATTEMPTS;
-      if (counted.count === 0 || used >= MAX_ATTEMPTS) {
-        await this.discard(patientId);
-        throw this.tooManyAttempts();
-      }
+      // Esgotado, o código fica gravado com attempts = 5 até expirar ou ser
+      // substituído: toda tentativa seguinte recebe 429, sem ser comparada.
+      if (attempt >= MAX_ATTEMPTS) throw this.tooManyAttempts();
       throw new UnprocessableEntityException({
         code: 'INVALID_CODE',
         message: 'Código incorreto.',
-        attemptsLeft: MAX_ATTEMPTS - used,
+        attemptsLeft: MAX_ATTEMPTS - attempt,
       });
     }
 
@@ -141,8 +154,8 @@ export class PhoneVerificationService {
   }
 
   private hash(patientId: string, code: string): string {
-    return createHmac('sha256', this.env.BETTER_AUTH_SECRET)
-      .update(`phone-verification:${patientId}:${code}`)
+    return createHmac('sha256', this.key)
+      .update(`${patientId}:${code}`)
       .digest('hex');
   }
 
@@ -152,8 +165,45 @@ export class PhoneVerificationService {
     return a.length === b.length && timingSafeEqual(a, b);
   }
 
+  private async attemptsOf(patientId: string): Promise<number | null> {
+    const row = await this.prisma.phoneVerification.findUnique({
+      where: { patientId },
+      select: { attempts: true },
+    });
+    return row?.attempts ?? null;
+  }
+
   private async discard(patientId: string): Promise<void> {
     await this.prisma.phoneVerification.deleteMany({ where: { patientId } });
+  }
+
+  private async resendTooSoon(
+    patientId: string,
+    now: Date,
+  ): Promise<HttpException> {
+    const row = await this.prisma.phoneVerification.findUnique({
+      where: { patientId },
+      select: { sentAt: true },
+    });
+    const elapsed = row ? now.getTime() - row.sentAt.getTime() : 0;
+    return new HttpException(
+      {
+        code: 'RESEND_TOO_SOON',
+        message: 'Aguarde antes de pedir outro código.',
+        retryAfterSeconds: Math.max(
+          1,
+          Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000),
+        ),
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
+  }
+
+  private noPendingCode(): UnprocessableEntityException {
+    return new UnprocessableEntityException({
+      code: 'NO_PENDING_CODE',
+      message: 'Peça um código antes de confirmar.',
+    });
   }
 
   private tooManyAttempts(): HttpException {
@@ -165,4 +215,13 @@ export class PhoneVerificationService {
       HttpStatus.TOO_MANY_REQUESTS,
     );
   }
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
 }

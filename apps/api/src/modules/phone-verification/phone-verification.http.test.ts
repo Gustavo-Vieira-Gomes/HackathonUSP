@@ -101,16 +101,16 @@ test('código errado devolve 422 com tentativas restantes; no limite, 429 e o c�
   }
   const last = await confirm(t, cookie, { code: wrongCode(code) });
   assert.equal(last.status, 429);
-  assert.equal(
-    await t.prisma.phoneVerification.count({ where: { patientId } }),
-    0,
-  );
+  const stored = await t.prisma.phoneVerification.findUniqueOrThrow({
+    where: { patientId },
+  });
+  assert.equal(stored.attempts, MAX_ATTEMPTS);
   // Nem o código certo vale mais.
   const late = await confirm(t, cookie, { code });
-  assert.equal(late.status, 422);
+  assert.equal(late.status, 429);
   assert.equal(
     ((await late.json()) as { code: string }).code,
-    'NO_PENDING_CODE',
+    'TOO_MANY_ATTEMPTS',
   );
   const patient = await t.prisma.patient.findUniqueOrThrow({
     where: { id: patientId },
@@ -185,5 +185,83 @@ test('WhatsApp desligado: 503 e nenhum código gravado', async () => {
   assert.equal(
     await off.prisma.phoneVerification.count({ where: { patientId } }),
     0,
+  );
+});
+
+/** Código de erro de cada resposta (`ok` para 200). */
+async function outcomeCodes(responses: Response[]): Promise<string[]> {
+  return Promise.all(
+    responses.map(async (r) =>
+      r.status === 200 ? 'ok' : ((await r.json()) as { code: string }).code,
+    ),
+  );
+}
+
+test('HACK-49: 20 palpites errados simultâneos → 4 INVALID_CODE e 16 TOO_MANY_ATTEMPTS', async () => {
+  const { cookie, patientId, phone } = await patientSession(t);
+  await send(t, cookie);
+  const code = await codeSentTo(phone);
+  const guesses = Array.from({ length: 20 }, (_, i) =>
+    String((Number(code) + 1 + i) % 1_000_000).padStart(6, '0'),
+  );
+  const codes = await outcomeCodes(
+    await Promise.all(
+      guesses.map((guess) => confirm(t, cookie, { code: guess })),
+    ),
+  );
+  assert.equal(
+    codes.filter((c) => c === 'INVALID_CODE').length,
+    MAX_ATTEMPTS - 1,
+  );
+  assert.equal(
+    codes.filter((c) => c === 'TOO_MANY_ATTEMPTS').length,
+    20 - (MAX_ATTEMPTS - 1),
+  );
+  const stored = await t.prisma.phoneVerification.findUniqueOrThrow({
+    where: { patientId },
+  });
+  assert.equal(stored.attempts, MAX_ATTEMPTS);
+});
+
+test('HACK-49: código certo no meio de 20 simultâneos só vale se estiver entre os 5 avaliados', async () => {
+  const { cookie, patientId, phone } = await patientSession(t);
+  await send(t, cookie);
+  const code = await codeSentTo(phone);
+  const guesses = Array.from({ length: 20 }, (_, i) =>
+    i === 12
+      ? code
+      : String((Number(code) + 1 + i) % 1_000_000).padStart(6, '0'),
+  );
+  const codes = await outcomeCodes(
+    await Promise.all(
+      guesses.map((guess) => confirm(t, cookie, { code: guess })),
+    ),
+  );
+  // Comparados: até 5. Os errados entre eles dão INVALID_CODE (ou 429 se for o 5º);
+  // o acerto só passa se ganhou uma das 5 vagas.
+  const invalid = codes.filter((c) => c === 'INVALID_CODE').length;
+  const accepted = codes.filter((c) => c === 'ok').length;
+  assert.ok(
+    invalid + accepted <= MAX_ATTEMPTS,
+    `comparados: ${invalid + accepted}`,
+  );
+  assert.ok(accepted <= 1);
+  const patient = await t.prisma.patient.findUniqueOrThrow({
+    where: { id: patientId },
+  });
+  assert.equal(Boolean(patient.phoneVerifiedAt), codes[12] === 'ok');
+});
+
+test('dois pedidos de código simultâneos geram um código só', async () => {
+  const { cookie, phone } = await patientSession(t);
+  const statuses = (await Promise.all([send(t, cookie), send(t, cookie)])).map(
+    (r) => r.status,
+  );
+  assert.deepEqual([...statuses].sort(), [200, 429]);
+  assert.equal(
+    await t.prisma.simulatedWhatsappMessage.count({
+      where: { phone, kind: 'codigo_verificacao' },
+    }),
+    1,
   );
 });
