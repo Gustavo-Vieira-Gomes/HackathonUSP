@@ -1,0 +1,21 @@
+# Postgres local por worktree. O nome do projeto compose é a pasta do worktree,
+# então cada worktree tem container e volume próprios. Porta e banco vêm do .env da raiz.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: hackathon
+      POSTGRES_PASSWORD: hackathon
+      POSTGRES_DB: ${POSTGRES_DB:-hackathon}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U hackathon -d $${POSTGRES_DB}']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  postgres-data:

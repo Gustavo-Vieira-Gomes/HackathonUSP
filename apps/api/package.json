@@ -4,25 +4,41 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "start": "node dist/main.js",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "test": "tsc -p tsconfig.json --outDir .test-dist && node --test .test-dist/*.test.js"
+    "typecheck": "prisma generate && tsc --noEmit",
+    "test": "prisma generate && tsc -p tsconfig.json --outDir .test-dist && node --env-file-if-exists=.env --test \".test-dist/**/*.test.js\"",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@hackathon/contracts": "*",
     "@nestjs/common": "^11.1.0",
     "@nestjs/core": "^11.1.0",
     "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/platform-socket.io": "^11.2.8",
+    "@nestjs/schedule": "^6.1.3",
+    "@nestjs/websockets": "^11.2.8",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "@thallesp/nestjs-better-auth": "^2.8.0",
+    "better-auth": "^1.7.18",
+    "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "socket.io": "^4.8.4",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
     "@nestjs/cli": "^11.0.0",
     "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
     "eslint": "^9.39.0",
+    "prisma": "^7.10.1",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.46.0"

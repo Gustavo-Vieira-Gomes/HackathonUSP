@@ -9,3 +9,6 @@ coverage/
 .DS_Store
 *.log
 .test-dist/
+
+# Cliente Prisma gerado
+apps/api/src/generated/

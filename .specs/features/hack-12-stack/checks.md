@@ -30,7 +30,7 @@ Proof: `docker compose exec -T postgres psql -U hackathon -d hack_12 -tAc "selec
 Proof: `docker compose exec -T postgres psql -U hackathon -d hack_12 -tAc "select count(*) from pg_indexes where indexdef like 'CREATE UNIQUE INDEX%' and ((tablename='User' and indexdef like '%(email)%') or (tablename='Session' and indexdef like '%(token)%'))" | grep -qx 2`
 
 **C3** - `.env.example` da raiz traz `POSTGRES_PORT` e `POSTGRES_DB`; `apps/api/.env.example` traz `DATABASE_URL=postgresql://hackathon:hackathon@127.0.0.1:…`, `BETTER_AUTH_SECRET` com texto de placeholder, `BETTER_AUTH_URL` e `WEB_ORIGIN` em `127.0.0.1`/`localhost`; nenhum dos dois arquivos tem host fora de `127.0.0.1`/`localhost` (S1, AC 3)
-Proof: `grep -qE '^POSTGRES_PORT=[0-9]+$' .env.example && grep -qE '^POSTGRES_DB=[a-z_0-9]+$' .env.example && grep -qE '^DATABASE_URL=postgresql://hackathon:hackathon@127\.0\.0\.1:[0-9]+/' apps/api/.env.example && grep -qE '^BETTER_AUTH_SECRET=' apps/api/.env.example && grep -qE '^(BETTER_AUTH_URL|WEB_ORIGIN)=http://(127\.0\.0\.1|localhost):[0-9]+$' apps/api/.env.example && ! grep -hoE '://[^/:@]+(:[0-9]+)?' .env.example apps/api/.env.example | grep -vqE '://(127\.0\.0\.1|localhost)'`
+Proof: `grep -qE '^POSTGRES_PORT=[0-9]+$' .env.example && grep -qE '^POSTGRES_DB=[a-z_0-9]+$' .env.example && grep -qE '^DATABASE_URL=postgresql://hackathon:hackathon@127\.0\.0\.1:[0-9]+/' apps/api/.env.example && grep -qE '^BETTER_AUTH_SECRET=' apps/api/.env.example && grep -qE '^(BETTER_AUTH_URL|WEB_ORIGIN)=http://(127\.0\.0\.1|localhost):[0-9]+$' apps/api/.env.example && ! grep -hoE '[a-z]+://([^/@]*@)?[^/:]+' .env.example apps/api/.env.example | sed -E 's#.*://([^/@]*@)?##' | grep -vxE '127\.0\.0\.1|localhost' | grep -q .`
 
 ### S2 - configuração obrigatória no boot · 4 arquivos · ~5 KB · ~2k
 
@@ -158,34 +158,34 @@ Proof: `awk '/services:/{s=1} /postgres/{if(s)p=1} /db:deploy/{d=NR} /npm run ch
 
 ## Coverage
 
-| Set (size) | Member -> proof | Unproven |
-| --- | --- | --- |
-| `POST /api/sign-up/paciente` statuses (3) | `200` C7 · `400` C8 · `422` C9 | - |
-| `POST /api/sign-up/clinica` statuses (3) | `200` C6 · `400` C10 · `422` C9 | - |
-| `POST /api/auth/sign-up/email` statuses (1) | `404` C11 | - |
-| `POST /api/auth/update-user` statuses (1) | `400` C16 | - |
-| `POST /api/auth/sign-in/email` statuses (3) | `200` C13 · `401` C14 · `403` C17 | - |
-| `POST /api/auth/sign-out` statuses (1) | `200` C15 | - |
-| `GET /api/me` statuses (2) | `200` C19 · `401` C20 | - |
-| `GET /api/auth/one-time-token/generate` statuses (2) | `200` C24 · `401` C24 | - |
-| `POST /api/auth/one-time-token/verify` statuses (1) | `404` C27 | - |
-| `GET /api/health` statuses (1) | `200` C21 | - |
-| Next `/api/auth/[...path]` e `/api/sign-up/[role]` statuses (4) | repassado C29 · `404` C30 · `502` C32 · `504` C32 | - |
-| socket.io `ping` (1) | `101` + `pong` C35 | - |
-| variáveis obrigatórias × ausente/vazia (8) | C4, table-driven over all 8 | - |
-| `BETTER_AUTH_SECRET` borda (2 edges) | 31 C5 · 32 C5 | - |
-| `password` borda (2 edges) | 7 C10 · 8 C6 | - |
-| corpo do cadastro proibido (2) | `role` C8 · campo extra C8 | - |
-| e-mail repetido entre papéis (3) | paciente→clinica C9 · clinica→paciente C9 · paciente→paciente C9 | - |
-| causas de 401 em `/api/me` (3) | sem cookie C20 · adulterado C20 · encerrada C20 | - |
-| criação de `User` sem papel (2 caminhos) | `auth.api.signUpEmail` sem contexto C12 · insert direto C12 | - |
-| token de uso único (5 estados) | gerado C24 · primeira verificação C25 · segunda C26 · HTTP desligado C27 · guardado com hash C28 | - |
-| rotas repassadas pelo Next (3) | sign-in C29 · sign-up paciente C29 · sign-up clinica C29 | - |
-| falhas da consulta de sessão no Next (4) | `401` C33 · conexão C33 · timeout C33 · corpo inválido C33 | - |
-| cookie `Secure` (2) | https C18 · http C18 | - |
-| tabelas da migration (5) | `User` C2 · `Session` C2 · `Account` C2 · `Verification` C2 · `_prisma_migrations` C2 | - |
-| portas de uma via (7) | 1 C1 · 2 C2 · 3 C11, C12, C17, C27, C28 · 4 C29, C30, C32 · 5 C4 · 6 C34, C35 · 7 C36 | - |
-| startup config: validação das 4 variáveis (3 assemblies) | `main.js` C4 · harness de teste via `createApp` C6 · smoke C36 | - |
+| Set (size)                                                      | Member -> proof                                                                                  | Unproven |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------- |
+| `POST /api/sign-up/paciente` statuses (3)                       | `200` C7 · `400` C8 · `422` C9                                                                   | -        |
+| `POST /api/sign-up/clinica` statuses (3)                        | `200` C6 · `400` C10 · `422` C9                                                                  | -        |
+| `POST /api/auth/sign-up/email` statuses (1)                     | `404` C11                                                                                        | -        |
+| `POST /api/auth/update-user` statuses (1)                       | `400` C16                                                                                        | -        |
+| `POST /api/auth/sign-in/email` statuses (3)                     | `200` C13 · `401` C14 · `403` C17                                                                | -        |
+| `POST /api/auth/sign-out` statuses (1)                          | `200` C15                                                                                        | -        |
+| `GET /api/me` statuses (2)                                      | `200` C19 · `401` C20                                                                            | -        |
+| `GET /api/auth/one-time-token/generate` statuses (2)            | `200` C24 · `401` C24                                                                            | -        |
+| `POST /api/auth/one-time-token/verify` statuses (1)             | `404` C27                                                                                        | -        |
+| `GET /api/health` statuses (1)                                  | `200` C21                                                                                        | -        |
+| Next `/api/auth/[...path]` e `/api/sign-up/[role]` statuses (4) | repassado C29 · `404` C30 · `502` C32 · `504` C32                                                | -        |
+| socket.io `ping` (1)                                            | `101` + `pong` C35                                                                               | -        |
+| variáveis obrigatórias × ausente/vazia (8)                      | C4, table-driven over all 8                                                                      | -        |
+| `BETTER_AUTH_SECRET` borda (2 edges)                            | 31 C5 · 32 C5                                                                                    | -        |
+| `password` borda (2 edges)                                      | 7 C10 · 8 C6                                                                                     | -        |
+| corpo do cadastro proibido (2)                                  | `role` C8 · campo extra C8                                                                       | -        |
+| e-mail repetido entre papéis (3)                                | paciente→clinica C9 · clinica→paciente C9 · paciente→paciente C9                                 | -        |
+| causas de 401 em `/api/me` (3)                                  | sem cookie C20 · adulterado C20 · encerrada C20                                                  | -        |
+| criação de `User` sem papel (2 caminhos)                        | `auth.api.signUpEmail` sem contexto C12 · insert direto C12                                      | -        |
+| token de uso único (5 estados)                                  | gerado C24 · primeira verificação C25 · segunda C26 · HTTP desligado C27 · guardado com hash C28 | -        |
+| rotas repassadas pelo Next (3)                                  | sign-in C29 · sign-up paciente C29 · sign-up clinica C29                                         | -        |
+| falhas da consulta de sessão no Next (4)                        | `401` C33 · conexão C33 · timeout C33 · corpo inválido C33                                       | -        |
+| cookie `Secure` (2)                                             | https C18 · http C18                                                                             | -        |
+| tabelas da migration (5)                                        | `User` C2 · `Session` C2 · `Account` C2 · `Verification` C2 · `_prisma_migrations` C2            | -        |
+| portas de uma via (7)                                           | 1 C1 · 2 C2 · 3 C11, C12, C17, C27, C28 · 4 C29, C30, C32 · 5 C4 · 6 C34, C35 · 7 C36            | -        |
+| startup config: validação das 4 variáveis (3 assemblies)        | `main.js` C4 · harness de teste via `createApp` C6 · smoke C36                                   | -        |
 
 - Claims naming a status code, route or response shape: C6-C11, C13-C17, C19-C22, C24, C27, C29, C30, C32, C35 - each has a proof that crosses the HTTP boundary
 - C4, C5, C29, C31, C32 provam nos dois níveis (função e fronteira) porque decidem e são alcançados por fronteira
@@ -208,3 +208,5 @@ Proof: `awk '/services:/{s=1} /postgres/{if(s)p=1} /db:deploy/{d=NR} /npm run ch
 - Arquivos existentes tocados: 13 964 bytes (`wc -c` de `apps/api/src`, manifestos, `tsconfig`, `ci.yml`, `smoke.mjs`, serviços e tela do Next, contratos). Novos estimados: ~80 KB (schema, migration, módulos de config/auth/prisma/exemplos, dois Route Handlers, serviços do Next, testes). Total ~94 KB / 4 ≈ 24k, mais leitura das libs (Better Auth, integração Nest, Prisma 7) ≈ +40k → ~65k.
 - S1-S7 somam ~65k, sob o orçamento de 150k - um construtor, sem handoff.
 - Base da verificação: `ad7ff67` (merge-base com `origin/main` quando o worktree foi criado). `origin/main` já avançou para `5f35745` (HACK-41); não é trazido para esta branch neste card.
+
+- **Settled mid-build:** C3 - o comando da prova tirava o usuário do `DATABASE_URL` (`://hackathon`) como host e só passava pelo comportamento do `grep -vq` do macOS; trocado por extração do host sem a parte `usuário:senha@`, com controle negativo (`http://evil.com` reprova). A afirmação não mudou.
