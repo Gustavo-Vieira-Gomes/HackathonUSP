@@ -477,3 +477,153 @@ legend:focus-visible,
   text-align: right;
   color: var(--muted);
 }
+/* Exames da clínica (HACK-17) */
+.exams-page {
+  max-width: 1040px;
+}
+.form-title {
+  margin: 0 0 12px;
+  font-size: 24px;
+}
+.field select,
+.field textarea {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #b9c2b4;
+  border-radius: 10px;
+  font: inherit;
+  background: #fff;
+  color: var(--foreground);
+}
+.field select {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 44px;
+  padding-right: 40px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--foreground) 50%),
+    linear-gradient(135deg, var(--foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) 50%,
+    calc(100% - 14px) 50%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+}
+.field select[aria-invalid='true'],
+.field textarea[aria-invalid='true'] {
+  border-color: #b3261e;
+}
+select:focus-visible,
+textarea:focus-visible,
+h2:focus-visible {
+  outline: 3px solid #497528;
+  outline-offset: 2px;
+}
+.field-label {
+  font-size: 14px;
+  font-weight: 700;
+}
+.field-error p,
+.field-error ul {
+  margin: 0;
+}
+.exam-fixed {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.steps {
+  margin: 20px 0 0;
+  padding: 0;
+  border: 0;
+}
+.steps legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+.step-list {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+.step-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: 16px;
+}
+.check-list {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.check-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.check-list input {
+  width: 18px;
+  height: 18px;
+}
+.form-actions {
+  display: flex;
+  gap: 12px;
+}
+.link-button {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.secondary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.exam-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.exam-table th,
+.exam-table td {
+  padding: 10px 8px 10px 0;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.exam-table thead th {
+  font-size: 13px;
+  color: var(--muted);
+}
+.empty {
+  margin: 0;
+  color: var(--muted);
+}
+.form-success {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid #b8d4a0;
+  border-radius: 12px;
+  background: #eef7e4;
+  color: #2f5418;
+  font-weight: 700;
+}
+.settings-form {
+  margin-top: 48px;
+}
+.form-group > .field-grid + .field {
+  margin-top: 20px;
+}

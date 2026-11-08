@@ -6,6 +6,7 @@ export * from './realtime';
 export * from './demo-clock';
 export * from './session';
 export * from './clinic';
+export * from './exams';
 export * from './whatsapp';
 export * from './google-calendar';
 
