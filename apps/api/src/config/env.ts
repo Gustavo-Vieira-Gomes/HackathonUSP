@@ -8,26 +8,42 @@ export const REQUIRED_ENV = [
 ] as const;
 
 /** Opcionais: ausentes valem o padrão do schema. */
-export const OPTIONAL_ENV = ['DEMO_CLOCK_ENABLED'] as const;
+export const OPTIONAL_ENV = ['DEMO_CLOCK_ENABLED', 'DEMO_CLOCK_TOKEN'] as const;
 
 const filled = z.string().trim().min(1);
 
 /** Placeholder antigo do .env.example e marcadores de valor de exemplo. */
 const EXAMPLE_SECRET = /troque|change-?me/i;
 
-const envSchema = z.object({
-  DATABASE_URL: filled,
-  BETTER_AUTH_SECRET: filled
-    .min(32)
-    .refine((secret) => !EXAMPLE_SECRET.test(secret)),
-  BETTER_AUTH_URL: filled.pipe(z.url()),
-  WEB_ORIGIN: filled.pipe(z.url()),
-  // Liga o endpoint que adianta o relógio da demo (HACK-30). Desligado por padrão.
-  DEMO_CLOCK_ENABLED: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((value) => value === 'true'),
-});
+const secret = filled.min(32).refine((value) => !EXAMPLE_SECRET.test(value));
+
+const envSchema = z
+  .object({
+    DATABASE_URL: filled,
+    BETTER_AUTH_SECRET: secret,
+    BETTER_AUTH_URL: filled.pipe(z.url()),
+    WEB_ORIGIN: filled.pipe(z.url()),
+    // Liga o endpoint que adianta o relógio da demo (HACK-30). Desligado por padrão.
+    DEMO_CLOCK_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+    // Segredo do operador da demo (HACK-46): só quem tem o token move o relógio global.
+    // Vazio (como no .env.example) conta como ausente.
+    DEMO_CLOCK_TOKEN: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      secret.optional(),
+    ),
+  })
+  .superRefine((env, ctx) => {
+    if (env.DEMO_CLOCK_ENABLED && !env.DEMO_CLOCK_TOKEN) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['DEMO_CLOCK_TOKEN'],
+        message: 'obrigatório com DEMO_CLOCK_ENABLED=true',
+      });
+    }
+  });
 
 export type AppEnv = z.infer<typeof envSchema>;
 
@@ -55,6 +71,6 @@ export function loadEnv(
   ];
   throw new EnvValidationError(
     `Configuração inválida ou ausente: ${names.join(', ')}. ` +
-      'Confira o .env (modelo em .env.example); BETTER_AUTH_SECRET exige 32 caracteres ou mais e não pode ser o valor de exemplo.',
+      'Confira o .env (modelo em .env.example); BETTER_AUTH_SECRET e DEMO_CLOCK_TOKEN exigem 32 caracteres ou mais e não podem ser o valor de exemplo; DEMO_CLOCK_TOKEN é obrigatório com DEMO_CLOCK_ENABLED=true.',
   );
 }

@@ -82,3 +82,37 @@ test('C8 - BETTER_AUTH_SECRET de exemplo é recusado citando só o nome; segredo
     random,
   );
 });
+
+test('HACK-46 - DEMO_CLOCK_ENABLED=true exige DEMO_CLOCK_TOKEN de 32 caracteres ou mais', () => {
+  const token = 'token-do-operador-com-32-caracteres!';
+  for (const bad of [undefined, '', 'curto-demais']) {
+    assert.throws(
+      () =>
+        loadEnv({
+          ...valid,
+          DEMO_CLOCK_ENABLED: 'true',
+          DEMO_CLOCK_TOKEN: bad,
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        /DEMO_CLOCK_TOKEN/.test(error.message) &&
+        (bad === undefined || bad === '' || !error.message.includes(bad)),
+      String(bad),
+    );
+  }
+  const env = loadEnv({
+    ...valid,
+    DEMO_CLOCK_ENABLED: 'true',
+    DEMO_CLOCK_TOKEN: token,
+  });
+  assert.equal(env.DEMO_CLOCK_ENABLED, true);
+  assert.equal(env.DEMO_CLOCK_TOKEN, token);
+});
+
+test('HACK-46 - flag desligada aceita token ausente ou vazio', () => {
+  for (const DEMO_CLOCK_TOKEN of [undefined, '']) {
+    const env = loadEnv({ ...valid, DEMO_CLOCK_TOKEN });
+    assert.equal(env.DEMO_CLOCK_ENABLED, false);
+    assert.equal(env.DEMO_CLOCK_TOKEN, undefined);
+  }
+});

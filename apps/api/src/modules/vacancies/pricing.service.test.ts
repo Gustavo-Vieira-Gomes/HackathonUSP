@@ -197,26 +197,74 @@ test('avançar o relógio da demo em 25 h muda o preço no próximo ciclo', asyn
   }
 });
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Publica pelo caminho com teto; `holdMs` segura a transação antes de gravar. */
+async function publishCapped(exam: Exam, hoursAhead: number, holdMs = 0) {
+  const now = new Date();
+  const startsAt = new Date(now.getTime() + hoursAhead * HOUR);
+  const slot = await prisma.slot.create({
+    data: {
+      clinicId: exam.clinicId,
+      examId: exam.id,
+      startsAt,
+      endsAt: new Date(startsAt.getTime() + 30 * MINUTE),
+      origin: 'manual',
+    },
+  });
+  const currentPriceCents = await pricing.initialPriceCents(slot.id, now);
+  return pricing.publishWithinDailyCap(exam.clinicId, async (tx) => {
+    if (holdMs > 0) await sleep(holdMs);
+    return vacancies.publish(
+      { slotId: slot.id, origin: 'vazio', currentPriceCents },
+      { origin: 'clinica', reason: 'teste do teto diário' },
+      tx,
+    );
+  });
+}
+
+function isCapError(error: unknown, cap: number): boolean {
+  assert.ok(error instanceof UnprocessableEntityException, String(error));
+  assert.equal(error.getStatus(), 422);
+  const body = error.getResponse() as { code: string; cap: number };
+  assert.equal(body.code, 'DAILY_DISCOUNT_CAP');
+  assert.equal(body.cap, cap);
+  return true;
+}
+
+const vacanciesOf = (exam: Exam) =>
+  prisma.vacancy.count({ where: { slot: { examId: exam.id } } });
+
 test('teto diário (RN-28): a sexta vaga do dia é recusada com 422 e o teto', async () => {
   const exam = await kneeMri();
-  const now = new Date();
-  for (let i = 0; i < 5; i++) {
-    await pricing.assertDailyDiscountCap(exam.clinicId);
-    await publishAt(exam, new Date(now.getTime() + (30 + i) * HOUR), now);
-  }
-  await assert.rejects(
-    pricing.assertDailyDiscountCap(exam.clinicId),
-    (error: unknown) => {
-      assert.ok(error instanceof UnprocessableEntityException);
-      assert.equal(error.getStatus(), 422);
-      assert.deepEqual(
-        (error.getResponse() as { code: string; cap: number }).code,
-        'DAILY_DISCOUNT_CAP',
-      );
-      assert.equal((error.getResponse() as { cap: number }).cap, 5);
-      return true;
-    },
-  );
+  for (let i = 0; i < 5; i++) await publishCapped(exam, 30 + i);
+  await assert.rejects(publishCapped(exam, 40), (e) => isCapError(e, 5));
+  assert.equal(await vacanciesOf(exam), 5);
+});
+
+test('HACK-47: duas publicações simultâneas com teto - 1 → só uma passa', async () => {
+  const exam = await kneeMri();
+  for (let i = 0; i < 4; i++) await publishCapped(exam, 30 + i);
+  const results = await Promise.allSettled([
+    publishCapped(exam, 40, 300),
+    publishCapped(exam, 41, 300),
+  ]);
+  const fulfilled = results.filter((r) => r.status === 'fulfilled');
+  const rejected = results.filter((r) => r.status === 'rejected');
+  assert.equal(fulfilled.length, 1);
+  assert.equal(rejected.length, 1);
+  assert.ok(isCapError(rejected[0]?.reason, 5));
+  assert.equal(await vacanciesOf(exam), 5);
+});
+
+test('recusa pelo teto não grava vaga nem transição', async () => {
+  const exam = await kneeMri();
+  await prisma.clinic.update({
+    where: { id: exam.clinicId },
+    data: { dailyDiscountCap: 0 },
+  });
+  await assert.rejects(publishCapped(exam, 30), (e) => isCapError(e, 0));
+  assert.equal(await vacanciesOf(exam), 0);
 });
 
 test('teto diário conta só o dia local: vagas de ontem não contam', async () => {
@@ -225,15 +273,11 @@ test('teto diário conta só o dia local: vagas de ontem não contam', async () 
     where: { id: exam.clinicId },
     data: { dailyDiscountCap: 1 },
   });
-  const now = new Date();
-  const vacancy = await publishAt(
-    exam,
-    new Date(now.getTime() + 30 * HOUR),
-    now,
-  );
+  const vacancy = await publishCapped(exam, 30);
   await prisma.vacancy.update({
     where: { id: vacancy.id },
-    data: { createdAt: new Date(now.getTime() - 36 * HOUR) },
+    data: { createdAt: new Date(Date.now() - 36 * HOUR) },
   });
-  await pricing.assertDailyDiscountCap(exam.clinicId);
+  await publishCapped(exam, 31);
+  assert.equal(await vacanciesOf(exam), 2);
 });
