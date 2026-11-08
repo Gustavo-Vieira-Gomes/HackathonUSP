@@ -61,6 +61,7 @@ async function Agenda({ searchParams }: { searchParams: SearchParams }) {
       nextHref={`/clinica/agenda?dia=${addDays(day, 1)}`}
       googleConnected={connected}
       googleEmail={google?.account_email ?? null}
+      openConnect={sp.conectar === "1" && !connected}
       rooms={[...ROOMS]}
     >
       <AgendaGrid blocks={all} connected={connected} nowMin={day === today ? spMinutes(now) : null} />

@@ -282,10 +282,11 @@ export async function listWaitlist(patientId: string) {
 
 export async function getClinic() {
   await connection();
-  return must(await db().from("clinics").select("id, name, address, agency:agencies(name)").eq("id", CLINIC_ID).single()) as unknown as {
+  return must(await db().from("clinics").select("id, name, address, opening_hours, agency:agencies(name)").eq("id", CLINIC_ID).single()) as unknown as {
     id: string;
     name: string;
     address: string;
+    opening_hours: string;
     agency: { name: string };
   };
 }

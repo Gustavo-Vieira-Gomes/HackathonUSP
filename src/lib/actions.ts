@@ -192,6 +192,22 @@ export async function setGoogleConnection(connected: boolean, email?: string): P
   }
 }
 
+/** Edição do perfil da clínica: nome, endereço e horário de funcionamento. */
+export async function saveClinicInfo(input: { name: string; address: string; openingHours: string }): Promise<ActionResult> {
+  try {
+    await rpc("update_clinic_info", {
+      p_clinic: CLINIC_ID,
+      p_name: input.name,
+      p_address: input.address,
+      p_opening_hours: input.openingHours,
+    });
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 export type ExamInput = {
   id: string | null;
   regionKey: string;

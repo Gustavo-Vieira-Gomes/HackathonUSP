@@ -37,6 +37,7 @@ export function AgendaShell({
   nextHref,
   googleConnected,
   googleEmail,
+  openConnect = false,
   rooms,
   children,
 }: {
@@ -46,11 +47,13 @@ export function AgendaShell({
   nextHref: string;
   googleConnected: boolean;
   googleEmail: string | null;
+  /** Vem do aviso «Conectar agenda» do perfil da clínica: abre o diálogo de conexão. */
+  openConnect?: boolean;
   rooms: string[];
   children: ReactNode;
 }) {
   const toast = useToast();
-  const [connectOpen, setConnectOpen] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(openConnect);
   const [newOpen, setNewOpen] = useState(false);
 
   return (

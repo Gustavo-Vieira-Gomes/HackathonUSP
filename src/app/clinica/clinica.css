@@ -37,3 +37,86 @@
   to { transform: translate(-50%, 0); opacity: 1; }
 }
 .vc .toast.rise { animation-name: vc-toast-in; }
+
+/* Barra escura da clínica com o perfil à direita (mesmo padrão do Início do paciente, maior no desktop) */
+.cl-header {
+  position: relative;
+  z-index: 20;
+  background: var(--ink);
+  color: #fff;
+  padding: 10px max(16px, min(36px, 3vw));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 32px;
+}
+.cl-profile { position: relative; }
+.cl-avatar {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #c9e6e0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cl-avatar:hover,
+.cl-avatar.on { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.cl-avatar:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.cl-card {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(400px, calc(100vw - 32px));
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--ink);
+  box-shadow: 0 20px 48px -14px rgba(23, 54, 58, 0.38);
+  animation: cl-slide 0.22s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.cl-card .row .k { width: 76px; flex: none; }
+.cl-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cl-actions .btn { width: 100%; white-space: nowrap; }
+.cl-initials {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--mint);
+  color: var(--teal-d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 18px var(--f-display), var(--f-body), sans-serif;
+}
+.cl-cal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--mint);
+}
+.cl-cal.warn { align-items: flex-start; background: var(--red-s); }
+.cl-cal-g {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #3b6fd8;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.cl-cal-ok { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 4px rgba(42, 127, 117, 0.18); }
+.cl-cal-link { align-self: flex-start; min-height: 32px; display: inline-flex; align-items: center; font-weight: 700; color: var(--teal-d); }
+@keyframes cl-slide { from { transform: translateY(-10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cl-card { animation: none; } }
