@@ -155,7 +155,10 @@ export class WavesService {
           startsAt: slot.startsAt,
           priceCents: vacancy.currentPriceCents,
           preparation: slot.exam.preparationCondition.trim() || null,
-          vacancyUrl: `${this.env.WEB_ORIGIN}/vagas/${vacancyId}`,
+          vacancyUrl: new URL(
+            `/paciente/vagas/${vacancyId}`,
+            this.env.WEB_ORIGIN,
+          ).href,
         },
       };
     });

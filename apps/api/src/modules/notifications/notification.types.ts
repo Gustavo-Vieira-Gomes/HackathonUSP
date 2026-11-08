@@ -74,3 +74,6 @@ export interface DeliveryInfo {
 }
 
 export const CHANNEL_ADAPTERS = Symbol('CHANNEL_ADAPTERS');
+
+/** Canal configurado, porém sem destino válido para este paciente. */
+export class ChannelUnavailableError extends Error {}

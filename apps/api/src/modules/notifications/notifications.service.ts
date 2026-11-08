@@ -3,6 +3,7 @@ import { isUniqueViolation } from '../../prisma/prisma-errors';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CHANNEL_ADAPTERS,
+  ChannelUnavailableError,
   type AlertContext,
   type ChannelAdapter,
   type DeliveryInfo,
@@ -140,15 +141,15 @@ export class NotificationsService {
       return { channel, result: 'sem_canal' };
     }
 
-    const sent = await this.callAdapter(adapter, recipient, notification, {
+    const result = await this.callAdapter(adapter, recipient, notification, {
       alertId,
     });
     try {
       await this.prisma.alert.update({
         where: { id: alertId },
         data: {
-          result: sent ? 'enviado' : 'falhou',
-          sentAt: sent ? new Date() : null,
+          result,
+          sentAt: result === 'enviado' ? new Date() : null,
         },
       });
     } catch (error) {
@@ -160,7 +161,7 @@ export class NotificationsService {
         }`,
       );
     }
-    return { channel, result: sent ? 'enviado' : 'falhou' };
+    return { channel, result };
   }
 
   /**
@@ -213,7 +214,7 @@ export class NotificationsService {
     recipient: NotificationRecipient,
     notification: OutgoingNotification,
     delivery: DeliveryInfo,
-  ): Promise<boolean> {
+  ): Promise<'enviado' | 'falhou' | 'sem_canal'> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), CHANNEL_TIMEOUT_MS);
     try {
@@ -229,13 +230,14 @@ export class NotificationsService {
           ),
         ),
       ]);
-      return true;
+      return 'enviado';
     } catch (error) {
+      if (error instanceof ChannelUnavailableError) return 'sem_canal';
       // Só o canal e a causa: a mensagem e o contato do paciente não vão para o log.
       this.logger.warn(
         `falha no canal ${adapter.channel}: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
       );
-      return false;
+      return 'falhou';
     } finally {
       clearTimeout(timer);
     }

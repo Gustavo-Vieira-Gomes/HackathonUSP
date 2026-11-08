@@ -183,6 +183,7 @@ model Patient {
   reservations        Reservation[]
   whatsappMessages    SimulatedWhatsappMessage[]
   phoneVerification   PhoneVerification?
+  pushSubscriptions   PushSubscription[]
 }
 
 // Inscrição na lista de encaixe (RN-17). Uma por paciente e TUSS: renovar ou se
@@ -487,4 +488,18 @@ model CalendarConnection {
   oauthStateExpiresAt  DateTime?
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
+}
+
+// Destinos de web push por navegador; removidos quando o fornecedor retorna 404/410.
+model PushSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  patientId String   @db.Uuid
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
 }

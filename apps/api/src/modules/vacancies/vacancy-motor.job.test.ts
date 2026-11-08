@@ -623,7 +623,7 @@ test('C11 - mensagem da onda leva os dados da vaga e a distância de cada pacien
       ).startsAt,
       priceCents: 25000,
       preparation: 'jejum de 8 h',
-      vacancyUrl: `${env.WEB_ORIGIN}/vagas/${withPrep.vacancy.id}`,
+      vacancyUrl: `${env.WEB_ORIGIN}/paciente/vagas/${withPrep.vacancy.id}`,
       distanceMeters: haversineMeters(sub, withPrep.clinic),
     });
   }

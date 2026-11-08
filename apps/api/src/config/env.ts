@@ -1,3 +1,4 @@
+import { createECDH } from 'node:crypto';
 import { z } from 'zod';
 
 export const REQUIRED_ENV = [
@@ -30,6 +31,9 @@ export const OPTIONAL_ENV = [
   'EMAIL_FROM',
   'VACANCY_MOTOR_ENABLED',
   'WHATSAPP_MODE',
+  'VAPID_PUBLIC_KEY',
+  'VAPID_PRIVATE_KEY',
+  'VAPID_SUBJECT',
   ...GOOGLE_CALENDAR_ENV,
 ] as const;
 
@@ -45,6 +49,23 @@ const secret = filled.min(32).refine((value) => !EXAMPLE_SECRET.test(value));
 
 const envSchema = z
   .object({
+    VAPID_PUBLIC_KEY: z.preprocess(
+      blankAsUndefined,
+      filled.regex(/^[A-Za-z0-9_-]{87}$/).optional(),
+    ),
+    VAPID_PRIVATE_KEY: z.preprocess(
+      blankAsUndefined,
+      filled.regex(/^[A-Za-z0-9_-]{43}$/).optional(),
+    ),
+    VAPID_SUBJECT: z.preprocess(
+      blankAsUndefined,
+      filled
+        .pipe(z.url())
+        .refine(
+          (value) => value.startsWith('mailto:') || value.startsWith('https:'),
+        )
+        .optional(),
+    ),
     DATABASE_URL: filled,
     BETTER_AUTH_SECRET: secret,
     BETTER_AUTH_URL: filled.pipe(z.url()),
@@ -123,6 +144,34 @@ const envSchema = z
         path: ['EMAIL_FROM'],
         message: 'obrigatório com RESEND_API_KEY',
       });
+    }
+    const vapidNames = [
+      'VAPID_PUBLIC_KEY',
+      'VAPID_PRIVATE_KEY',
+      'VAPID_SUBJECT',
+    ] as const;
+    const missingVapid = vapidNames.filter((name) => !env[name]);
+    if (missingVapid.length > 0 && missingVapid.length < 3) {
+      for (const name of missingVapid)
+        ctx.addIssue({
+          code: 'custom',
+          path: [name],
+          message: 'as três VAPID_* vêm juntas',
+        });
+    }
+    if (env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY) {
+      try {
+        const key = createECDH('prime256v1');
+        key.setPrivateKey(Buffer.from(env.VAPID_PRIVATE_KEY, 'base64url'));
+        if (key.getPublicKey().toString('base64url') !== env.VAPID_PUBLIC_KEY)
+          throw new Error();
+      } catch {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['VAPID_PUBLIC_KEY'],
+          message: 'par de chaves VAPID inválido',
+        });
+      }
     }
     const missing = GOOGLE_CALENDAR_ENV.filter((name) => !env[name]);
     if (missing.length > 0 && missing.length < GOOGLE_CALENDAR_ENV.length) {
