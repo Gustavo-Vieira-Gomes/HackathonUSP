@@ -62,3 +62,17 @@ Cadastro em `/paciente/cadastro`, login em `/paciente/login` e área autenticada
 `GET /api/patient/reservations/:id` e `GET /api/patient/subscriptions/:id` resolvem o paciente pela sessão e respondem 404 para recurso alheio ou inexistente. Novas operações de paciente devem usar `@PatientOnly()` e filtrar por `@CurrentPatientId()`. O job de retenção roda a cada minuto usando `ClockService.now()`: remove reservas a partir de 30 dias após o fim do exame e inscrições a partir de 30 dias após expiração, junto dos dependentes identificáveis. A conta e o registro do consentimento permanecem.
 
 HACK-23: cadastro e login do paciente em `/paciente/cadastro` e `/paciente/login`, com telefone e consentimento obrigatório para dados de saúde. A conta autenticada acessa seus registros por `/paciente/reservas/<id>` e `/paciente/inscricoes/<id>`; registros inexistentes ou de outro paciente respondem não encontrado sem exibir dados.
+
+## Lista de encaixe do paciente (HACK-24)
+
+Após login em `/paciente`, acesse `/paciente/inscricoes/nova`: escolha exame,
+endereço ou localização e raio, preço máximo e janelas no fuso de São Paulo.
+“Posso ir hoje” exige localização atual. Uma nova inscrição para o mesmo exame
+atualiza a existente. O matching usa as mesmas regras das ondas de alerta e
+encaminha ao link `/paciente/vagas/:id` se já houver vaga compatível.
+
+Em `/paciente/inscricoes`, veja clínicas na região e renove a mesma inscrição por
+30 dias. O relógio da aplicação determina a expiração; o job por minuto envia
+um link para essa tela quando o e-mail estiver configurado. Sem credenciais de
+Resend, nenhum e-mail é enviado. Aceite, reserva comum, foto do pedido e permissão
+push são pontos de integração com os cards responsáveis.

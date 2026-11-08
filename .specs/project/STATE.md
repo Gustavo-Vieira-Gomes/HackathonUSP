@@ -28,3 +28,13 @@ Políticas centralizadas em .claude/rules: project, engineering, security e desi
 - Artefatos de navegação e ownership ficam em README e spec; não há descoberta adicional que justifique duplicação em .notebook.
 
 - HACK-23 validado: check (414 testes sem falhas/ignorados), build e smoke verdes no banco hack_23. Inclui páginas por ID e smoke de 404 no Next. Sem dependências/migrations novas e sem deploy.
+
+## Decisões HACK-24
+
+- Autorizada esteira sem aprovações; escopo grande com tarefas API e web delegadas pela skill tlc-spec-driven.
+- Base HTTPS main f59b350; alterações isoladas em .worktrees/HACK-24.
+- Postgres isolado hack_24 em 54324, sem credenciais de provedor externo.
+- Links de aceite/reserva e ponto de foto são integração futura conforme brief.
+- Dependências copiadas primeiro do principal; faltava Prisma. Donor HACK-23 com package-lock idêntico completou node_modules sem instalação.
+- Usuário autorizou TODO de uma linha para PushPermission caso HACK-35 não esteja em main antes desta PR; não copiar componente da outra branch.
+- Provas focadas: 4 testes HTTP Postgres (validação/auth, janelas/ownership, matching/upsert, expiração/renovação), 2 testes web, lint/tipos verdes.

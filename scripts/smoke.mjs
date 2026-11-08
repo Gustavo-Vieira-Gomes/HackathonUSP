@@ -356,6 +356,42 @@ try {
     'H17-C37: exame cadastrado fora da lista',
   );
 
+  // HACK-24: inscrição persistida pelo proxy, lista SSR e renovação da mesma linha.
+  const subscribed = await fetch(`${webUrl}/api/patient/subscriptions`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: webUrl, cookie },
+    body: JSON.stringify({
+      tussCode: mri.tussCode,
+      latitude: -23.5617,
+      longitude: -46.656,
+      radiusMeters: 10000,
+      maxPriceCents: 55000,
+      canGoToday: false,
+      windows: [{ weekday: 1, startMinute: 1080, endMinute: 1260 }],
+    }),
+  });
+  assert.equal(subscribed.status, 201, 'H24: inscrição pelo Next');
+  const subscriptionResult = await subscribed.json();
+  assert.equal(subscriptionResult.matchedVacancyId, null);
+  assert.ok(subscriptionResult.subscription.clinicCount >= 1);
+  const subscriptionsPage = await fetch(`${webUrl}/paciente/inscricoes`, {
+    headers: { cookie },
+  });
+  assert.equal(subscriptionsPage.status, 200);
+  assert.match(await subscriptionsPage.text(), /[Nn]enhuma vaga agora/);
+  const renewed = await fetch(
+    `${webUrl}/api/patient/subscriptions/${subscriptionResult.subscription.id}/renew`,
+    {
+      method: 'POST',
+      headers: { origin: webUrl, cookie },
+    },
+  );
+  assert.equal(renewed.status, 201, 'H24: renovar pelo Next');
+  assert.equal(
+    (await renewed.json()).subscription.id,
+    subscriptionResult.subscription.id,
+  );
+
   // HACK-18: /clinica/agenda sem GOOGLE_* (indisponível), alerta do ?google= e login.
   const agenda = await fetch(`${webUrl}/clinica/agenda`, {
     headers: { cookie: clinicCookie },
