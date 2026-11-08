@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 4,
+  "next_id": 5,
   "lessons": [
     {
       "id": "L-001",
@@ -52,6 +52,22 @@
       ],
       "created": "2026-11-08T04:35:55Z",
       "last_seen": "2026-11-08T04:35:55Z"
+    },
+    {
+      "id": "L-004",
+      "key": "gate_fail::teste que afirma occurredat base 1 precisa de base estritamente depois da ultima transicao semeada publish grava clock now e o mesmo milissegundo vira base 2 pela d6",
+      "text": "Teste que afirma occurredAt = base + 1 precisa de base estritamente depois da última transição semeada: publish grava clock.now() e o mesmo milissegundo vira base + 2 pela D6.",
+      "signal": "gate_fail",
+      "scope": "apps/api/vacancies",
+      "status": "candidate",
+      "features": ["hack-32-continuacao"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/api/src/modules/vacancies/vacancies.service.test.ts:785 (apps/api/vacancies)"
+      ],
+      "created": "2026-11-08T07:06:46Z",
+      "last_seen": "2026-11-08T07:06:46Z"
     }
   ]
 }

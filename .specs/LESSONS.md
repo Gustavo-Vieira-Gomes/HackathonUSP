@@ -35,6 +35,13 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: apps/api/src/modules/vacancies/vacancies.service.test.ts:632 (apps/api)
 - last seen: 2026-11-08T04:35:55Z
 
+### L-004 - Teste que afirma occurredAt = base + 1 precisa de base estritamente depois da última transição semeada: publish grava clock.now() e o mesmo milissegundo vira base + 2 pela D6.
+
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `apps/api/vacancies` · harmful: 0
+- features: hack-32-continuacao
+- evidence: apps/api/src/modules/vacancies/vacancies.service.test.ts:785 (apps/api/vacancies)
+- last seen: 2026-11-08T07:06:46Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
