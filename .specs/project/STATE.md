@@ -48,3 +48,4 @@ Políticas centralizadas em .claude/rules: project, engineering, security e desi
 - Dependências copiadas primeiro do principal; faltava Prisma. Donor HACK-23 com package-lock idêntico completou node_modules sem instalação.
 - Usuário autorizou TODO de uma linha para PushPermission caso HACK-35 não esteja em main antes desta PR; não copiar componente da outra branch.
 - Provas focadas: 4 testes HTTP Postgres (validação/auth, janelas/ownership, matching/upsert, expiração/renovação), 2 testes web, lint/tipos verdes.
+- HACK-24: main 957cf9e integrada; check (426 testes, zero falhas/skips), build e smoke verdes. Postgres hack_24; e-mail com envio simulado, sem provedor real. Slot pesado-2 liberado.
