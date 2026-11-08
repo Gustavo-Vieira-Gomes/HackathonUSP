@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export * from './exam-questionnaires';
+export * from './realtime';
 
 export const healthResponseSchema = z.object({
   status: z.literal('ok'),
