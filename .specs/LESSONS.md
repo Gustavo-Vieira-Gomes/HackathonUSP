@@ -35,6 +35,20 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: apps/api/src/modules/vacancies/vacancies.service.test.ts:632 (apps/api)
 - last seen: 2026-11-08T04:35:55Z
 
+### L-004 - Rota movida para outro controller herda o check de proteção só se a prova exercita a rota nova: estender o teste de 429 para a rota movida, não só conferir os decorators.
+
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `apps/api guards` · harmful: 0
+- features: hack-16-cadastro-login-clinica
+- evidence: apps/api/src/modules/clinics/clinic-sign-up.controller.ts:35 F1 (apps/api guards)
+- last seen: 2026-11-08T06:25:57Z
+
+### L-005 - Check que cita 'o código do fornecedor' deve nomear o valor literal, ou o teste só afirma o status.
+
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · harmful: 0
+- features: hack-16-cadastro-login-clinica
+- evidence: clinic-sign-up.test.ts:270 C9
+- last seen: 2026-11-08T06:25:57Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
