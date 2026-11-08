@@ -1,9 +1,9 @@
 # f1-patient-auth proofs
 
-**HEAD**: 544075f
+**HEAD**: 2924815
 **Tree**: dirty - graphify-out/
 **Shell**: /bin/sh
-**Result**: 47 pass, 1 fail
+**Result**: 48 pass, 0 fail
 
 | Check | Proof | Result |
 | --- | --- | --- |
@@ -54,17 +54,17 @@
 | Build | `npm run build` | pass |
 | Build | `npm run lint` | pass |
 | Build | `npm run typecheck` | pass |
-| Build | `npm run format:check` | **fail** - [warn] Code style issues found in the above file. Run Prettier with --write to fix. |
+| Build | `npm run format:check` | pass |
 
 ## Output
 
 `Run api` - exit 0
 
 ```
-✔ C21 /me com sessão válida devolve o dono da sessão (120.712629ms)
-✔ C22 /me sem sessão válida responde 401 (247.190046ms)
-✔ C32 identidade vem só da sessão, ignorando o id enviado pelo cliente (211.654988ms)
-✔ C33 não existe rota de paciente por id (206.529807ms)
+✔ C21 /me com sessão válida devolve o dono da sessão (123.766264ms)
+✔ C22 /me sem sessão válida responde 401 (241.151582ms)
+✔ C32 identidade vem só da sessão, ignorando o id enviado pelo cliente (206.897547ms)
+✔ C33 não existe rota de paciente por id (207.935499ms)
 ℹ tests 29
 ℹ suites 0
 ℹ pass 29
@@ -72,7 +72,7 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 9631.120103
+ℹ duration_ms 9693.235968
 Loaded Prisma config from prisma.config.ts.
 
 Prisma schema loaded from prisma/schema.prisma.
@@ -84,9 +84,9 @@ Prisma schema loaded from prisma/schema.prisma.
 > @hackathon/contracts@0.1.0 test
 > tsx --test src/*.test.ts
 
-✔ rejeita um serviço indisponível declarado como saudável (2.232624ms)
-✔ aceita resposta de saúde de ambos os adaptadores (0.309879ms)
-✔ C41 schema de cadastro aceita e recusa os exemplos do plano (7.230526ms)
+✔ rejeita um serviço indisponível declarado como saudável (2.807852ms)
+✔ aceita resposta de saúde de ambos os adaptadores (0.274002ms)
+✔ C41 schema de cadastro aceita e recusa os exemplos do plano (7.081745ms)
 ℹ tests 3
 ℹ suites 0
 ℹ pass 3
@@ -94,7 +94,7 @@ Prisma schema loaded from prisma/schema.prisma.
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 270.846803
+ℹ duration_ms 285.353718
 ```
 
 `npm run smoke` - exit 0
