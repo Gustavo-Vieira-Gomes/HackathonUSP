@@ -83,6 +83,7 @@ Deu certo se: um usuário sobe 3 documentos e, sem digitar nada,
 **Tratar:** B1, B2.
 
 **Abertas (usuário responde, tipo `aberta`: segue com o padrão proposto até a resposta):**
+
 - B3 — compartilhamento e cuidador. Pergunta-chave: o cuidador (filha gerenciando a mãe) é o público principal? Se sim, inverte o modelo de conta.
 - B4 — passos vencidos, recorrência e lembretes.
 

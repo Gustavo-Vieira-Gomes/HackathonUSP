@@ -18,23 +18,23 @@ Versão: 1.0 · 07/11/2026 · Hackathon Capim (tema: acesso à saúde)
 
 ## 2. Glossário
 
-| Termo | Definição |
-| --- | --- |
-| Clínica | Unidade de diagnóstico por imagem cadastrada na plataforma. |
-| Paciente | Pessoa cadastrada que reserva exames ou se inscreve na lista de encaixe. |
-| Exame | Procedimento oferecido pela clínica, identificado por código TUSS, com preço cheio, piso, antecedência mínima e preparo. |
-| Horário | Intervalo na agenda da clínica em que um exame pode ser feito. |
-| Reserva comum | Reserva de um horário livre em data futura, a preço cheio. |
-| Vaga de encaixe | Horário oferecido com desconto, originado de cancelamento, no-show ou agenda vazia. |
-| Inscrição | Pedido do paciente para ser avisado de vagas de encaixe de um exame, com região, preço máximo e janelas de disponibilidade. |
-| Janela de disponibilidade | Dias e horários em que o paciente declara poder comparecer. |
-| Onda | Grupo de pacientes alertados ao mesmo tempo sobre uma vaga. |
-| Sinal | Valor pago pelo paciente para travar uma vaga de encaixe. |
-| Preparo | Condição exigida pelo exame (jejum, bexiga cheia) e quantas horas antes começa. |
-| Contraindicação | Condição que impede o exame (marca-passo em RM, gravidez em TC). |
-| X | Tolerância de atraso do paciente antes de o horário virar no-show (padrão 15 min). |
-| Y | Tempo máximo de deslocamento para quem aceita uma vaga de no-show (padrão 45 min). |
-| Z | Tempo que uma onda tem para alguém pagar o sinal antes da próxima (padrão 10 min). |
+| Termo                     | Definição                                                                                                                   |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Clínica                   | Unidade de diagnóstico por imagem cadastrada na plataforma.                                                                 |
+| Paciente                  | Pessoa cadastrada que reserva exames ou se inscreve na lista de encaixe.                                                    |
+| Exame                     | Procedimento oferecido pela clínica, identificado por código TUSS, com preço cheio, piso, antecedência mínima e preparo.    |
+| Horário                   | Intervalo na agenda da clínica em que um exame pode ser feito.                                                              |
+| Reserva comum             | Reserva de um horário livre em data futura, a preço cheio.                                                                  |
+| Vaga de encaixe           | Horário oferecido com desconto, originado de cancelamento, no-show ou agenda vazia.                                         |
+| Inscrição                 | Pedido do paciente para ser avisado de vagas de encaixe de um exame, com região, preço máximo e janelas de disponibilidade. |
+| Janela de disponibilidade | Dias e horários em que o paciente declara poder comparecer.                                                                 |
+| Onda                      | Grupo de pacientes alertados ao mesmo tempo sobre uma vaga.                                                                 |
+| Sinal                     | Valor pago pelo paciente para travar uma vaga de encaixe.                                                                   |
+| Preparo                   | Condição exigida pelo exame (jejum, bexiga cheia) e quantas horas antes começa.                                             |
+| Contraindicação           | Condição que impede o exame (marca-passo em RM, gravidez em TC).                                                            |
+| X                         | Tolerância de atraso do paciente antes de o horário virar no-show (padrão 15 min).                                          |
+| Y                         | Tempo máximo de deslocamento para quem aceita uma vaga de no-show (padrão 45 min).                                          |
+| Z                         | Tempo que uma onda tem para alguém pagar o sinal antes da próxima (padrão 10 min).                                          |
 
 ## 3. Regras de negócio
 
@@ -517,15 +517,15 @@ Funcionalidade: Registro e métricas
 
 ## 5. Dependências externas
 
-| Dependência | Uso | Falha | Na demo |
-| --- | --- | --- | --- |
-| Google Calendar API | Agenda da clínica | RN-09: avisa e suspende | Real, 2 clínicas |
-| Provedor de IA (leitura da foto) | RN-18 | Cai para a lista de exames | Real |
-| Web Push | Alertas | Cai para e-mail e tempo real na tela | Real |
-| E-mail | Alertas, confirmações | Log e retentativa limitada | Real |
-| Pix / cartão | Sinal e pagamento | Tentativa expira (RN-42) | Simulado |
-| WhatsApp (Evolution/WAHA) | Alertas | Cai para push e e-mail; tela simulada no palco | Real, número do time |
-| Capim (parcelamento) | RN-47 | Opção não aparece | Simulado |
+| Dependência                      | Uso                   | Falha                                          | Na demo              |
+| -------------------------------- | --------------------- | ---------------------------------------------- | -------------------- |
+| Google Calendar API              | Agenda da clínica     | RN-09: avisa e suspende                        | Real, 2 clínicas     |
+| Provedor de IA (leitura da foto) | RN-18                 | Cai para a lista de exames                     | Real                 |
+| Web Push                         | Alertas               | Cai para e-mail e tempo real na tela           | Real                 |
+| E-mail                           | Alertas, confirmações | Log e retentativa limitada                     | Real                 |
+| Pix / cartão                     | Sinal e pagamento     | Tentativa expira (RN-42)                       | Simulado             |
+| WhatsApp (Evolution/WAHA)        | Alertas               | Cai para push e e-mail; tela simulada no palco | Real, número do time |
+| Capim (parcelamento)             | RN-47                 | Opção não aparece                              | Simulado             |
 
 ## 6. Premissas e riscos aceitos
 
