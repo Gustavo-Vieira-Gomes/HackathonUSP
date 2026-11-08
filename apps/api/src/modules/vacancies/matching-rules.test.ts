@@ -15,6 +15,7 @@ const now = new Date('2026-11-13T13:00:00Z');
 
 const vacancy: MatchableVacancy = {
   startsAt: saturday10h,
+  endsAt: new Date(saturday10h.getTime() + 30 * 60_000),
   currentPriceCents: 30000,
   clinic,
   requiredLeadMinutes: 8 * 60,
@@ -100,5 +101,46 @@ describe('matchesVacancy', () => {
   it('antecedência menor que o preparo não casa', () => {
     const late = new Date('2026-11-14T08:00:00Z'); // faltam 5 h; preparo exige 8 h
     assert.equal(matchesVacancy(subscription, vacancy, late), false);
+  });
+});
+
+describe('matchesVacancy · fim do horário na janela (RN-21)', () => {
+  const afternoon: MatchableSubscription = {
+    ...subscription,
+    windows: [{ weekday: 6, startMinute: 14 * 60, endMinute: 18 * 60 }],
+  };
+  // Sábado 17h50 em São Paulo.
+  const at1750 = new Date('2026-11-14T20:50:00Z');
+  const lasting = (minutes: number): MatchableVacancy => ({
+    ...vacancy,
+    startsAt: at1750,
+    endsAt: new Date(at1750.getTime() + minutes * 60_000),
+  });
+
+  it('RM às 17h50 com 40 min termina às 18h30, fora da janela 14h-18h', () => {
+    assert.equal(matchesVacancy(afternoon, lasting(40), now), false);
+  });
+
+  it('terminar exatamente no fim da janela ainda casa', () => {
+    assert.equal(matchesVacancy(afternoon, lasting(10), now), true);
+  });
+
+  it('horário que atravessa a meia-noite não cabe na janela até 24h', () => {
+    const lateNight: MatchableSubscription = {
+      ...subscription,
+      windows: [{ weekday: 6, startMinute: 22 * 60, endMinute: 1440 }],
+    };
+    const at2330 = new Date('2026-11-15T02:30:00Z'); // sábado 23h30
+    const crossing: MatchableVacancy = {
+      ...vacancy,
+      startsAt: at2330,
+      endsAt: new Date(at2330.getTime() + 60 * 60_000),
+    };
+    assert.equal(matchesVacancy(lateNight, crossing, now), false);
+    const fits = {
+      ...crossing,
+      endsAt: new Date(at2330.getTime() + 30 * 60_000),
+    };
+    assert.equal(matchesVacancy(lateNight, fits, now), true);
   });
 });

@@ -23,6 +23,7 @@ export interface MatchableSubscription {
 
 export interface MatchableVacancy {
   startsAt: Date;
+  endsAt: Date;
   currentPriceCents: number;
   clinic: GeoPoint;
   /** Antecedência exigida: o maior entre a mínima do exame e o preparo (RN-23). */
@@ -65,15 +66,21 @@ export function localWeekdayAndMinute(at: Date): {
   };
 }
 
-/** O início do horário cai dentro de alguma janela da inscrição (RN-21). */
+/**
+ * O horário inteiro, do início ao fim, cabe em alguma janela da inscrição (RN-21).
+ * O fim é medido a partir do início no mesmo dia local: um exame que atravessa a
+ * meia-noite passa de 1440 e não cabe em janela nenhuma.
+ */
 export function isInsideWindow(
   startsAt: Date,
+  endsAt: Date,
   windows: readonly AvailabilityWindow[],
 ): boolean {
-  const { weekday, minute } = localWeekdayAndMinute(startsAt);
+  const { weekday, minute: start } = localWeekdayAndMinute(startsAt);
+  const end = start + (endsAt.getTime() - startsAt.getTime()) / 60_000;
   return windows.some(
     (w) =>
-      w.weekday === weekday && minute >= w.startMinute && minute < w.endMinute,
+      w.weekday === weekday && start >= w.startMinute && end <= w.endMinute,
   );
 }
 
@@ -92,6 +99,6 @@ export function matchesVacancy(
     vacancy.currentPriceCents <= subscription.maxPriceCents &&
     haversineMeters(subscription, vacancy.clinic) <=
       subscription.radiusMeters &&
-    isInsideWindow(vacancy.startsAt, subscription.windows)
+    isInsideWindow(vacancy.startsAt, vacancy.endsAt, subscription.windows)
   );
 }

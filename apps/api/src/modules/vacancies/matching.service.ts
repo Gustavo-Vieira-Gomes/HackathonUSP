@@ -9,6 +9,7 @@ type VacancyWithSlot = {
   currentPriceCents: number;
   slot: {
     startsAt: Date;
+    endsAt: Date;
     clinic: { latitude: number; longitude: number };
     exam: { minLeadMinutes: number; preparationHours: number };
   };
@@ -18,6 +19,7 @@ function toMatchable(vacancy: VacancyWithSlot): MatchableVacancy {
   const { slot } = vacancy;
   return {
     startsAt: slot.startsAt,
+    endsAt: slot.endsAt,
     currentPriceCents: vacancy.currentPriceCents,
     clinic: slot.clinic,
     requiredLeadMinutes: Math.max(
@@ -31,6 +33,7 @@ const slotInclude = {
   slot: {
     select: {
       startsAt: true,
+      endsAt: true,
       exam: {
         select: {
           tussCode: true,
