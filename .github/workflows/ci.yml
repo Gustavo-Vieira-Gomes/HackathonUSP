@@ -7,13 +7,35 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: hackathon
+          POSTGRES_PASSWORD: hackathon
+          POSTGRES_DB: hackathon
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hackathon -d hackathon"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      # Banco efêmero do runner; credenciais locais, sem segredo real.
+      DATABASE_URL: postgresql://hackathon:hackathon@127.0.0.1:5432/hackathon
+      BETTER_AUTH_URL: http://127.0.0.1:3001
+      WEB_ORIGIN: http://127.0.0.1:3000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
+      # Segredo descartável gerado por execução; nunca fica no repositório.
+      - run: echo "BETTER_AUTH_SECRET=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
       - run: npm ci
+      - run: npm run db:deploy -w @hackathon/api
       - run: npm run check
       - run: npm run build
       - run: npm run smoke
