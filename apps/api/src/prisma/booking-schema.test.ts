@@ -125,7 +125,7 @@ async function stateOf(id: string) {
   return row.state;
 }
 
-/** Exclusão bloqueada por uma FK Restrict específica: P2003, SQLSTATE 23503 e o nome dela. */
+/** Escrita bloqueada por uma FK específica (exclusão Restrict ou alvo inexistente): P2003, SQLSTATE 23503 e o nome dela. */
 async function rejectsRestrict(promise: Promise<unknown>, constraint: string) {
   await assert.rejects(promise, (error: unknown) => {
     const codes = errorCodes(error);
@@ -786,7 +786,7 @@ test('C20 - degrau repetido no mesmo exame é recusado com P2002', async () => {
   assert.equal(sameLead.leadMinutes, 1440);
 });
 
-test('C21 - as 10 FKs Restrict da fatia 2 recusam apagar o pai com P2003/23503', async () => {
+test('C21 - as 10 FKs Restrict da fatia 2: 9 recusam apagar o pai com P2003/23503 pelo nome, Slot_clinicId_fkey pelo catálogo', async () => {
   // Cada caso monta um pai com um único filho, para a recusa vir da FK nomeada.
   const cases: {
     constraint: string;
@@ -796,22 +796,7 @@ test('C21 - as 10 FKs Restrict da fatia 2 recusam apagar o pai com P2003/23503',
     }>;
   }[] = [
     {
-      constraint: 'Slot_clinicId_fkey',
-      setup: async () => {
-        const owner = await createClinic();
-        const examOwner = await createClinic();
-        const foreignExam = await createExam(examOwner.id);
-        const slot = await createSlot(owner.id, foreignExam.id);
-        return {
-          remove: () => prisma.clinic.delete({ where: { id: owner.id } }),
-          stillThere: async () =>
-            (await prisma.clinic.count({ where: { id: owner.id } })) +
-            (await prisma.slot.count({ where: { id: slot.id } })),
-        };
-      },
-    },
-    {
-      constraint: 'Slot_examId_fkey',
+      constraint: 'Slot_examId_clinicId_fkey',
       setup: async () => {
         const clinic = await createClinic();
         const exam = await createExam(clinic.id);
@@ -856,7 +841,7 @@ test('C21 - as 10 FKs Restrict da fatia 2 recusam apagar o pai com P2003/23503',
       },
     },
     {
-      constraint: 'Reservation_vacancyId_fkey',
+      constraint: 'Reservation_vacancyId_slotId_fkey',
       setup: async () => {
         const { vacancy, reservations } = await vacancyWithPending(1);
         return {
@@ -984,13 +969,164 @@ test('C21 - as 10 FKs Restrict da fatia 2 recusam apagar o pai com P2003/23503',
       },
     },
   ];
-  assert.equal(cases.length, 10);
+  assert.equal(cases.length, 9);
 
   for (const item of cases) {
     const { remove, stillThere } = await item.setup();
     await rejectsRestrict(remove(), item.constraint);
     assert.equal(await stillThere(), 2, item.constraint);
   }
+
+  // Slot_clinicId_fkey, a décima: com a FK composta Slot(examId, clinicId), todo horário
+  // aponta exame da própria clínica, e apagar a clínica esbarra antes em
+  // Exam_clinicId_fkey (criada primeiro). A recusa por nome não é mais isolável;
+  // a FK é provada pela definição no catálogo e a exclusão segue recusada.
+  const [slotClinicFk] = await prisma.$queryRaw<{ deltype: string }[]>`
+    select confdeltype::text as deltype from pg_constraint
+    where conname = 'Slot_clinicId_fkey' and conrelid = '"Slot"'::regclass
+      and confrelid = '"Clinic"'::regclass`;
+  assert.equal(
+    slotClinicFk?.deltype,
+    'r',
+    'Slot_clinicId_fkey é ON DELETE RESTRICT',
+  );
+  const owner = await createClinic();
+  const ownExam = await createExam(owner.id);
+  const slot = await createSlot(owner.id, ownExam.id);
+  await rejectsWith(
+    prisma.clinic.delete({ where: { id: owner.id } }),
+    'P2003',
+    '23503',
+  );
+  assert.equal(
+    (await prisma.clinic.count({ where: { id: owner.id } })) +
+      (await prisma.slot.count({ where: { id: slot.id } })),
+    2,
+  );
+});
+
+test('C24 - encaixe da vaga V (horário S1) gravado em S2 é recusado; S1 fica com uma ativa', async () => {
+  const { clinic, exam, patient } = await createBase();
+  const s1 = await createSlot(clinic.id, exam.id);
+  const s2 = await createSlot(clinic.id, exam.id);
+  const vacancy = await createVacancy(s1.id);
+
+  // O cenário do Revisor: encaixe confirmado de V com slotId=S2.
+  await rejectsRestrict(
+    createReservation({
+      slotId: s2.id,
+      patientId: patient.id,
+      vacancyId: vacancy.id,
+      state: 'confirmada',
+    }),
+    'Reservation_vacancyId_slotId_fkey',
+  );
+  // Mover um encaixe certo para S2 depois de criado também é recusado.
+  const encaixe = await createReservation({
+    slotId: s1.id,
+    patientId: patient.id,
+    vacancyId: vacancy.id,
+  });
+  await rejectsRestrict(
+    prisma.reservation.update({
+      where: { id: encaixe.id },
+      data: { slotId: s2.id },
+    }),
+    'Reservation_vacancyId_slotId_fkey',
+  );
+  assert.equal(await prisma.reservation.count({ where: { slotId: s2.id } }), 0);
+
+  // A comum confirmada em S1 entra, e S1 tem exatamente uma reserva ativa.
+  await createReservation({
+    slotId: s1.id,
+    patientId: patient.id,
+    type: 'comum',
+    state: 'confirmada',
+  });
+  assert.equal(
+    await prisma.reservation.count({
+      where: { slotId: s1.id, state: { in: ['confirmada', 'realizada'] } },
+    }),
+    1,
+  );
+  // E o encaixe de V em S1 não confirma por cima dela (trava de horário).
+  await rejectsWith(confirm(encaixe.id), 'P2002');
+});
+
+test('C25 - encaixe no horário da vaga é aceito; comum sem vaga não passa pela FK composta', async () => {
+  const { clinic, exam, patient } = await createBase();
+  const slot = await createSlot(clinic.id, exam.id);
+  const other = await createSlot(clinic.id, exam.id);
+  const vacancy = await createVacancy(slot.id);
+
+  const encaixe = await createReservation({
+    slotId: slot.id,
+    patientId: patient.id,
+    vacancyId: vacancy.id,
+    state: 'confirmada',
+  });
+  assert.equal(await stateOf(encaixe.id), 'confirmada');
+
+  // MATCH SIMPLE: vacancyId nulo dispensa a checagem, em qualquer horário.
+  const comum = await createReservation({
+    slotId: other.id,
+    patientId: patient.id,
+    type: 'comum',
+    state: 'confirmada',
+  });
+  assert.equal(comum.vacancyId, null);
+  assert.equal(await stateOf(comum.id), 'confirmada');
+});
+
+test('C26 - horário com exame de outra clínica é recusado com P2003/23503', async () => {
+  const owner = await createClinic();
+  const ownExam = await createExam(owner.id);
+  const otherClinic = await createClinic();
+  const foreignExam = await createExam(otherClinic.id);
+
+  await rejectsRestrict(
+    createSlot(owner.id, foreignExam.id),
+    'Slot_examId_clinicId_fkey',
+  );
+  assert.equal(await prisma.slot.count({ where: { clinicId: owner.id } }), 0);
+
+  const slot = await createSlot(owner.id, ownExam.id);
+  await rejectsRestrict(
+    prisma.slot.update({
+      where: { id: slot.id },
+      data: { clinicId: otherClinic.id },
+    }),
+    'Slot_examId_clinicId_fkey',
+  );
+  const kept = await prisma.slot.findUniqueOrThrow({ where: { id: slot.id } });
+  assert.equal(kept.clinicId, owner.id);
+  assert.equal(kept.examId, ownExam.id);
+});
+
+test('C27 - Alert.updatedAt é gravado na criação e avança quando o resultado muda', async () => {
+  const { clinic, exam, subscription } = await createBase();
+  const slot = await createSlot(clinic.id, exam.id);
+  const vacancy = await createVacancy(slot.id);
+  const alert = await prisma.alert.create({
+    data: {
+      vacancyId: vacancy.id,
+      subscriptionId: subscription.id,
+      wave: 1,
+      channel: 'whatsapp',
+    },
+  });
+  assert.ok(alert.updatedAt instanceof Date);
+
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const sent = await prisma.alert.update({
+    where: { id: alert.id },
+    data: { result: 'enviado', sentAt: new Date() },
+  });
+  assert.equal(sent.result, 'enviado');
+  assert.ok(
+    sent.updatedAt.getTime() > alert.updatedAt.getTime(),
+    `updatedAt não avançou: ${alert.updatedAt.toISOString()} → ${sent.updatedAt.toISOString()}`,
+  );
 });
 
 test('C22 - a suíte apaga tudo o que gravou', async () => {
