@@ -18,6 +18,12 @@ Estrutura frontend aprovada: organização simplificada do Portal. Páginas simp
 
 Políticas centralizadas em .claude/rules: project, engineering, security e design-patterns globais; frontend/backend/contracts com frontmatter paths. AGENTS e CLAUDE são pontos de entrada para a mesma fonte. Extração na segunda ocorrência da mesma regra com invariantes comuns; regras sensíveis têm dono único desde a primeira implementação. Padrões adotados por necessidade concreta, preservando os recursos nativos do Nest.
 
+## Decisões HACK-19
+
+Autorizado pelo Gustavo: execução sem aprovação entre etapas, commits/push/PR main e aviso ao maestro; sem merge pelo implementador. Slots comuns em fatias de 30 minutos porque Exam não define duração. Snapshot completo antes de efeitos; falha de API suspende conexão e não usa leitura parcial. Nenhuma mudança em Vacancy.slotId ou Exam.clinicId. Banco local isolado hack_19 na porta 54319.
+
+HACK-19 validado: check (429 testes, zero falhas/ignorados), build e smoke verdes. Snapshot completo, eventos idempotentes e revalidação da conexão sob trava de clínica. E-mails após commit usam tentativas existentes, sem nova outbox; Google/Resend reais não homologados. Dependências copiadas sem instalar; donor HACK-17 tem package-lock idêntico ao da base.
+
 ## Decisões — HACK-15
 
 - Retomada do handoff 909a786; integrar main e preservar cadastro/login/exames/agenda atuais. A busca web/API extra do WIP sai desta entrega por não fazer parte do card.
