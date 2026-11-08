@@ -3,8 +3,8 @@ import type {
   ClinicSignUpBody,
   ClinicSignUpResponse,
 } from '@hackathon/contracts';
-import { Injectable, Logger } from '@nestjs/common';
-import { SignUpService } from '../../auth/sign-up.service';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
+import { type SignUpResult, SignUpService } from '../../auth/sign-up.service';
 import { fieldError } from '../../common/pipes/zod-body.pipe';
 import { isUniqueViolation } from '../../prisma/prisma-errors';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -20,7 +20,7 @@ const cnesTaken = () =>
 
 /**
  * Cadastro de clínica num passo (HACK-16, RN-01): conta, perfil, coordenada e
- * expediente, ou nada. Ordem: CNES livre → geocodificação → conta no Better Auth
+ * expediente. Repetição com senha válida completa uma conta sem perfil. Ordem: CNES livre → geocodificação → conta no Better Auth
  * → `Clinic` com expediente num único `create`. Se a escrita da clínica falha
  * depois de a conta existir (CNES gravado por outra requisição no meio), a conta é
  * apagada (cascade em `Session` e `Account`) e a resposta não leva cookie.
@@ -54,11 +54,40 @@ export class ClinicSignUpService {
       );
     }
 
-    const account = await this.signUps.signUp(
-      'clinica',
-      { name: body.name, email: body.email, password: body.password },
-      headers,
-    );
+    let account: SignUpResult;
+    let recovered = false;
+    try {
+      account = await this.signUps.signUp(
+        'clinica',
+        { name: body.name, email: body.email, password: body.password },
+        headers,
+      );
+    } catch (error) {
+      if (!(error instanceof HttpException) || error.getStatus() !== 422)
+        throw error;
+      const failure = error.getResponse();
+      if (
+        typeof failure !== 'object' ||
+        !('code' in failure) ||
+        failure.code !== 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL'
+      )
+        throw error;
+      // Só o dono autenticado de uma conta clínica sem perfil pode completá-la.
+      try {
+        account = await this.signUps.signIn(body, headers);
+      } catch {
+        throw error;
+      }
+      if (
+        account.body.user.role !== 'clinica' ||
+        (await this.prisma.clinic.findUnique({
+          where: { userId: account.body.user.id },
+          select: { id: true },
+        }))
+      )
+        throw error;
+      recovered = true;
+    }
     const userId = account.body.user.id;
 
     try {
@@ -80,6 +109,11 @@ export class ClinicSignUpService {
         setCookie: account.setCookie,
       };
     } catch (error) {
+      // Nunca apagar uma conta recuperada, inclusive se outro retry criou o perfil.
+      if (recovered) {
+        if (isUniqueViolation(error)) throw cnesTaken();
+        throw error;
+      }
       try {
         await this.prisma.user.delete({ where: { id: userId } });
       } catch {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
-import { Logger } from '@nestjs/common';
+import { HttpException, Logger } from '@nestjs/common';
 import type { SignUpService } from '../../auth/sign-up.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 import { ClinicSignUpService } from './clinic-sign-up.service';
@@ -63,4 +63,61 @@ test('H16-C40 - compensação que falha registra error com o id do User, sem e-m
     error.mock.restore();
     warn.mock.restore();
   }
+});
+
+test('HACK-50 - falha ao concluir recuperação não apaga a conta existente', async () => {
+  let deleted = false;
+  const failure = new Error('banco indisponível');
+  const prisma = {
+    clinic: {
+      findUnique: async () => null,
+      create: async () => {
+        throw failure;
+      },
+    },
+    user: {
+      delete: async () => {
+        deleted = true;
+      },
+    },
+  } as unknown as PrismaService;
+  const geocoding = {
+    geocode: async () => ({ latitude: -23, longitude: -46 }),
+  } as unknown as GeocodingService;
+  const signUps = {
+    signUp: async () => {
+      throw new HttpException(
+        { code: 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL' },
+        422,
+      );
+    },
+    signIn: async () => ({
+      body: {
+        user: {
+          id: 'existing',
+          name: 'C',
+          email: 'retry@teste.local',
+          role: 'clinica',
+        },
+      },
+      setCookie: [],
+    }),
+  } as unknown as SignUpService;
+  const service = new ClinicSignUpService(prisma, geocoding, signUps);
+  await assert.rejects(
+    service.signUp(
+      {
+        name: 'C',
+        email: 'retry@teste.local',
+        password: 'senha-forte-1',
+        address: 'Av. Paulista, 1000',
+        cnes: '1234567',
+        technicalManager: 'CRM 1',
+        openingHours: [{ weekday: 1, startMinute: 480, endMinute: 1080 }],
+      },
+      {},
+    ),
+    (error) => error === failure,
+  );
+  assert.equal(deleted, false);
 });
