@@ -3,6 +3,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import type { AppEnv } from './config/env';
+import { PatientsModule } from './modules/patients/patients.module';
 import { ExamplesModule } from './examples/examples.module';
 import { HealthController } from './health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
@@ -18,6 +19,7 @@ export class AppModule {
         AuthModule,
         ScheduleModule.forRoot(),
         ExamplesModule,
+        PatientsModule,
       ],
       controllers: [HealthController],
     };

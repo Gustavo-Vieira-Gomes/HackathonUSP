@@ -110,11 +110,36 @@ try {
   assert.match(pageHtml, /API conectada/);
   assert.match(pageHtml, /Sem sessão ativa/);
 
+  const registerPage = await fetch(`${webUrl}/paciente/cadastro`);
+  assert.equal(registerPage.status, 200);
+  assert.match(await registerPage.text(), /Consentimento para dados de saúde/);
+  const loginPage = await fetch(`${webUrl}/paciente/login`);
+  assert.equal(loginPage.status, 200);
+  assert.match(await loginPage.text(), /Entrar/);
+  const noConsent = await postJson(
+    `${webUrl}/api/sign-up/paciente`,
+    {
+      name: 'Sem aceite',
+      email: `sem-aceite-${Date.now()}@teste.local`,
+      password: 'smoke-senha-1',
+      phone: '+5511999990000',
+    },
+    webUrl,
+  );
+  assert.equal(noConsent.status, 422);
+  assert.equal((await noConsent.json()).message, 'consentimento obrigatório');
+
   const email = `smoke-${Date.now()}-${process.pid}@teste.local`;
   const password = 'smoke-senha-1';
   const signUp = await postJson(
     `${webUrl}/api/sign-up/paciente`,
-    { name: 'Smoke', email, password },
+    {
+      name: 'Smoke',
+      email,
+      password,
+      phone: '+5511999990000',
+      healthDataConsent: true,
+    },
     webUrl,
   );
   assert.equal(signUp.status, 200, `C29: cadastro pelo Next ${signUp.status}`);

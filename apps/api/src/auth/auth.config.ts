@@ -2,10 +2,13 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { oneTimeToken } from 'better-auth/plugins';
 import type { AppEnv } from '../config/env';
-import type { PrismaClient } from '../generated/prisma/client';
+import type { PrismaClient, Prisma } from '../generated/prisma/client';
 import { signUpRoleContext } from './role-context';
 
-export function createAuth(env: AppEnv, prisma: PrismaClient) {
+export function createAuth(
+  env: AppEnv,
+  prisma: PrismaClient | Prisma.TransactionClient,
+) {
   return betterAuth({
     baseURL: env.BETTER_AUTH_URL,
     basePath: '/api/auth',

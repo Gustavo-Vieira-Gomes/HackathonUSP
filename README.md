@@ -47,6 +47,14 @@ Há uma base de código e dois perfis de harness. O perfil alternativo fica inat
 
 Fundação (HACK-12): Postgres + Prisma, Better Auth no Nest com cookie httpOnly no domínio do Next (repasse em `/api/auth/*` e `/api/sign-up/{paciente,clinica}`), guard global (rota nova nasce protegida; pública usa `@AllowAnonymous()`), `@nestjs/schedule` e socket.io com job e gateway de exemplo. Fila e deploy ainda não existem. Saúde atual é liveness; não comprova prontidão do banco.
 
+## Paciente (HACK-23, entrega parcial)
+
+Cadastro em `/paciente/cadastro` e login em `/paciente/login`, usando os proxies e cookies Better Auth existentes. `POST /api/sign-up/paciente` agora exige também `phone` (10–15 dígitos, `+` opcional) e `healthDataConsent: true`. Sem aceite retorna 422 `consentimento obrigatório`. O servidor grava a data do aceite junto com conta, credencial, sessão e perfil numa transação.
+
+`GET /api/patient/subscriptions/:id` devolve somente a inscrição do paciente autenticado; outro dono ou papel recebe 404. O job `patient-subscription-retention` executa a cada hora e apaga inscrições cuja expiração ocorreu há pelo menos 30 dias, incluindo as janelas. Não remove o perfil nem o consentimento.
+
+Reservas, retenção após exame e o cenário Maria/João para reservas aguardam o modelo canônico da fatia 2 do HACK-13. A main atual só contém a fatia 1; esta entrega não conclui todos os critérios do HACK-23. Veja [escopo e critérios](.specs/features/patient-auth/plan.md).
+
 ## Validação
 
 Checks, builds e smoke HTTP verificados com Node 24. Veja [evidências e limites](docs/verification.md), incluindo o override transitivo de segurança e os alertas restantes de ferramentas de desenvolvimento.

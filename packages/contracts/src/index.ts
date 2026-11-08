@@ -41,3 +41,23 @@ export const signUpResponseSchema = z.strictObject({
 });
 
 export type SignUpResponse = z.infer<typeof signUpResponseSchema>;
+
+/** Cadastro de paciente exige contato e consentimento explícito (RN-11). */
+export const patientSignUpBodySchema = signUpBodySchema.extend({
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9]{10,15}$/),
+  healthDataConsent: z.literal(true),
+});
+export type PatientSignUpBody = z.infer<typeof patientSignUpBodySchema>;
+
+export const patientSubscriptionResponseSchema = z.strictObject({
+  id: z.uuid(),
+  tussCode: z.string(),
+  maxPriceCents: z.number().int(),
+  expiresAt: z.iso.datetime(),
+});
+export type PatientSubscriptionResponse = z.infer<
+  typeof patientSubscriptionResponseSchema
+>;

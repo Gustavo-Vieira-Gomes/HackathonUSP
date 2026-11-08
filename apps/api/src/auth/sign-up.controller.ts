@@ -1,10 +1,12 @@
 import {
   type SignUpResponse,
   signUpBodySchema,
+  patientSignUpBodySchema,
   type UserRole,
 } from '@hackathon/contracts';
 import {
   BadRequestException,
+  UnprocessableEntityException,
   Body,
   Controller,
   HttpCode,
@@ -51,12 +53,23 @@ export class SignUpController {
     req: Request,
     res: Response,
   ): Promise<SignUpResponse> {
-    const parsed = signUpBodySchema.safeParse(body);
+    if (
+      role === 'paciente' &&
+      (typeof body !== 'object' ||
+        body === null ||
+        !('healthDataConsent' in body) ||
+        body.healthDataConsent !== true)
+    ) {
+      throw new UnprocessableEntityException('consentimento obrigatório');
+    }
+    const parsed = (
+      role === 'paciente' ? patientSignUpBodySchema : signUpBodySchema
+    ).safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({
         code: 'INVALID_BODY',
         message:
-          'Corpo inválido: envie apenas name, email e password (8 caracteres ou mais).',
+          'Corpo inválido: confira nome, e-mail, senha (8 caracteres ou mais) e, para paciente, telefone e consentimento.',
         fields: [
           ...new Set(
             parsed.error.issues.map((issue) => issue.path.join('.') || 'body'),

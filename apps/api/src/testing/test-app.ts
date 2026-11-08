@@ -67,7 +67,12 @@ export function signUp(
   role: UserRole,
   body: Record<string, unknown>,
 ): Promise<Response> {
-  return jsonRequest(t, 'POST', `/api/sign-up/${role}`, body);
+  return jsonRequest(t, 'POST', `/api/sign-up/${role}`, {
+    ...(role === 'paciente'
+      ? { phone: '+5511999990000', healthDataConsent: true }
+      : {}),
+    ...body,
+  });
 }
 
 /** Cookie de sessão (`nome=valor`) a partir dos `set-cookie` da resposta. */
