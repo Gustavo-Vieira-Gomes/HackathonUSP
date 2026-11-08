@@ -155,7 +155,7 @@ Escrever a spec BDD (`docs/templates/feature.md`) a partir deste mapa, começand
 | T4 | Tempo real: socket.io (`@nestjs/websockets`), sala por paciente e por clínica, auth pelo cookie no handshake | Pedido do time; polling descartado |
 | T5 | Push: `web-push` com VAPID no Nest; service worker no Next | Exige HTTPS |
 | T6 | E-mail: Resend | Plano gratuito |
-| T7 | WhatsApp real via Meta Cloud API com número de teste (até 5 telefones verificados); fallback: tela que imita a conversa; Twilio sandbox como alternativa | Mensagem iniciada pela plataforma exige template aprovado; risco aceito |
+| T7 | WhatsApp real via API não oficial (Evolution API ou WAHA) neste piloto, com número do time; fallback: tela que imita a conversa | Decisão do time (08/11): sem template nem aprovação da Meta. Risco aceito: número pode ser banido; não usar em produção sem migrar para a API oficial |
 | T8 | IA da foto (RN-18) desacoplada: provider com contrato `foto → {exame, confiança}`, OpenAI primeiro, chave só no servidor | Assinatura do ChatGPT não dá acesso à API; precisa de chave da plataforma |
 | T9 | Hospedagem desde o dia 1: Next na Vercel, Nest no Railway/Render (precisa de WebSocket), Postgres no Neon | Push, OAuth Google e banca no celular exigem URL pública; aceito provisoriamente pelo time |
 | T10 | Pagamento simulado: tela de Pix falsa cujo "confirmar" dispara o mesmo fluxo de um webhook real | RN-41, RN-42 |

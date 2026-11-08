@@ -14,7 +14,7 @@ Versão: 1.0 · 07/11/2026 · Hackathon Capim (tema: acesso à saúde)
 
 **Deu certo se:** na demo, uma vaga publicada vira reserva paga em menos de 3 minutos.
 
-**Fora de escopo nesta versão.** Laudo, resultado e diagnóstico; exames com contraste, sedação ou procedimento invasivo; raio-X simples; opções gratuitas e fila do SUS; WhatsApp real (simulado); pagamento real (simulado); integração com sistemas de agenda além da Google Agenda; painel de receita da clínica (opcional, se sobrar tempo); app nativo.
+**Fora de escopo nesta versão.** Laudo, resultado e diagnóstico; exames com contraste, sedação ou procedimento invasivo; raio-X simples; opções gratuitas e fila do SUS; WhatsApp pela API oficial da Meta (piloto usa API não oficial); pagamento real (simulado); integração com sistemas de agenda além da Google Agenda; painel de receita da clínica (opcional, se sobrar tempo); app nativo.
 
 ## 2. Glossário
 
@@ -98,7 +98,7 @@ Versão: 1.0 · 07/11/2026 · Hackathon Capim (tema: acesso à saúde)
 ### Alertas
 
 - **RN-34** Alertas saem em ondas de tamanho configurável (padrão: 5 pacientes), na ordem de inscrição (ou de chegada, no no-show). Se ninguém pagar o sinal em Z minutos, a próxima onda recebe. Esgotadas as inscrições compatíveis, a vaga continua `publicada` até expirar.
-- **RN-35** Canais: push web e e-mail. WhatsApp é simulado nesta versão e será canal real futuro, sobre o mesmo núcleo de regras. O alerta carrega: clínica, exame, horário, preço atual, distância e preparo.
+- **RN-35** Canais: push web, e-mail e WhatsApp (neste piloto via API não oficial, Evolution ou WAHA; a tela que imita a conversa é o fallback). Todos os canais recebem a mesma mensagem do mesmo núcleo de regras. O alerta carrega: clínica, exame, horário, preço atual, distância e preparo.
 - **RN-36** Um paciente recebe no máximo um alerta por vaga. Vaga reservada por outro cancela os alertas pendentes dela.
 
 ### Aceite, contraindicação e sinal
@@ -491,8 +491,14 @@ Funcionalidade: Canais de notificação
     Dado que não autorizei notificações
     Então recebo só o e-mail, e a tela da lista mostra a vaga em tempo real se estiver aberta
 
-  Cenário: WhatsApp simulado
-    Então a demo mostra a mesma mensagem numa tela que imita o WhatsApp, sem envio real
+  Cenário: WhatsApp
+    Quando uma vaga compatível é publicada
+    Então recebo a mesma mensagem no WhatsApp pelo número da plataforma
+
+  Cenário: WhatsApp indisponível
+    Dado que a API do WhatsApp está fora ou o número foi desconectado
+    Então push e e-mail seguem normalmente e a falha fica registrada;
+    no palco, a tela que imita a conversa mostra a mensagem
 ```
 
 ### F14 — Observabilidade e métricas (RN-50, RN-51)
@@ -518,7 +524,7 @@ Funcionalidade: Registro e métricas
 | Web Push | Alertas | Cai para e-mail e tempo real na tela | Real |
 | E-mail | Alertas, confirmações | Log e retentativa limitada | Real |
 | Pix / cartão | Sinal e pagamento | Tentativa expira (RN-42) | Simulado |
-| WhatsApp | Canal futuro | — | Simulado |
+| WhatsApp (Evolution/WAHA) | Alertas | Cai para push e e-mail; tela simulada no palco | Real, número do time |
 | Capim (parcelamento) | RN-47 | Opção não aparece | Simulado |
 
 ## 6. Premissas e riscos aceitos
