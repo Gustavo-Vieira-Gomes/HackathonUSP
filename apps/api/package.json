@@ -8,7 +8,7 @@
     "start": "node dist/main.js",
     "lint": "eslint .",
     "typecheck": "prisma generate && tsc --noEmit",
-    "test": "prisma generate && tsc -p tsconfig.json --outDir .test-dist && node --env-file-if-exists=.env --test \".test-dist/**/*.test.js\"",
+    "test": "prisma generate && tsc -p tsconfig.json --outDir .test-dist && node --env-file-if-exists=.env --test --test-concurrency=1 \".test-dist/**/*.test.js\"",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
