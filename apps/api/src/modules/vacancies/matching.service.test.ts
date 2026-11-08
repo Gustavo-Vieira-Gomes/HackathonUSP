@@ -1,135 +1,235 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
-import type { PrismaService } from '../../prisma/prisma.service';
+import { after, before, describe, test } from 'node:test';
+import type { INestApplication } from '@nestjs/common';
+import { createApp } from '../../app';
+import type {
+  AlertResult,
+  Clinic,
+  Exam,
+  Subscription,
+  Vacancy,
+} from '../../generated/prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { createSchemaFixtures, examData } from '../../testing/schema-fixtures';
 import { STALE_PENDING_MS } from '../notifications/notifications.service';
 import { MatchingService } from './matching.service';
 
-const clinic = { latitude: -23.5614, longitude: -46.7307 };
-const startsAt = new Date('2026-11-14T13:00:00Z'); // sábado 10h em São Paulo
-const now = new Date('2026-11-13T13:00:00Z');
-
-const vacancy = {
-  id: 'v1',
-  currentPriceCents: 30000,
-  slot: {
-    startsAt,
-    endsAt: new Date(startsAt.getTime() + 30 * 60_000),
-    clinic,
-    exam: { tussCode: '40901122', minLeadMinutes: 120, preparationHours: 8 },
-  },
-};
-
-function subscription(n: number) {
-  return {
-    id: `s${n}`,
-    patientId: `p${n}`,
-    tussCode: '40901122',
-    maxPriceCents: 35000,
-    ...clinic,
-    radiusMeters: 10_000,
-    createdAt: new Date(Date.UTC(2026, 10, 1, 0, n)),
-    windows: [{ weekday: 6, startMinute: 9 * 60, endMinute: 12 * 60 }],
-  };
-}
-
-interface AlertRow {
-  vacancyId: string;
-  result: string;
-  createdAt: Date;
-}
-
-type AlertWhere = {
-  vacancyId: string;
-  OR: [{ result: { not: string } }, { createdAt: { gte: Date } }];
-};
-type SubscriptionWhere = { alerts: { none: AlertWhere } };
-
-/** Um alerta "conta" para o filtro `none` quando casa com todas as condições. */
-function alertMatches(alert: AlertRow, where: AlertWhere): boolean {
-  const [notResult, recent] = where.OR;
-  return (
-    alert.vacancyId === where.vacancyId &&
-    (alert.result !== notResult.result.not ||
-      alert.createdAt >= recent.createdAt.gte)
-  );
-}
-
 /**
- * Prisma em memória: devolve as inscrições em ordem e aplica só o filtro
- * `alerts.none`, com a mesma semântica do banco. TUSS e validade não variam aqui.
+ * Matching contra o Postgres (HACK-31, HACK-43 a HACK-45): o raio é filtrado pelo
+ * haversine em SQL e os alertas pelo filtro `none` do Prisma. Cada bloco usa um TUSS
+ * próprio, então as consultas não enxergam dados de outros arquivos de teste.
  */
-function fakePrisma(
-  subscriptions: ReturnType<typeof subscription>[],
-  alerts: Map<string, AlertRow>,
-) {
-  const prisma = {
-    vacancy: { findUniqueOrThrow: async () => vacancy },
-    subscription: {
-      findMany: async ({ where }: { where: SubscriptionWhere }) =>
-        subscriptions.filter((s) => {
-          const alert = alerts.get(s.id);
-          return !(alert && alertMatches(alert, where.alerts.none));
-        }),
+
+const KM_LAT = 1 / 111.195; // graus de latitude por quilômetro
+// Sábado 16/01/2027, 10h em São Paulo (UTC-3), longe o bastante para o preparo.
+const SATURDAY_10H = new Date('2027-01-16T13:00:00Z');
+const now = new Date('2027-01-10T12:00:00Z');
+const SAT_MORNING = { weekday: 6, startMinute: 9 * 60, endMinute: 12 * 60 };
+
+let app: INestApplication;
+let prisma: PrismaService;
+let matching: MatchingService;
+let fixtures: ReturnType<typeof createSchemaFixtures>;
+let clinic: Clinic;
+let tussSeq = 0;
+
+before(async () => {
+  app = await createApp({ logger: false });
+  prisma = app.get(PrismaService);
+  matching = app.get(MatchingService);
+  fixtures = createSchemaFixtures(prisma);
+  clinic = await fixtures.createClinic();
+});
+
+after(async () => {
+  const ownClinic = { clinic: { userId: { in: fixtures.userIds } } };
+  const ownPatient = { patient: { userId: { in: fixtures.userIds } } };
+  await prisma.alert.deleteMany({ where: { subscription: ownPatient } });
+  await prisma.subscription.deleteMany({ where: ownPatient });
+  await prisma.vacancy.deleteMany({ where: { slot: ownClinic } });
+  await prisma.slot.deleteMany({ where: ownClinic });
+  await prisma.exam.deleteMany({ where: ownClinic });
+  await prisma.patient.deleteMany({
+    where: { userId: { in: fixtures.userIds } },
+  });
+  await prisma.clinic.deleteMany({
+    where: { userId: { in: fixtures.userIds } },
+  });
+  await prisma.user.deleteMany({ where: { id: { in: fixtures.userIds } } });
+  await app.close();
+});
+
+async function createExam(): Promise<Exam> {
+  return prisma.exam.create({
+    data: examData(clinic.id, {
+      tussCode: `7${String(++tussSeq).padStart(7, '0')}`,
+    }),
+  });
+}
+
+async function createVacancy(
+  exam: Exam,
+  options: { state?: 'publicada' | 'cancelada'; minutes?: number } = {},
+): Promise<Vacancy> {
+  const slot = await prisma.slot.create({
+    data: {
+      clinicId: clinic.id,
+      examId: exam.id,
+      startsAt: SATURDAY_10H,
+      endsAt: new Date(
+        SATURDAY_10H.getTime() + (options.minutes ?? 30) * 60_000,
+      ),
+      origin: 'manual',
     },
-  };
-  return prisma as unknown as PrismaService;
+  });
+  return prisma.vacancy.create({
+    data: {
+      slotId: slot.id,
+      origin: 'vazio',
+      state: options.state ?? 'publicada',
+      currentPriceCents: 25000,
+    },
+  });
 }
 
-function alertsFor(
-  ids: string[],
-  result: string,
+async function subscribe(
+  exam: Exam,
+  options: {
+    kmNorth?: number;
+    radiusMeters?: number;
+    window?: typeof SAT_MORNING;
+  } = {},
+): Promise<Subscription> {
+  const patient = await fixtures.createPatient();
+  return prisma.subscription.create({
+    data: {
+      patientId: patient.id,
+      tussCode: exam.tussCode,
+      maxPriceCents: 30000,
+      latitude: clinic.latitude + (options.kmNorth ?? 0) * KM_LAT,
+      longitude: clinic.longitude,
+      radiusMeters: options.radiusMeters ?? 10_000,
+      expiresAt: new Date('2027-12-31T00:00:00Z'),
+      windows: { create: [options.window ?? SAT_MORNING] },
+    },
+  });
+}
+
+async function alert(
+  vacancy: Vacancy,
+  subscription: Subscription,
+  result: AlertResult,
   ageMs = 0,
-): Map<string, AlertRow> {
-  const createdAt = new Date(Date.now() - ageMs);
-  return new Map(ids.map((id) => [id, { vacancyId: 'v1', result, createdAt }]));
+) {
+  await prisma.alert.create({
+    data: {
+      vacancyId: vacancy.id,
+      subscriptionId: subscription.id,
+      wave: 1,
+      channel: 'push',
+      result,
+      createdAt: new Date(Date.now() - ageMs),
+    },
+  });
 }
 
-describe('MatchingService.candidatos', () => {
-  const twelve = Array.from({ length: 12 }, (_, i) => subscription(i + 1));
+const ids = (rows: { id: string }[]) => rows.map((row) => row.id);
 
-  it('sem alertas, devolve todos os candidatos na ordem de inscrição', async () => {
-    const service = new MatchingService(fakePrisma(twelve, new Map()));
-    const result = await service.candidatos('v1', now);
+describe('candidatos · critérios do card (HACK-31)', () => {
+  test('vaga a 12 km com raio de 10 km não é candidata; com 13 km é', async () => {
+    const exam = await createExam();
+    const vacancy = await createVacancy(exam);
+    const tooFar = await subscribe(exam, { kmNorth: 12 });
+    const wide = await subscribe(exam, { kmNorth: 12, radiusMeters: 13_000 });
+    const result = ids(await matching.candidatos(vacancy.id, now));
+    assert.equal(result.includes(tooFar.id), false);
+    assert.equal(result.includes(wide.id), true);
+  });
+
+  test('vaga sáb 10h com janela sáb 14h-18h não é candidata', async () => {
+    const exam = await createExam();
+    const vacancy = await createVacancy(exam);
+    await subscribe(exam, {
+      window: { weekday: 6, startMinute: 14 * 60, endMinute: 18 * 60 },
+    });
+    const morning = await subscribe(exam);
+    assert.deepEqual(ids(await matching.candidatos(vacancy.id, now)), [
+      morning.id,
+    ]);
+  });
+
+  test('horário que termina depois da janela não é candidato (HACK-43)', async () => {
+    const exam = await createExam();
+    // 10h às 12h30, janela até 12h.
+    const vacancy = await createVacancy(exam, { minutes: 150 });
+    await subscribe(exam);
+    assert.deepEqual(await matching.candidatos(vacancy.id, now), []);
+  });
+
+  test('ordem de inscrição, da mais antiga para a mais nova', async () => {
+    const exam = await createExam();
+    const vacancy = await createVacancy(exam);
+    const first = await subscribe(exam);
+    const second = await subscribe(exam);
+    const third = await subscribe(exam);
+    assert.deepEqual(ids(await matching.candidatos(vacancy.id, now)), [
+      first.id,
+      second.id,
+      third.id,
+    ]);
+  });
+});
+
+describe('candidatos · alertas já enviados (HACK-44, HACK-45)', () => {
+  test('12 candidatos, 5 alertados: os próximos são do 6º ao 12º', async () => {
+    const exam = await createExam();
+    const vacancy = await createVacancy(exam);
+    const queue: Subscription[] = [];
+    for (let i = 0; i < 12; i++) queue.push(await subscribe(exam));
+    for (const subscription of queue.slice(0, 5)) {
+      await alert(vacancy, subscription, 'enviado');
+    }
     assert.deepEqual(
-      result.map((s) => s.id),
-      twelve.map((s) => s.id),
+      ids(await matching.candidatos(vacancy.id, now)),
+      ids(queue.slice(5)),
     );
   });
 
-  it('depois de alertar os 5 primeiros, devolve só os seguintes', async () => {
-    const alerted = ['s1', 's2', 's3', 's4', 's5'];
-    const service = new MatchingService(
-      fakePrisma(twelve, alertsFor(alerted, 'enviado')),
-    );
-    const result = await service.candidatos('v1', now);
+  test('pendente abandonado (11 s) volta; pendente recente e falhado ficam fora', async () => {
+    const exam = await createExam();
+    const vacancy = await createVacancy(exam);
+    const stale = await subscribe(exam);
+    const recent = await subscribe(exam);
+    const failed = await subscribe(exam);
+    await alert(vacancy, stale, 'pendente', STALE_PENDING_MS + 1_000);
+    await alert(vacancy, recent, 'pendente', 1_000);
+    await alert(vacancy, failed, 'falhou', STALE_PENDING_MS * 10);
+    assert.deepEqual(ids(await matching.candidatos(vacancy.id, now)), [
+      stale.id,
+    ]);
+  });
+});
+
+describe('vagasCompativeis (RN-19)', () => {
+  test('inscrição nova com vaga compatível existente → devolve a vaga', async () => {
+    const exam = await createExam();
+    const vacancy = await createVacancy(exam);
+    const subscription = await subscribe(exam);
     assert.deepEqual(
-      result.slice(0, 5).map((s) => s.id),
-      ['s6', 's7', 's8', 's9', 's10'],
+      ids(await matching.vagasCompativeis(subscription.id, now)),
+      [vacancy.id],
     );
-    assert.ok(result.every((s) => !alerted.includes(s.id)));
   });
 
-  it('alerta falhado também tira a inscrição da fila', async () => {
-    const service = new MatchingService(
-      fakePrisma(twelve, alertsFor(['s1'], 'falhou', STALE_PENDING_MS * 10)),
-    );
-    const result = await service.candidatos('v1', now);
-    assert.equal(result[0]?.id, 's2');
-  });
-
-  it('pendente abandonado (11 s) volta para a fila para ser reenviado (HACK-45)', async () => {
-    const service = new MatchingService(
-      fakePrisma(twelve, alertsFor(['s1'], 'pendente', 11_000)),
-    );
-    const result = await service.candidatos('v1', now);
-    assert.equal(result[0]?.id, 's1');
-  });
-
-  it('pendente recente é um envio em andamento e continua fora', async () => {
-    const service = new MatchingService(
-      fakePrisma(twelve, alertsFor(['s1'], 'pendente', 1_000)),
-    );
-    const result = await service.candidatos('v1', now);
-    assert.equal(result[0]?.id, 's2');
+  test('vaga fora do raio ou cancelada não volta', async () => {
+    const exam = await createExam();
+    await createVacancy(exam, { state: 'cancelada' });
+    const open = await createVacancy(exam);
+    const near = await subscribe(exam);
+    const far = await subscribe(exam, { kmNorth: 12 });
+    assert.deepEqual(ids(await matching.vagasCompativeis(near.id, now)), [
+      open.id,
+    ]);
+    assert.deepEqual(await matching.vagasCompativeis(far.id, now), []);
   });
 });
