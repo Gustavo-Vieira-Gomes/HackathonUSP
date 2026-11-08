@@ -16,6 +16,7 @@ const RESPONSE_HEADERS = [
   'content-type',
   'location',
   'retry-after',
+  'x-retry-after',
 ];
 
 export interface ApiCallOptions {

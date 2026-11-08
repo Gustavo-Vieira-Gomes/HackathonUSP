@@ -86,7 +86,8 @@ test('R2 - Better Auth limita login pelo IP autenticado, sem evasão via XFF nem
     }
     const blocked = await login('198.51.100.80', '203.0.113.99');
     assert.equal(blocked.status, 429);
-    assert.ok(blocked.headers.get('retry-after'));
+    // Better Auth 1.7 usa X-Retry-After, não o header HTTP padrão.
+    assert.ok(Number(blocked.headers.get('x-retry-after')) > 0);
     assert.equal((await login('198.51.100.81', '203.0.113.99')).status, 401);
     assert.equal((await login('2001:db8:22::1', '203.0.113.99')).status, 401);
     const direct = await jsonRequest(

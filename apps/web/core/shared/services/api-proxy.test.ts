@@ -260,7 +260,7 @@ test('R2 - fora da Vercel headers não ativam confiança; segredo não segue por
 test('R2 - proxy preserva 429 e Retry-After do limiter', async () => {
   const limited = await startFakeApi(() => ({
     status: 429,
-    headers: { 'retry-after': '10' },
+    headers: { 'retry-after': '10', 'x-retry-after': '10' },
   }));
   try {
     const response = await proxyToApi(
@@ -270,6 +270,7 @@ test('R2 - proxy preserva 429 e Retry-After do limiter', async () => {
     );
     assert.equal(response.status, 429);
     assert.equal(response.headers.get('retry-after'), '10');
+    assert.equal(response.headers.get('x-retry-after'), '10');
   } finally {
     await limited.close();
   }
