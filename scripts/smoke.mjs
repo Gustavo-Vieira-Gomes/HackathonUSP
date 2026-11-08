@@ -463,6 +463,16 @@ try {
   const offlinePage = await fetch(webUrl);
   assert.equal(offlinePage.status, 200);
   assert.match(await offlinePage.text(), /API indisponível neste momento/);
+  const offlinePanel = await fetch(`${webUrl}/clinica`, { redirect: 'manual' });
+  assert.equal(
+    offlinePanel.status,
+    200,
+    'HACK-51: API fora não redireciona painel',
+  );
+  assert.match(
+    await offlinePanel.text(),
+    /Não foi possível carregar o perfil da clínica/,
+  );
   const offlineSignIn = await postJson(
     `${webUrl}/api/auth/sign-in/email`,
     { email, password },

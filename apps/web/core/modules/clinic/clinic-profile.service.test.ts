@@ -39,7 +39,7 @@ test('H16-C30 - 500, timeout, corpo fora do contrato e rede viram indisponível;
         baseUrl: api.url,
         timeoutMs: 200,
       });
-      assert.deepEqual(result, { ok: false });
+      assert.equal(result.ok, false);
     }
     assert.deepEqual(
       await getClinicProfile('c=1', { baseUrl: await closedPortUrl() }),
@@ -57,5 +57,32 @@ test('H16-C30 - 500, timeout, corpo fora do contrato e rede viram indisponível;
     assert.equal(ok.requests[0]?.headers.cookie, 'c=1');
   } finally {
     await ok.close();
+  }
+});
+
+test('HACK-51 - preserva 401 e 403 para o painel distinguir autorização de falha', async () => {
+  for (const status of [401, 403]) {
+    const api = await startFakeApi(() => jsonReply(status, {}));
+    try {
+      assert.deepEqual(await getClinicProfile('', { baseUrl: api.url }), {
+        ok: false,
+        status,
+      });
+    } finally {
+      await api.close();
+    }
+  }
+});
+
+test('HACK-50 - perfil incompleto não é apresentado como conta de paciente', async () => {
+  const api = await startFakeApi(() =>
+    jsonReply(403, { code: 'CLINIC_PROFILE_MISSING' }),
+  );
+  try {
+    assert.deepEqual(await getClinicProfile('', { baseUrl: api.url }), {
+      ok: false,
+    });
+  } finally {
+    await api.close();
   }
 });

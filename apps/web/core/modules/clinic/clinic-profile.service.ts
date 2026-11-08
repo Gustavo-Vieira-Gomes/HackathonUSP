@@ -8,7 +8,7 @@ import {
 export const CLINIC_PROFILE_TIMEOUT_MS = 5_000;
 
 export type ClinicProfileResult =
-  { ok: true; profile: ClinicProfile } | { ok: false };
+  { ok: true; profile: ClinicProfile } | { ok: false; status?: number };
 
 /**
  * Perfil da clínica da sessão (`GET /api/clinic/me`) para Server Components.
@@ -30,7 +30,17 @@ export async function getClinicProfile(
         ),
       },
     );
-    if (response.status !== 200) return { ok: false };
+    if (response.status === 403) {
+      const body: unknown = await response.json();
+      if (
+        body &&
+        typeof body === 'object' &&
+        'code' in body &&
+        body.code === 'CLINIC_PROFILE_MISSING'
+      )
+        return { ok: false };
+    }
+    if (response.status !== 200) return { ok: false, status: response.status };
     const parsed = clinicProfileSchema.safeParse(await response.json());
     return parsed.success ? { ok: true, profile: parsed.data } : { ok: false };
   } catch {

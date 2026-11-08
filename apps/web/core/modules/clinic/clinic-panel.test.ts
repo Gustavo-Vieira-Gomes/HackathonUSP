@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { ClinicProfile, SessionUser } from '@hackathon/contracts';
+import type { ClinicProfile } from '@hackathon/contracts';
 import { loadClinicPanel } from './clinic-panel';
 import type { ClinicProfileResult } from './clinic-profile.service';
 
@@ -15,51 +15,31 @@ const profile: ClinicProfile = {
   openingHours: [{ weekday: 1, startMinute: 480, endMinute: 1080 }],
 };
 
-const user = (role: SessionUser['role']): SessionUser => ({
-  id: 'u1',
-  name: 'Fulana',
-  email: 'fulana@teste.local',
-  role,
-});
-
-function deps(
-  session: SessionUser | null,
-  result: ClinicProfileResult = { ok: true, profile },
-) {
-  let profileCalls = 0;
-  return {
-    calls: () => profileCalls,
-    deps: {
-      getSessionUser: async () => session,
-      getClinicProfile: async () => {
-        profileCalls++;
-        return result;
-      },
-    },
-  };
-}
-
-test('H16-C29 - painel decide sem sessão, paciente, clínica com perfil e perfil indisponível', async () => {
-  const anonymous = deps(null);
-  assert.deepEqual(await loadClinicPanel('', anonymous.deps), {
-    kind: 'redirect',
-    to: '/clinica/login',
-  });
-  assert.equal(anonymous.calls(), 0);
-
-  const patient = deps(user('paciente'));
-  assert.equal((await loadClinicPanel('c=1', patient.deps)).kind, 'not-clinic');
-  assert.equal(patient.calls(), 0, 'paciente não chama /api/clinic/me');
-
-  const clinic = deps(user('clinica'));
-  assert.deepEqual(await loadClinicPanel('c=1', clinic.deps), {
-    kind: 'profile',
-    profile,
-  });
-  assert.equal(clinic.calls(), 1);
-
-  const failing = deps(user('clinica'), { ok: false });
-  assert.deepEqual(await loadClinicPanel('c=1', failing.deps), {
-    kind: 'error',
-  });
+test('HACK-51 - só 401 redireciona; API fora ou lenta mostra erro', async () => {
+  for (const [result, expected] of [
+    [
+      { ok: false, status: 401 },
+      { kind: 'redirect', to: '/clinica/login' },
+    ],
+    [{ ok: false, status: 403 }, { kind: 'not-clinic' }],
+    [{ ok: false }, { kind: 'error' }],
+    [{ ok: false, status: 500 }, { kind: 'error' }],
+    [
+      { ok: true, profile },
+      { kind: 'profile', profile },
+    ],
+  ] as const) {
+    let calls = 0;
+    assert.deepEqual(
+      await loadClinicPanel('c=1', {
+        getClinicProfile: async (cookie): Promise<ClinicProfileResult> => {
+          assert.equal(cookie, 'c=1');
+          calls++;
+          return result;
+        },
+      }),
+      expected,
+    );
+    assert.equal(calls, 1);
+  }
 });
