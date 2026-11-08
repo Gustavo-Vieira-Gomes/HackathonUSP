@@ -1,6 +1,7 @@
 'use client';
 
 import type { Exam, ExamCatalogItem } from '@hackathon/contracts';
+import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 import { type ExamFormErrorView, examFormErrorView } from '../exam-errors';
 import {
@@ -38,6 +39,7 @@ export function ExamForm({
   onNotFound,
   onCancel,
 }: ExamFormProps) {
+  const router = useRouter();
   const [values, setValues] = useState<ExamFormValues>(() =>
     editing
       ? examToFormValues(
@@ -95,6 +97,10 @@ export function ExamForm({
       view = examFormErrorView(503, null);
     }
     setSubmitting(false);
+    if (view.login) {
+      router.replace('/clinica/login');
+      return;
+    }
     if (view.reload && view.general) {
       onNotFound(view.general);
       return;
@@ -226,7 +232,7 @@ export function ExamForm({
                 <TextField
                   id={`exam-priceSteps.${index}.leadMinutes`}
                   label={`Degrau ${index + 1}: faltando até (horas)`}
-                  inputMode="numeric"
+                  inputMode="decimal"
                   value={step.hours}
                   error={fieldError(`priceSteps.${index}.leadMinutes`)}
                   onChange={(hours) => setStep(index, { hours })}
@@ -282,7 +288,7 @@ export function ExamForm({
           <TextField
             id="exam-minLeadMinutes"
             label="Antecedência mínima para encaixe (horas)"
-            inputMode="numeric"
+            inputMode="decimal"
             value={values.minLeadHours}
             error={fieldError('minLeadMinutes')}
             onChange={(minLeadHours) => set({ minLeadHours })}

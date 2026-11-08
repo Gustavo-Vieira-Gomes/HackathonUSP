@@ -69,3 +69,20 @@ test('H17-C34 - traduz 422, 404 e indisponibilidade da API em mensagens da tela'
     assert.deepEqual(view.fieldErrors, {}, `${status}`);
   }
 });
+
+test('H52-C4 - erros de sessão levam ao login e 404 de settings fala de configurações', () => {
+  for (const status of [401, 403]) {
+    assert.deepEqual(examFormErrorView(status, null), {
+      fieldErrors: {},
+      login: true,
+    });
+    assert.deepEqual(examFormErrorView(status, null, 'settings'), {
+      fieldErrors: {},
+      login: true,
+    });
+  }
+  const missing = examFormErrorView(404, null, 'settings');
+  assert.match(missing.general ?? '', /configurações da clínica/);
+  assert.ok(!missing.general?.includes('exame'));
+  assert.equal(missing.reload, false);
+});

@@ -135,3 +135,41 @@ test('H17-C33 - o formulário abre com os padrões e a escolha do exame traz pre
   assert.deepEqual(thyroid.contraindicationOptions, []);
   assert.deepEqual(thyroid.contraindications, []);
 });
+
+test('H52-C3 - edição preserva 90 minutos e outros valores que não são horas cheias', () => {
+  const exam: Exam = {
+    id: '6f1c6c1e-2f7a-4a4e-9a51-0d0a7c2b1e01',
+    tussCode: mriItem.tussCode,
+    name: mriItem.name,
+    fullPriceCents: 80000,
+    floorPriceCents: 55000,
+    minLeadMinutes: 90,
+    preparationCondition: 'nenhum',
+    preparationHours: 0,
+    contraindications: [],
+    toleranceMinutes: 20,
+    maxTravelMinutes: 60,
+    priceSteps: [{ leadMinutes: 90, discountPercent: 15 }],
+  };
+  for (const minutes of [1, 7, 90, 1439, 10080]) {
+    const form = examToFormValues(
+      {
+        ...exam,
+        minLeadMinutes: minutes,
+        priceSteps: [{ leadMinutes: minutes, discountPercent: 15 }],
+      },
+      mriItem,
+    );
+    const body = examUpdateBodySchema.parse(toExamBody(form, 'update'));
+    assert.equal(body.minLeadMinutes, minutes);
+    assert.equal(body.priceSteps[0]?.leadMinutes, minutes);
+  }
+  const form = examToFormValues(exam, mriItem);
+  form.minLeadHours = '1,5';
+  form.priceSteps[0]!.hours = '1,5';
+  const body = examUpdateBodySchema.parse(toExamBody(form, 'update'));
+  assert.equal(body.minLeadMinutes, 90);
+  assert.equal(body.priceSteps[0]?.leadMinutes, 90);
+  form.minLeadHours = '0,001';
+  assert.equal(toExamBody(form, 'update').minLeadMinutes, null);
+});

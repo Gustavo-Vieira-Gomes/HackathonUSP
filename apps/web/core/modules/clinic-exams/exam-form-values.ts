@@ -56,8 +56,16 @@ function toInt(text: string): number | null {
   return /^-?\d+$/.test(value) ? Number(value) : null;
 }
 
-const multiply = (value: number | null, by: number) =>
-  value === null ? null : value * by;
+/** Horas decimais (vírgula ou ponto), preservando minutos inteiros gravados. */
+function hoursTextToMinutes(text: string): number | null {
+  const value = text.trim();
+  if (!/^-?\d+(?:[.,]\d+)?$/.test(value)) return null;
+  const minutes = Number(value.replace(',', '.')) * 60;
+  const rounded = Math.round(minutes);
+  return Number.isSafeInteger(rounded) && Math.abs(minutes - rounded) < 1e-7
+    ? rounded
+    : null;
+}
 
 const stepsFromDefaults = (): StepForm[] =>
   examFormDefaults.priceSteps.map((step) => ({
@@ -131,14 +139,14 @@ export function toExamBody(
   const body = {
     fullPriceCents: reaisToCents(values.fullPrice),
     floorPriceCents: reaisToCents(values.floorPrice),
-    minLeadMinutes: multiply(toInt(values.minLeadHours), 60),
+    minLeadMinutes: hoursTextToMinutes(values.minLeadHours),
     preparationCondition: values.preparationCondition,
     preparationHours: toInt(values.preparationHours),
     contraindications: values.contraindications,
     toleranceMinutes: toInt(values.toleranceMinutes),
     maxTravelMinutes: toInt(values.maxTravelMinutes),
     priceSteps: values.priceSteps.map((step) => ({
-      leadMinutes: multiply(toInt(step.hours), 60),
+      leadMinutes: hoursTextToMinutes(step.hours),
       discountPercent: toInt(step.discountPercent),
     })),
   };

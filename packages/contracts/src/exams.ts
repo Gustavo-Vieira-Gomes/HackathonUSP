@@ -25,12 +25,7 @@ export interface AllowedExam {
  * questionário ligado, não do código.
  */
 export const allowedExams: readonly AllowedExam[] = [
-  // Fonte: https://tuss.clinica.work/ultrasonografia/ - "Abdome total (inclui abdome inferior)"
-  {
-    tussCode: '40901122',
-    name: 'Ultrassonografia de abdome total',
-    questionnaireKey: 'us-abdomen',
-  },
+  // Abdome total (40901122) aguarda questionário próprio; us-abdomen cobre só abdome superior.
   // Fonte: https://tuss.clinica.work/ultrasonografia/ - "Abdome superior (fígado, vias biliares, vesícula, pâncreas, baço)"
   {
     tussCode: '40901130',

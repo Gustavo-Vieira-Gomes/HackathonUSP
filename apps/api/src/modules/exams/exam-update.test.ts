@@ -280,3 +280,23 @@ test('H17-C30 - degrau abaixo do piso na edição é gravado como enviado', asyn
     { leadMinutes: 360, discountPercent: 40 },
   ]);
 });
+
+test('H52-C2 - questionário desconhecido responde 422 e preserva o exame', async () => {
+  const { clinic, id } = await freshExam();
+  await t.prisma.exam.update({
+    where: { id },
+    data: { questionnaireKey: 'legacy-unknown-questionnaire' },
+  });
+  const beforeEdit = await examSnapshot(t.prisma, id);
+  const response = await put(
+    clinic.cookie,
+    id,
+    examUpdateBody({ fullPriceCents: 80000 }),
+  );
+  assert.equal(response.status, 422);
+  assert.equal(
+    ((await response.json()) as { code: string }).code,
+    'EXAM_QUESTIONNAIRE_UNAVAILABLE',
+  );
+  assert.deepEqual(await examSnapshot(t.prisma, id), beforeEdit);
+});

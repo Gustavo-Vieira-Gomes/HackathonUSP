@@ -53,6 +53,13 @@ export async function loadExamsPage(
     deps.getExamCatalog(cookieHeader),
     deps.getClinicSettings(cookieHeader),
   ]);
+  if (
+    [exams, catalog, settings].some(
+      (result) =>
+        !result.ok && (result.status === 401 || result.status === 403),
+    )
+  )
+    return { kind: 'redirect', to: '/clinica/login' };
   if (!exams.ok || !catalog.ok || !settings.ok) return { kind: 'error' };
   return {
     kind: 'page',

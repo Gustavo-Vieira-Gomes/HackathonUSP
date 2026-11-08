@@ -44,11 +44,15 @@ export function SettingsForm({ settings }: { settings: ClinicSettings }) {
         return;
       }
       const body: unknown = await response.json().catch(() => null);
-      view = examFormErrorView(response.status, body);
+      view = examFormErrorView(response.status, body, 'settings');
     } catch {
       view = examFormErrorView(503, null);
     }
     setSubmitting(false);
+    if (view.login) {
+      router.replace('/clinica/login');
+      return;
+    }
     setErrors(view);
     const target = view.firstField
       ? `settings-${view.firstField}`

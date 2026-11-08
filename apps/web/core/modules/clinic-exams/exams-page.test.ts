@@ -89,3 +89,17 @@ test('H17-C35 - sem sessão vai ao login, paciente vê aviso sem chamar a API, c
   }
   assert.equal(failures.length, 3);
 });
+
+test('H52-C4 - sessão expirada durante qualquer leitura de exames leva ao login', async () => {
+  for (const status of [401, 403]) {
+    for (const resource of ['exams', 'catalog', 'settings'] as const) {
+      const expired = deps(user('clinica'), {
+        [resource]: { ok: false, status },
+      });
+      assert.deepEqual(await loadExamsPage('c=1', expired.deps), {
+        kind: 'redirect',
+        to: '/clinica/login',
+      });
+    }
+  }
+});

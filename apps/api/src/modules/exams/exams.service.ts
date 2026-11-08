@@ -1,5 +1,4 @@
 import {
-  type AllowedExam,
   allowedExams,
   type ClinicSettings,
   type Exam,
@@ -45,10 +44,14 @@ const notFound = () =>
     message: 'Exame não encontrado.',
   });
 
-function questionnaireOf(key: AllowedExam['questionnaireKey']) {
+function questionnaireOf(key: string) {
   const questionnaire = examQuestionnairesSeed.find((q) => q.key === key);
   if (!questionnaire) {
-    throw new Error(`Exame permitido sem questionário no catálogo: ${key}.`);
+    throw new UnprocessableEntityException({
+      code: 'EXAM_QUESTIONNAIRE_UNAVAILABLE',
+      message:
+        'O questionário deste exame não está disponível. Entre em contato com a clínica.',
+    });
   }
   return questionnaire;
 }
@@ -153,9 +156,7 @@ export class ExamsService {
       select: { questionnaireKey: true },
     });
     if (!current) throw notFound();
-    const questionnaire = questionnaireOf(
-      current.questionnaireKey as AllowedExam['questionnaireKey'],
-    );
+    const questionnaire = questionnaireOf(current.questionnaireKey);
     this.assertDataRules(body, questionnaire);
     const { priceSteps, ...fields } = body;
     const row = await this.prisma.$transaction(async (tx) => {

@@ -105,3 +105,19 @@ test('H17-C36 - cada leitura vira indisponível com 500, timeout, corpo fora do 
   }
   assert.equal(readers.length, 3);
 });
+
+test('H52-C4 - leituras preservam 401 e 403 para a navegação de login', async () => {
+  for (const status of [401, 403]) {
+    const api = await startFakeApi(() => jsonReply(status, {}));
+    try {
+      for (const reader of readers) {
+        assert.deepEqual(await reader.read('c=1', { baseUrl: api.url }), {
+          ok: false,
+          status,
+        });
+      }
+    } finally {
+      await api.close();
+    }
+  }
+});

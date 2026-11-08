@@ -235,3 +235,11 @@ test('H17-C23 - a edição recusa as mesmas faixas do cadastro e não aceita tus
     'tussCode no corpo da edição',
   );
 });
+
+test('H52-C1 - abdome total não recebe o protocolo de abdome superior', () => {
+  assert.ok(!allowedExams.some((exam) => exam.tussCode === '40901122'));
+  assert.equal(
+    allowedExams.find((exam) => exam.tussCode === '40901130')?.questionnaireKey,
+    'us-abdomen',
+  );
+});

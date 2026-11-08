@@ -14,12 +14,13 @@ import {
 
 export const CLINIC_EXAMS_TIMEOUT_MS = 5_000;
 
-export type ReadResult<T> = { ok: true; data: T } | { ok: false };
+export type ReadResult<T> =
+  { ok: true; data: T } | { ok: false; status?: number };
 
 /**
  * `GET` no Nest com o cookie da sessão, validado pelo schema do contrato. Status
- * ≠ 200, timeout, falha de rede ou corpo fora do contrato → `{ ok: false }`, para a
- * tela mostrar indisponibilidade em vez de lista vazia.
+ * ≠ 200, timeout, falha de rede ou corpo fora do contrato → `{ ok: false }`.
+ * Preserva 401/403 para levar ao login; outras falhas mostram indisponibilidade.
  */
 /** O que a leitura usa de um schema dos contratos. */
 interface ResponseSchema<T> {
@@ -43,6 +44,9 @@ async function readApi<T>(
         ),
       },
     );
+    if (response.status === 401 || response.status === 403) {
+      return { ok: false, status: response.status };
+    }
     if (response.status !== 200) return { ok: false };
     const parsed = schema.safeParse(await response.json());
     return parsed.success ? { ok: true, data: parsed.data } : { ok: false };
