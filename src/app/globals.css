@@ -70,3 +70,86 @@ button {
   z-index: 50;
   overflow-y: auto;
 }
+
+/* Padrão de botão de escolha (OptionPicker): lista com ícone ou grade uniforme */
+.pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pick-list.wide {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.pick-row,
+.pick-cell {
+  display: flex;
+  align-items: center;
+  border: 0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.pick-row {
+  gap: 14px;
+  min-height: 68px;
+  padding: 12px 14px;
+}
+.pick-cell {
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 60px;
+  padding: 0 16px;
+  font-weight: 600;
+  font-size: 16px;
+}
+.pick-row:hover,
+.pick-cell:hover {
+  background: var(--mint);
+  box-shadow: inset 0 0 0 1.5px var(--mint-2);
+}
+.pick-row:focus-visible,
+.pick-cell:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+.pick-row > .ico:last-child,
+.pick-cell > .ico:last-child {
+  color: var(--mute);
+  flex: none;
+}
+.pick-ico {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--mint);
+  color: var(--teal-d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pick-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pick-text strong {
+  font-size: 16px;
+  line-height: 1.25;
+}
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.pick-grid.wide {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}

@@ -5,7 +5,8 @@ import { useState, useTransition, type FormEvent, type KeyboardEvent } from "rea
 import { deleteClinicExam, saveClinicExam } from "@/lib/actions";
 import { CATALOG, clinicDefaultName, clinicScopeOptions, findType, type ExamType, type Region, type Scope } from "@/lib/catalog";
 import { brl } from "@/lib/format";
-import { IconChevronRight, IconClose } from "@/components/icons";
+import { IconClose } from "@/components/icons";
+import { OptionPicker } from "@/components/OptionPicker";
 
 export type ExamInitial = {
   id: string;
@@ -78,7 +79,7 @@ function firstInt(raw: string): number | null {
 type Resolved = {
   crumbs: string[];
   question: string | null;
-  options: { key: string; label: string; hint?: string }[];
+  options: { key: string; label: string; hint?: string; icon?: string }[];
   type: ExamType | null;
   region: Region | null;
   /** Abrangência da oferta: um lado ou bilateral. */
@@ -91,7 +92,7 @@ function resolve(path: string[]): Resolved {
   const type = path[0] ? findType(path[0]) : undefined;
   if (!type) {
     out.question = "Qual tipo de exame?";
-    out.options = CATALOG.map((t) => ({ key: t.key, label: t.fullLabel, hint: t.note }));
+    out.options = CATALOG.map((t) => ({ key: t.key, label: t.fullLabel, hint: t.note, icon: t.key }));
     return out;
   }
   out.type = type;
@@ -605,23 +606,9 @@ export function ExamForm(props: Props) {
             ) : null}
 
             {asking ? (
-              <div className="opts" key={path.join(">")} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="opts" key={path.join(">")} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <p className="lbl">{r.question}</p>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 8 }}>
-                  {r.options.map((o) => (
-                    <button key={o.key} type="button" className="choice" onClick={() => pick(o.key)} style={o.hint ? { minHeight: 60 } : undefined}>
-                      <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                        <span>{o.label}</span>
-                        {o.hint ? (
-                          <span className="small muted" style={{ fontWeight: 500 }}>
-                            {o.hint}
-                          </span>
-                        ) : null}
-                      </span>
-                      <IconChevronRight />
-                    </button>
-                  ))}
-                </div>
+                <OptionPicker options={r.options} onPick={pick} wide />
               </div>
             ) : (
               <div className="opts" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
