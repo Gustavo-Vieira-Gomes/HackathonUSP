@@ -154,3 +154,39 @@ test('C6 - a N+1-ésima tentativa do mesmo IP na janela responde 429 sem criar U
     await app.close();
   }
 });
+
+test('H16-C12 - a N+1-ésima tentativa em /clinica responde 429 sem criar User nem Clinic', async () => {
+  // Instância própria: a cota é em memória, por aplicação e por rota.
+  const app = await startTestApp();
+  try {
+    const { limit } = SIGN_UP_RATE_LIMIT;
+    const headers = {
+      origin: app.env.WEB_ORIGIN,
+      'content-type': 'application/json',
+    };
+    for (let i = 0; i < limit; i++) {
+      const response = await post(
+        app,
+        'clinica',
+        jsonBody(app.email(), 'clinica'),
+        headers,
+      );
+      assert.equal(response.status, 200, `tentativa ${i + 1}`);
+    }
+    const email = app.email();
+    const body = clinicSignUpBody(email, {
+      name: 'Fulana',
+      password: '12345678',
+    });
+    const blocked = await post(app, 'clinica', JSON.stringify(body), headers);
+    assert.equal(blocked.status, 429);
+    assert.deepEqual(blocked.headers.getSetCookie(), []);
+    assert.equal(await countByEmail(app, email), 0);
+    assert.equal(
+      await app.prisma.clinic.count({ where: { cnes: body.cnes as string } }),
+      0,
+    );
+  } finally {
+    await app.close();
+  }
+});
