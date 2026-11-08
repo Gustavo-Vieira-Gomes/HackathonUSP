@@ -27,12 +27,18 @@ const idsSchema = z.array(idSchema);
 export class RealtimeService {
   constructor(private readonly gateway: RealtimeGateway) {}
 
+  /**
+   * Avisa os pacientes alertados de uma vaga nova.
+   * @param pacienteUserIds ids de `User` (sessão) dos pacientes, não `Patient.id`.
+   * O emissor resolve o `User` a partir do `Patient` antes de chamar; um id de
+   * domínio cai numa sala vazia sem erro.
+   */
   vagaPublicada(
     input: Omit<VagaPublicadaEvent, 'em'>,
-    pacienteIds: string[],
+    pacienteUserIds: string[],
   ): void {
     const payload = vagaPublicadaEventSchema.parse({ ...input, em: agora() });
-    const ids = idsSchema.parse(pacienteIds);
+    const ids = idsSchema.parse(pacienteUserIds);
     // Lista vazia não pode virar `to([])`, que no socket.io é broadcast para todos.
     if (ids.length === 0) return;
     this.gateway.server
@@ -54,11 +60,17 @@ export class RealtimeService {
       .emit(realtimeEvents.vagaReservada, payload);
   }
 
+  /**
+   * Avisa a clínica dona da vaga de uma reserva nova.
+   * @param clinicaUserId id de `User` (sessão) da conta da clínica, não `Clinic.id`.
+   * O emissor resolve o `User` a partir da `Clinic` antes de chamar; um id de
+   * domínio cai numa sala vazia sem erro.
+   */
   reservaCriada(
-    clinicaId: string,
+    clinicaUserId: string,
     input: Omit<ReservaCriadaEvent, 'em'>,
   ): void {
-    const id = idSchema.parse(clinicaId);
+    const id = idSchema.parse(clinicaUserId);
     const payload = reservaCriadaEventSchema.parse({ ...input, em: agora() });
     this.gateway.server
       .to(salaDaClinica(id))

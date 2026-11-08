@@ -73,6 +73,10 @@ export class RealtimeClient {
   private readonly reconnectListeners = new Set<() => void>();
   private readonly vagas = new Map<string, number>();
   private consumidores = 0;
+  /** Muda a cada `close`: liberações de consumidores anteriores viram no-op. */
+  private epoca = 0;
+  /** Muda a cada tentativa e a cada desligamento: só a última tentativa conecta. */
+  private geracao = 0;
   private jaConectou = false;
   private tentativa = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -119,9 +123,10 @@ export class RealtimeClient {
       this.definir(this.jaConectou ? 'reconectando' : 'conectando');
       void this.tentar();
     }
+    const epoca = this.epoca;
     let solto = false;
     return () => {
-      if (solto) return;
+      if (solto || epoca !== this.epoca) return;
       solto = true;
       this.consumidores--;
       if (this.consumidores === 0) this.desligar('desconectado');
@@ -173,6 +178,7 @@ export class RealtimeClient {
 
   /** Fecha a conexão e para as tentativas (logout, testes). */
   close(): void {
+    this.epoca++;
     this.consumidores = 0;
     this.desligar('desconectado');
   }
@@ -191,14 +197,18 @@ export class RealtimeClient {
   private async tentar(): Promise<void> {
     this.timer = undefined;
     if (this.consumidores === 0 || this.socket.connected) return;
+    const geracao = ++this.geracao;
     let token: string;
     try {
       token = await this.fetchToken();
     } catch (error) {
+      if (geracao !== this.geracao) return;
       if (error instanceof NaoAutenticadoError) this.pararSemSessao();
       else this.agendar();
       return;
     }
+    // Tentativa obsoleta (houve desligamento ou outra tentativa no meio do await).
+    if (geracao !== this.geracao) return;
     if (this.consumidores === 0 || this.atual === 'nao_autenticado') return;
     this.socket.auth = { token };
     this.socket.connect();
@@ -221,6 +231,7 @@ export class RealtimeClient {
   }
 
   private desligar(status: RealtimeStatus): void {
+    this.geracao++;
     if (this.timer) clearTimeout(this.timer);
     this.timer = undefined;
     this.socket.disconnect();

@@ -35,13 +35,14 @@ const iso = z.iso.datetime();
 
 async function conta(
   role: 'paciente' | 'clinica',
-): Promise<{ id: string; socket: Socket }> {
+): Promise<{ userId: string; socket: Socket }> {
   const account = await signUpWithCookie(t, role);
   const socket = await connect(t, {
     token: await generateToken(t, account.cookie),
   });
   abertos.push(socket);
-  return { id: account.id, socket };
+  // id de User da sessão: é a chave das salas paciente:/clinica:.
+  return { userId: account.id, socket };
 }
 
 async function naVaga(vagaId: string): Promise<Socket> {
@@ -102,7 +103,7 @@ test('C17 - vagaPublicada chega a p1 e p2 e não a p3', async () => {
   const [r1, r2, r3] = [p1, p2, p3].map((p) =>
     collect(p.socket, realtimeEvents.vagaPublicada),
   );
-  service.vagaPublicada({ vagaId: 'v1' }, [p1.id, p2.id]);
+  service.vagaPublicada({ vagaId: 'v1' }, [p1.userId, p2.userId]);
   await until(() => r1?.length === 1 && r2?.length === 1);
   for (const recebido of [r1?.[0], r2?.[0]]) {
     const payload = recebido as Record<string, unknown>;
@@ -118,7 +119,7 @@ test('C18 - reservaCriada chega só à clínica c1', async () => {
   const [r1, r2] = [c1, c2].map((c) =>
     collect(c.socket, realtimeEvents.reservaCriada),
   );
-  service.reservaCriada(c1.id, { reservaId: 'r1', vagaId: 'v1' });
+  service.reservaCriada(c1.userId, { reservaId: 'r1', vagaId: 'v1' });
   await until(() => r1?.length === 1);
   const payload = r1?.[0] as Record<string, unknown>;
   assert.equal(payload.reservaId, 'r1');
@@ -159,11 +160,12 @@ test('C19 - payload inválido lança ao emissor e nada é emitido', async () => 
     ['vagaReservada vagaId vazio', () => service.vagaReservada({ vagaId: '' })],
     [
       'vagaPublicada vagaId vazio',
-      () => service.vagaPublicada({ vagaId: '' }, [paciente.id]),
+      () => service.vagaPublicada({ vagaId: '' }, [paciente.userId]),
     ],
     [
       'reservaCriada vagaId vazio',
-      () => service.reservaCriada(clinica.id, { reservaId: 'r1', vagaId: '' }),
+      () =>
+        service.reservaCriada(clinica.userId, { reservaId: 'r1', vagaId: '' }),
     ],
   ];
   for (const [nome, chamar] of casos) {

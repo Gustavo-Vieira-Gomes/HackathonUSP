@@ -21,6 +21,8 @@ interface TestServer {
   assinaturas: string[];
   /** Quando definido, o middleware recusa com esta mensagem. */
   recusar?: string;
+  /** Quando definido, o middleware segura o aceite por este tempo. */
+  atrasoMs?: number;
   close(): Promise<void>;
 }
 
@@ -48,8 +50,12 @@ async function startServer(port = 0): Promise<TestServer> {
     state.tokens.push(
       String((socket.handshake.auth as { token?: unknown }).token),
     );
-    if (state.recusar) next(new Error(state.recusar));
-    else next();
+    const responder = () => {
+      if (state.recusar) next(new Error(state.recusar));
+      else next();
+    };
+    if (state.atrasoMs) setTimeout(responder, state.atrasoMs);
+    else responder();
   });
   nsp.on('connection', (socket) => {
     state.conexoes.push(socket);
@@ -263,4 +269,45 @@ test('C27 - geração 401 ou handshake unauthorized: nao_autenticado e sem novas
   await sleep(1000);
   assert.equal(recusa.handshakes, depois);
   assert.equal(recusado.status, 'nao_autenticado');
+});
+
+test('R3.1 - acquire, release e acquire durante a geração do token abrem um só handshake', async () => {
+  const server = await startServer();
+  abertos.push(server);
+  // O aceite demora: a 2ª geração termina com o 1º handshake ainda pendente.
+  server.atrasoMs = 200;
+  let n = 0;
+  const client = cliente(server, async () => {
+    const meu = ++n;
+    await sleep(50);
+    // Sem handshake anterior (tentativa obsoleta descartada), segue após 300 ms.
+    if (meu === 2) {
+      await until(() => server.handshakes >= 1, 300).catch(() => undefined);
+    }
+    return `token-${meu}`;
+  });
+  let reconexoes = 0;
+  client.onReconnect(() => reconexoes++);
+  const solta = client.acquire();
+  solta();
+  client.acquire();
+  await until(() => client.status === 'conectado');
+  await sleep(400);
+  assert.equal(n, 2);
+  assert.equal(server.handshakes, 1);
+  assert.equal(server.conexoes.length, 1);
+  assert.equal(reconexoes, 0);
+});
+
+test('R3.2 - release pendente depois do close não impede o próximo acquire de conectar', async () => {
+  const server = await startServer();
+  abertos.push(server);
+  const client = cliente(server);
+  const solta = client.acquire();
+  await until(() => client.status === 'conectado');
+  client.close();
+  solta();
+  client.acquire();
+  await until(() => client.status === 'conectado');
+  assert.equal(server.handshakes, 2);
 });
