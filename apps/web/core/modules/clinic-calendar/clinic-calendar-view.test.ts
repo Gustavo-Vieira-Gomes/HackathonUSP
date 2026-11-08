@@ -168,3 +168,18 @@ test('H18-C30 - ?google= de erro dá alerta próprio; sucesso, desconhecido e au
     );
   }
 });
+
+test('H18-C48 - escolha da agenda com lista vazia ou erro oferece Conectar; com agendas, não', () => {
+  const awaiting = {
+    kind: 'ok',
+    connection: { status: 'awaiting_calendar' },
+  } as const;
+  const empty = clinicCalendarView(awaiting, { ok: true, calendars: [] });
+  assert.equal(empty.showConnect, true);
+  assert.equal(empty.emptyText, COPY.empty);
+  const failed = clinicCalendarView(awaiting, { ok: false });
+  assert.equal(failed.showConnect, true);
+  assert.equal(failed.notice, COPY.calendarsError);
+  const withList = clinicCalendarView(awaiting, { ok: true, calendars });
+  assert.equal(withList.showConnect, false);
+});

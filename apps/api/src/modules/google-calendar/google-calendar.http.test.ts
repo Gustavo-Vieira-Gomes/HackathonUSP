@@ -2,11 +2,14 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { after, before, mock, test } from 'node:test';
 import {
+  type ClinicSignUpBody,
   googleCalendarConnectionSchema,
   googleCalendarListSchema,
 } from '@hackathon/contracts';
 import { Logger } from '@nestjs/common';
+import { ClinicSignUpService } from '../clinics/clinic-sign-up.service';
 import {
+  clinicSignUpBody,
   jsonRequest,
   sessionCookie,
   signUpWithCookie,
@@ -20,6 +23,7 @@ import {
   type GoogleCredentials,
   GoogleOAuthClient,
   type ExchangedTokens,
+  type RefreshedTokens,
   isCredentialsRejectedError,
 } from './google-oauth.client';
 import { decryptToken } from './token-cipher';
@@ -48,7 +52,10 @@ interface Fake {
   listCalls: number;
   calendarForCalls: number;
   exchange: (code: string) => Promise<ExchangedTokens>;
-  list: (credentials: GoogleCredentials) => Promise<GoogleCalendarCandidate[]>;
+  list: (
+    credentials: GoogleCredentials,
+    onTokens?: (tokens: RefreshedTokens) => Promise<void>,
+  ) => Promise<GoogleCalendarCandidate[]>;
   calendarFor: (credentials: GoogleCredentials) => unknown;
   reset(): void;
 }
@@ -137,9 +144,12 @@ function installFake(t: TestApp): Fake {
   mock.method(
     client,
     'listOwnedCalendars',
-    async (credentials: GoogleCredentials) => {
+    async (
+      credentials: GoogleCredentials,
+      onTokens?: (tokens: RefreshedTokens) => Promise<void>,
+    ) => {
       fake.listCalls++;
-      return fake.list(credentials);
+      return fake.list(credentials, onTokens);
     },
   );
   mock.method(client, 'calendarFor', (credentials: GoogleCredentials) => {
@@ -186,12 +196,32 @@ function call(
   });
 }
 
+/**
+ * Clínica com sessão real do Better Auth, criada pelo serviço de cadastro do HACK-16
+ * e não pela rota HTTP: a rota tem limite de 30 cadastros por minuto e este arquivo
+ * cria mais clínicas do que isso.
+ */
 async function clinic(
   app: TestApp = t,
 ): Promise<Account & { clinicId: string }> {
-  const account = await signUpWithCookie(app, 'clinica');
-  assert.ok(account.clinicId);
-  return { ...account, clinicId: account.clinicId };
+  const email = app.email();
+  const password = 'senha-forte-1';
+  const result = await app.app
+    .get(ClinicSignUpService)
+    .signUp(clinicSignUpBody(email, { password }) as ClinicSignUpBody, {
+      origin: app.env.WEB_ORIGIN,
+    });
+  const cookie = result.setCookie
+    .map((line) => line.split(';')[0] ?? '')
+    .find((pair) => pair.includes('session_token='));
+  assert.ok(cookie, 'cadastro sem cookie de sessão');
+  return {
+    email,
+    password,
+    cookie,
+    id: result.body.user.id,
+    clinicId: result.body.clinic.id,
+  };
 }
 
 async function connect(account: Account): Promise<string> {
@@ -334,7 +364,15 @@ test('H18-C8 - connect devolve authorizationUrl e grava só o SHA-256 do state, 
 test('H18-C9 - sem cookie 401 e com sessão de paciente 403 nas 5 rotas, sem Google nem linha', async () => {
   fake.reset();
   const patient = await signUpWithCookie(t, 'paciente');
-  const before = await t.prisma.calendarConnection.count();
+  const own = await clinic();
+  // Só linhas das contas deste arquivo (sufixo do e-mail): outro arquivo de teste
+  // rodando em paralelo pode criar linhas próprias.
+  const suffix = patient.email.slice(patient.email.indexOf('.'));
+  const mine = {
+    where: { clinic: { user: { email: { endsWith: suffix } } } },
+  };
+  assert.ok(own.email.endsWith(suffix));
+  const before = await t.prisma.calendarConnection.count(mine);
   for (const [method, path, body] of ROUTES) {
     const anonymous = await call(t, method, path, undefined, body);
     assert.equal(anonymous.status, 401, `${method} ${path} sem cookie`);
@@ -342,7 +380,8 @@ test('H18-C9 - sem cookie 401 e com sessão de paciente 403 nas 5 rotas, sem Goo
     assert.equal(asPatient.status, 403, `${method} ${path} paciente`);
   }
   assert.equal(fake.exchangeCalls.length + fake.listCalls, 0);
-  assert.equal(await t.prisma.calendarConnection.count(), before);
+  assert.equal(await t.prisma.calendarConnection.count(mine), before);
+  assert.equal(await row(own.clinicId), null);
 });
 
 test('H18-C10 - callback válido grava tokens cifrados, AWAITING_CALENDAR, zera o state e redireciona', async () => {
@@ -547,6 +586,62 @@ test('H18-C16 - troca que falha ou expira: google_unavailable e nenhum token gra
     assert.deepEqual(now, { ...before, oauthStateHash: null }, kind);
     assert.equal(now?.refreshToken, null, kind);
   }
+});
+
+test('H18-C47 - state válido com error diferente de access_denied ou sem code: google_unavailable sem troca, conexão intacta', async () => {
+  const cases: [string, (state: string) => Record<string, string>][] = [
+    ['error=server_error', (state) => ({ error: 'server_error', state })],
+    ['sem code', (state) => ({ state })],
+  ];
+  for (const [label, query] of cases) {
+    fake.reset();
+    const account = await clinic();
+    await connected(account);
+    const state = await connect(account);
+    const before = await snapshot(account.clinicId);
+    assert.equal(before?.status, 'CONNECTED', label);
+    fake.exchangeCalls = [];
+    const result = resultOf(await callback(account, query(state)));
+    assert.equal(result, 'google_unavailable', label);
+    assert.equal(fake.exchangeCalls.length, 0, label);
+    const now = await row(account.clinicId);
+    assert.equal(now?.oauthStateHash, null, label);
+    assert.equal(now?.oauthStateSessionId, null, label);
+    assert.deepEqual(
+      await snapshot(account.clinicId),
+      { ...before, oauthStateHash: null },
+      label,
+    );
+  }
+});
+
+test('H18-C49 - access token renovado durante a listagem de agendas é gravado cifrado, refresh igual', async () => {
+  fake.reset();
+  const account = await clinic();
+  const issued = await authorized(account);
+  const renewed = {
+    accessToken: `ya29.renovado-${randomUUID()}`,
+    expiryDate: Date.now() + 7_200_000,
+  };
+  fake.list = async (_credentials, onTokens) => {
+    assert.ok(onTokens, 'a listagem devia receber onTokens');
+    await onTokens(renewed);
+    return OWNED;
+  };
+  const response = await call(t, 'GET', `${BASE}/calendars`, account.cookie);
+  assert.equal(response.status, 200);
+  const r = await row(account.clinicId);
+  assert.equal(r?.status, 'AWAITING_CALENDAR');
+  assert.match(r?.accessToken ?? '', TOKEN_FORMAT);
+  assert.equal(
+    decryptToken(KEY, account.clinicId, r?.accessToken ?? ''),
+    renewed.accessToken,
+  );
+  assert.equal(r?.accessTokenExpiresAt?.getTime(), renewed.expiryDate);
+  assert.equal(
+    decryptToken(KEY, account.clinicId, r?.refreshToken ?? ''),
+    issued.refreshToken,
+  );
 });
 
 test('H18-C17 - reconectar mantém a conexão até o callback dar certo, aí troca os tokens e volta a AWAITING_CALENDAR', async () => {

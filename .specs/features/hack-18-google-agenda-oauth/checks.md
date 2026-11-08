@@ -5,7 +5,7 @@ Plan: `.specs/features/hack-18-google-agenda-oauth/plan.md`
 
 Perfil `standard` e não `light`: o card guarda um segredo de longa duração (refresh token, acesso permanente à agenda com nome de paciente, RN-06), tem cifra com AAD, um state consumido uma vez sob corrida e uma tabela de decisão de erro do Google que o HACK-19 reusa. Na dúvida entre dois perfis, o mais alto.
 
-46 checks em 5 fatias · 7 portas de uma via · 2 perguntas abertas, das quais 1 bloqueia o build (guard e sessão de clínica do HACK-16 em `main`) e 1 bloqueia só o go-live (credenciais OAuth reais, providenciadas pelo time)
+49 checks em 5 fatias (C47 a C49 do retrabalho da verificação) · 7 portas de uma via · 2 perguntas abertas, das quais 1 bloqueia o build (guard e sessão de clínica do HACK-16 em `main`) e 1 bloqueia só o go-live (credenciais OAuth reais, providenciadas pelo time)
 
 **Decisões do Gustavo que valem aqui:** plano aprovado; código testado só com `GoogleOAuthClient` falso (nenhuma prova chama o Google real); sem `GOOGLE_*` a API responde `503` e a tela diz «indisponível»; revogado e expirado são um status só, `EXPIRED`, com a cópia «a autorização expirou ou foi revogada. Reautorize.».
 
@@ -172,6 +172,17 @@ Proof: `RUN --test-name-pattern="^H18-C46 " SVC`
 Proof: `test -z "$(grep -rl --include='*.ts' "from 'googleapis'" apps/api/src | grep -v 'google-oauth.client.ts$')"` (da raiz)
 Proof: `npm ls googleapis -w @hackathon/api` (da raiz; sai 0 só com a dependência no lock)
 
+### Retrabalho da verificação (Maestro, 08/11) · 5 arquivos · ~20 KB · ~5k
+
+**C47** - Callback com state válido, partindo de `CONNECTED` com tokens, em 2 casos: `error=server_error` (diferente de `access_denied`) e sem `code` nem `error`: `302` com `google=google_unavailable`, `exchangeCode` 0 chamadas, state zerado, status, tokens e agenda iguais aos de antes (S2; L-006; bloqueio de `verification.md`)
+Proof: `RUN --test-name-pattern="^H18-C47 " HTTP` (2 casos)
+
+**C48** - Em `awaiting_calendar` com a lista de agendas vazia e com erro ao listar, a tela oferece o botão «Conectar Google Agenda» para reautorizar com outra conta; com agendas na lista, não oferece (S3, AC 22; decisão do Maestro, R3)
+Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^H18-C48 " WVM` (3 casos)
+
+**C49** - Quando o Google renova o access token durante `GET .../calendars` (clínica em `AWAITING_CALENDAR`), a coluna do access token passa a decifrar para o novo e a validade é a nova, pelo mesmo caminho do `getAuthorizedCalendar` (C41); o refresh token decifra para o mesmo de antes (S3; R6)
+Proof: `RUN --test-name-pattern="^H18-C49 " HTTP`
+
 ## Coverage
 
 | Set (size)                                                                       | Member -> proof                                                                                                                                                                                                             | Unproven |
@@ -182,12 +193,12 @@ Proof: `npm ls googleapis -w @hackathon/api` (da raiz; sai 0 só com a dependên
 | `GET /api/clinic/google-calendar/calendars` statuses (7)                         | 200 C20 · 401 C9 · 403 C9 · 409 C21 · 502 C25 · 503 C5 · 504 C25                                                                                                                                                            | -        |
 | `PUT /api/clinic/google-calendar/calendar` statuses (8)                          | 200 C22 · 401 C9 · 403 C9 · 409 C21 · 422 C23 · 502 C25 · 503 C5 · 504 C25                                                                                                                                                  | -        |
 | `GET /api/google-calendar/callback` (Next) statuses (3)                          | 302 C18 · 502 C18 · 504 C18                                                                                                                                                                                                 | -        |
-| resultados `google=` do callback (5)                                             | `awaiting_calendar` C10 · `denied` C14 · `invalid_state` C11 · `no_refresh_token` C15 · `google_unavailable` C16                                                                                                            | -        |
+| resultados `google=` do callback (5)                                             | `awaiting_calendar` C10 · `denied` C14 · `invalid_state` C11 · `no_refresh_token` C15 · `google_unavailable` C16, C47                                                                                                       | -        |
 | state recusado (6)                                                               | ausente C11 · desconhecido C11 · vencido C11 · consumido C11 · outra sessão C11 · outra clínica C12                                                                                                                         | -        |
 | `code` de erro do Nest (7)                                                       | `GOOGLE_CALENDAR_UNAVAILABLE` C5 · `403` do `@ClinicOnly()` C9 · `CALENDAR_NOT_AUTHORIZED` C21 · `CALENDAR_NOT_AVAILABLE` C23 · `VALIDATION_FAILED` C23 · `GOOGLE_UNAVAILABLE` C25 · `GOOGLE_TIMEOUT` C25                   | -        |
 | `CalendarConnectionStatus` no `GET` de status (4)                                | `DISCONNECTED` C26 · `AWAITING_CALENDAR` C26 · `CONNECTED` C26 · `EXPIRED` C26                                                                                                                                              | -        |
 | transições de status (6)                                                         | sem linha → `AWAITING_CALENDAR` C10 · `CONNECTED` → `AWAITING_CALENDAR` C17 · `AWAITING_CALENDAR` → `CONNECTED` C22 · `CONNECTED` → `EXPIRED` C42 · listagem recusada → `EXPIRED` C24 · `EXPIRED` → `AWAITING_CALENDAR` C17 | -        |
-| estados da tela, 4 status, indisponível e erro de carga (6)                      | `connected` C27 · `disconnected` C27 · `expired` C27 · `awaiting_calendar` C27, C28 · indisponível C6 · erro C29                                                                                                            | -        |
+| estados da tela, 4 status, indisponível e erro de carga (6)                      | `connected` C27 · `disconnected` C27 · `expired` C27 · `awaiting_calendar` C27, C28, C48 · indisponível C6 · erro C29                                                                                                       | -        |
 | `?google=` na tela, 4 de erro e 3 sem alerta (7)                                 | `denied` C30 · `invalid_state` C30 · `no_refresh_token` C30 · `google_unavailable` C30 · `awaiting_calendar` C30 · desconhecido C30 · ausente C30                                                                           | -        |
 | variáveis `GOOGLE_*` (4)                                                         | `GOOGLE_OAUTH_CLIENT_ID` C1 · `GOOGLE_OAUTH_CLIENT_SECRET` C1 · `GOOGLE_OAUTH_REDIRECT_URI` C1 · `GOOGLE_TOKEN_ENCRYPTION_KEY` C1, C2                                                                                       | -        |
 | tamanho da chave (4 bordas)                                                      | 31 bytes C2 · 32 bytes C2 · 33 bytes C2 · não base64 C2                                                                                                                                                                     | -        |
@@ -196,6 +207,8 @@ Proof: `npm ls googleapis -w @hackathon/api` (da raiz; sai 0 só com a dependên
 | API de módulo, porta 3 (4)                                                       | `getAuthorizedCalendar` C38, C40 · `markCredentialsRejected` C42 · `listConnectedClinicIds` C45 · `isCredentialsRejectedError` C43                                                                                          | -        |
 | chamadas ao Google com timeout (3)                                               | `exchangeCode` C39 · `listOwnedCalendars` C39 · `calendarFor` C39                                                                                                                                                           | -        |
 | portas de uma via em `Landing` (7)                                               | porta 1 C46 · porta 2 C34, C35 · porta 3 C46 · porta 4 C46 · porta 5 C46 · porta 6 C7 · porta 7 C7                                                                                                                          | -        |
+| ramos do callback com state válido (5)                                           | `error=access_denied` C14 · outro `error` C47 · sem `code` C47 · troca sem refresh C15 · troca com falha C16                                                                                                                | -        |
+| quem grava o access token renovado (2)                                           | `getAuthorizedCalendar` C41 · listagem de agendas C49                                                                                                                                                                       | -        |
 | startup config: env das `GOOGLE_*` (2 montagens)                                 | `main.js` C4 · `startTestApp` C5                                                                                                                                                                                            | -        |
 | startup config: `GoogleCalendarModule` no `AppModule` (1 montagem compartilhada) | `createApp`, usada por `main.ts` e `startTestApp` C5                                                                                                                                                                        | -        |
 
