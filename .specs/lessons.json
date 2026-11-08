@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 7,
+  "next_id": 8,
   "lessons": [
     {
       "id": "L-001",
@@ -98,6 +98,22 @@
       ],
       "created": "2026-11-08T07:30:12Z",
       "last_seen": "2026-11-08T07:30:12Z"
+    },
+    {
+      "id": "L-007",
+      "key": "surviving_mutant::callback de renovacao de token ontokens do adaptador google precisa de prova no proprio adaptador contra servidor local o falso do http svc que chama ontokens sozinho nao prova o repasse",
+      "text": "Callback de renovação de token (onTokens) do adaptador Google precisa de prova no próprio adaptador contra servidor local; o falso do HTTP/SVC que chama onTokens sozinho não prova o repasse.",
+      "signal": "surviving_mutant",
+      "scope": "apps/api/google-adapter",
+      "status": "candidate",
+      "features": ["hack-18-google-agenda-oauth"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/api/src/modules/google-calendar/google-oauth.client.ts:225 (R2-M6b), :181 (R2-M4) (apps/api/google-adapter)"
+      ],
+      "created": "2026-11-08T07:42:45Z",
+      "last_seen": "2026-11-08T07:42:45Z"
     }
   ]
 }

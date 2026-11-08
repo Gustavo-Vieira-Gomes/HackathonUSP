@@ -56,6 +56,13 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: apps/api/src/modules/google-calendar/google-calendar-connection.service.ts:153 (apps/api/oauth-callback)
 - last seen: 2026-11-08T07:30:12Z
 
+### L-007 - Callback de renovação de token (onTokens) do adaptador Google precisa de prova no próprio adaptador contra servidor local; o falso do HTTP/SVC que chama onTokens sozinho não prova o repasse.
+
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `apps/api/google-adapter` · harmful: 0
+- features: hack-18-google-agenda-oauth
+- evidence: apps/api/src/modules/google-calendar/google-oauth.client.ts:225 (R2-M6b), :181 (R2-M4) (apps/api/google-adapter)
+- last seen: 2026-11-08T07:42:45Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
