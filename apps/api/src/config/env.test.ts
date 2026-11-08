@@ -51,3 +51,34 @@ test('C5 - BETTER_AUTH_SECRET com 31 caracteres falha e com 32 é aceito', () =>
   const env = loadEnv({ ...valid, BETTER_AUTH_SECRET: 'a'.repeat(32) });
   assert.equal(env.BETTER_AUTH_SECRET.length, 32);
 });
+
+test('C8 - BETTER_AUTH_SECRET de exemplo é recusado citando só o nome; segredo aleatório é aceito', () => {
+  const pad = '-com-mais-de-32-caracteres-de-tamanho';
+  const examples = [
+    'troque-por-um-segredo-local-de-32-caracteres',
+    `troque${pad}`,
+    `TROQUE${pad}`,
+    `change-me${pad}`,
+    `CHANGE-ME${pad}`,
+    `changeme${pad}`,
+    `ChangeMe${pad}`,
+  ];
+  for (const secret of examples) {
+    assert.throws(
+      () => loadEnv({ ...valid, BETTER_AUTH_SECRET: secret }),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, /\bBETTER_AUTH_SECRET\b/);
+        assert.equal(error.message.includes(secret), false, 'vazou o valor');
+        return true;
+      },
+      secret,
+    );
+  }
+  const random = 'q8Zr0tY1vB3nM5kL7jH9gF2dS4aP6oI8uE0wQ2xC4zV=';
+  assert.equal(random.length, 44);
+  assert.equal(
+    loadEnv({ ...valid, BETTER_AUTH_SECRET: random }).BETTER_AUTH_SECRET,
+    random,
+  );
+});

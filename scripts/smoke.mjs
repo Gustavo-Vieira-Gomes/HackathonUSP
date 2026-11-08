@@ -133,6 +133,33 @@ try {
     'C31: a página com o cookie do login não mostra o e-mail da sessão',
   );
 
+  // C5 (HACK-12 seg): formulário de outro site postando para o cadastro pelo Next.
+  const hostileEmail = `smoke-hostil-${Date.now()}-${process.pid}@teste.local`;
+  const hostile = await fetch(`${webUrl}/api/sign-up/paciente`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      origin: 'http://evil.example',
+    },
+    body: new URLSearchParams({
+      name: 'Atacante',
+      email: hostileEmail,
+      password,
+    }).toString(),
+  });
+  assert.equal(hostile.status, 403, `C5: cadastro hostil ${hostile.status}`);
+  assert.deepEqual(hostile.headers.getSetCookie(), [], 'C5: set-cookie');
+  const hostileSignIn = await postJson(
+    `${webUrl}/api/auth/sign-in/email`,
+    { email: hostileEmail, password },
+    webUrl,
+  );
+  assert.equal(
+    hostileSignIn.status,
+    401,
+    `C5: a conta hostil existe (login ${hostileSignIn.status})`,
+  );
+
   // HACK-38: token de uso único do socket pelo repasse /api/auth/* do Next.
   const generateUrl = `${webUrl}/api/auth/one-time-token/generate`;
   const generated = await fetch(generateUrl, { headers: { cookie } });

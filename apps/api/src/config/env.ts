@@ -9,9 +9,14 @@ export const REQUIRED_ENV = [
 
 const filled = z.string().trim().min(1);
 
+/** Placeholder antigo do .env.example e marcadores de valor de exemplo. */
+const EXAMPLE_SECRET = /troque|change-?me/i;
+
 const envSchema = z.object({
   DATABASE_URL: filled,
-  BETTER_AUTH_SECRET: filled.min(32),
+  BETTER_AUTH_SECRET: filled
+    .min(32)
+    .refine((secret) => !EXAMPLE_SECRET.test(secret)),
   BETTER_AUTH_URL: filled.pipe(z.url()),
   WEB_ORIGIN: filled.pipe(z.url()),
 });
@@ -42,6 +47,6 @@ export function loadEnv(
   ];
   throw new EnvValidationError(
     `Configuração inválida ou ausente: ${names.join(', ')}. ` +
-      'Confira o .env (modelo em .env.example); BETTER_AUTH_SECRET exige 32 caracteres ou mais.',
+      'Confira o .env (modelo em .env.example); BETTER_AUTH_SECRET exige 32 caracteres ou mais e não pode ser o valor de exemplo.',
   );
 }
