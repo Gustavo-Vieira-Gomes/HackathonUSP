@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadEnv, REQUIRED_ENV } from './env';
+import { EnvValidationError, loadEnv, REQUIRED_ENV } from './env';
 
 const valid = {
   DATABASE_URL: 'postgresql://usuario:senha-db-teste@127.0.0.1:5432/banco',
@@ -115,4 +115,28 @@ test('HACK-46 - flag desligada aceita token ausente ou vazio', () => {
     assert.equal(env.DEMO_CLOCK_ENABLED, false);
     assert.equal(env.DEMO_CLOCK_TOKEN, undefined);
   }
+});
+
+test('H16-C17 - GEOCODER_* têm padrão e valor inválido falha citando a variável', () => {
+  const env = loadEnv(valid);
+  assert.equal(env.GEOCODER_URL, 'https://nominatim.openstreetmap.org');
+  assert.equal(env.GEOCODER_USER_AGENT, 'hackathon-usp-marketplace/0.1');
+  assert.equal(env.GEOCODER_MIN_INTERVAL_MS, 1000);
+
+  const invalid: [string, string][] = [
+    ['GEOCODER_URL', 'nao-e-url'],
+    ['GEOCODER_MIN_INTERVAL_MS', '-1'],
+    ['GEOCODER_MIN_INTERVAL_MS', 'abc'],
+  ];
+  for (const [name, value] of invalid) {
+    assert.throws(
+      () => loadEnv({ ...valid, [name]: value }),
+      (error: unknown) => {
+        assert.ok(error instanceof EnvValidationError, `${name}=${value}`);
+        assert.match(error.message, new RegExp(`\\b${name}\\b`));
+        return true;
+      },
+    );
+  }
+  assert.equal(invalid.length, 3);
 });
