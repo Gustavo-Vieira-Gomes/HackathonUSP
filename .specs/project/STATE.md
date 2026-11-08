@@ -21,3 +21,14 @@ Políticas centralizadas em .claude/rules: project, engineering, security e desi
 ## Decisões HACK-19
 
 Autorizado pelo Gustavo: execução sem aprovação entre etapas, commits/push/PR main e aviso ao maestro; sem merge pelo implementador. Slots comuns em fatias de 30 minutos porque Exam não define duração. Snapshot completo antes de efeitos; falha de API suspende conexão e não usa leitura parcial. Nenhuma mudança em Vacancy.slotId ou Exam.clinicId. Banco local isolado hack_19 na porta 54319.
+
+## Decisões HACK-23
+
+- Autorizado executar a esteira e publicar PR sem pausas. Base HTTPS feat/hack-23-complete resolveu para 0d7ee6e, sem WIP/handoff mencionado no card.
+- Reutilizar Better Auth e os proxies existentes; cadastro de paciente passa a exigir telefone e aceite explícito.
+- Retenção usa fim do horário do exame para reserva e expiresAt da inscrição; excluir dependentes para não deixar histórico identificável nem FKs bloqueando.
+
+- Prova inicial: quatro cenários HACK-23 da API passaram. Check completo identificou import explícito de ClockModule ausente em AuthModule (consumidor isolado GoogleCalendarModule); corrigido sem alterar o teste existente. Nova página exigiu recompilar contracts antes dos testes frontend.
+- Artefatos de navegação e ownership ficam em README e spec; não há descoberta adicional que justifique duplicação em .notebook.
+
+- HACK-23 validado: check (414 testes sem falhas/ignorados), build e smoke verdes no banco hack_23. Inclui páginas por ID e smoke de 404 no Next. Sem dependências/migrations novas e sem deploy.
