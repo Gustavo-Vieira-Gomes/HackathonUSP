@@ -6,3 +6,7 @@
 - HACK-51: 401, 403, perfil ausente, 500, corpo inválido, timeout e rede cobertos pelos testes de serviço/painel.
 - HACK-52: teste por correção: TUSS, PUT sem questionário sem escrita, edição com 90 minutos, navegação 401/403 e 404 de configurações.
 - Geocodificação e fornecedores externos simulados; não houve validação de fornecedor real, deploy ou credenciais externas.
+
+## Integração final com main 957cf9e
+
+Migration local do seed aplicada. `npm run check`: API 358/358, web 52/52, contratos 20/20; lint, tipos e formatação verdes. `npm run build` e `npm run smoke` verdes novamente. Nenhuma alteração de dependência. Worktree isolada; sem deploy.

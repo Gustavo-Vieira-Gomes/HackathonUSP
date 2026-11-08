@@ -49,3 +49,4 @@ Políticas centralizadas em .claude/rules: project, engineering, security e desi
 - Primeira rodada: lint/tipos passaram; duas regressões HTTP novas excederam a cota compartilhada de 30 cadastros/min do arquivo antigo (429). Movidas para aplicação de teste própria; rate limit de produção preservado.
 - Integrado main f59b350 (HACK-23) antes dos gates finais; teste de paciente usa telefone e aceite explícito do contrato novo.
 - Gates sobre main f59b350: check verde (API 353, web 52, contratos 20), build e smoke verdes. Smoke inclui painel com API desligada sem redirecionamento.
+- Integração final main 957cf9e (seed HACK-15) sem conflito de código. Migration local aplicada; check 430/430 testes, build e smoke verdes novamente. Esteira de implementador concluída; revisão independente fica com o maestro.
