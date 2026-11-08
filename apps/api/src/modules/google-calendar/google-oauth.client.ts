@@ -169,11 +169,16 @@ export class GoogleOAuthClient {
     }
   }
 
-  /** Agendas da conta com o papel de cada uma; quem filtra `owner` é o serviço. */
+  /**
+   * Agendas da conta com o papel de cada uma; quem filtra `owner` é o serviço. A
+   * renovação do access token durante a listagem chega em `onTokens`.
+   */
   async listOwnedCalendars(
     credentials: GoogleCredentials,
+    onTokens: (tokens: RefreshedTokens) => Promise<void> = async () =>
+      undefined,
   ): Promise<GoogleCalendarCandidate[]> {
-    const calendar = this.calendarFor(credentials, async () => undefined);
+    const calendar = this.calendarFor(credentials, onTokens);
     const items: GoogleCalendarCandidate[] = [];
     let pageToken: string | undefined;
     try {

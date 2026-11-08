@@ -201,6 +201,7 @@ export class GoogleCalendarConnectionService {
     try {
       candidates = await this.google.listOwnedCalendars(
         this.credentials(encryptionKey, row),
+        (tokens) => this.saveRefreshedAccessToken(clinicId, tokens),
       );
     } catch (error) {
       throw await this.googleFailure(clinicId, 'listagem de agendas', error);
@@ -309,7 +310,10 @@ export class GoogleCalendarConnectionService {
     if (!this.config) return;
     try {
       await this.prisma.calendarConnection.updateMany({
-        where: { clinicId, status: 'CONNECTED' },
+        where: {
+          clinicId,
+          status: { in: ['AWAITING_CALENDAR', 'CONNECTED'] },
+        },
         data: {
           accessToken: encryptToken(
             this.config.encryptionKey,

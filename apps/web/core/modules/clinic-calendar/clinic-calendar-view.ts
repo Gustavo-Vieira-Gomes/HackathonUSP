@@ -89,10 +89,12 @@ export function clinicCalendarView(
     case 'expired':
       return { statusText: COPY.expired, showConnect: true, alert };
     case 'awaiting_calendar':
+      // Lista vazia ou erro: a clínica pode ter autorizado a conta errada, então
+      // oferece reautorizar (decisão do Maestro, R3).
       if (!calendars?.ok) {
         return {
           statusText: COPY.awaiting,
-          showConnect: false,
+          showConnect: true,
           notice: COPY.calendarsError,
           alert,
         };
@@ -106,7 +108,7 @@ export function clinicCalendarView(
           }
         : {
             statusText: COPY.awaiting,
-            showConnect: false,
+            showConnect: true,
             emptyText: COPY.empty,
             alert,
           };
