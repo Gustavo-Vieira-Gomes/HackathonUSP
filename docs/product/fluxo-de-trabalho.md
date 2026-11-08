@@ -6,13 +6,13 @@ Fonte das regras: [`marketplace-vagas-imagem.md`](marketplace-vagas-imagem.md). 
 
 ## Donos por área
 
-| Pessoa | Área | Cards |
-| --- | --- | --- |
+| Pessoa  | Área                                                    | Cards                             |
+| ------- | ------------------------------------------------------- | --------------------------------- |
 | Gustavo | Fundação, trava de pagamento, sincronizador, tempo real | 0.1, 0.2, 1.4, 2.5, 3.1, 3.4, 4.5 |
-| Pedro | Motor de regras e notificações | 3.2, 3.3, 3.5, 4.1, 4.2, 4.3, 4.4 |
-| Mateus | Clínica | 1.1, 1.2, 1.3, 1.5, 1.6, 6.3 |
-| Luiz | Paciente | 0.4, 2.1, 2.2, 2.3, 2.4, 2.6 |
-| Nicolas | Deploy, IA, demo | 0.3, 1.7, 5.1, 6.1, 6.2 |
+| Pedro   | Motor de regras e notificações                          | 3.2, 3.3, 3.5, 4.1, 4.2, 4.3, 4.4 |
+| Mateus  | Clínica                                                 | 1.1, 1.2, 1.3, 1.5, 1.6, 6.3      |
+| Luiz    | Paciente                                                | 0.4, 2.1, 2.2, 2.3, 2.4, 2.6      |
+| Nicolas | Deploy, IA, demo                                        | 0.3, 1.7, 5.1, 6.1, 6.2           |
 
 Épicos: E0 (HACK-5) e E3 (HACK-8) Gustavo · E1 (HACK-6) Mateus · E2 (HACK-7) Luiz · E4 (HACK-9) Pedro · E5 (HACK-10) e E6 (HACK-11) Nicolas.
 

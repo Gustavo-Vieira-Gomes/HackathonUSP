@@ -95,24 +95,24 @@ M4. Log por vaga: publicada, alertada, reservada, expirada
 
 ## Decisões
 
-| ID | Decisão | Porquê |
-| --- | --- | --- |
-| D1 | Nicho: exames de imagem | Pedido padronizado (TUSS), preço comparável, resultado em um passo |
-| D2 | Web mobile first para paciente e clínica; WhatsApp segundo canal se sobrar tempo | Distribuição por link, um código só; web push cobre a demo |
-| D3 | Receita: taxa fixa por agendamento, cobrada da clínica no comparecimento | Decisão do time, reafirmada após alerta do art. 58 do CEM (doc Mateus propunha assinatura) |
-| D4 | Núcleo: marketplace de vagas (oferta primeiro), modelo Mateus | Vaga publicada → alerta → reserva |
-| D5 | Sem opções gratuitas nem fila do SUS no fluxo | Modelo Mateus; democratização por preço e tempo |
-| D6 | Exames: USG, ecocardiograma, mamografia, TC e RM sem contraste; raio-X e contraste fora | Raio-X sem agendamento quase não gera vaga; contraste exige triagem |
-| D7 | Dinheiro: pagamento pelo app com taxa descontada, ou no local com cobrança posterior; parcelamento Capim | Doc Capim |
-| D8 | Web mobile first (PWA) em vez de RN + Expo | Sem build nativo na última noite; push web no Android e iOS instalado |
-| D9 | Agenda = Google Agenda | Reservas criam eventos padronizados; leitura a cada minuto |
-| D10 | No-show com tolerância X, deslocamento Y, onda Z | Padrões X=15, Y=45, Z=10 min — **delegados**, clínica edita |
-| D11 | Sinal obrigatório em encaixe e no-show; pagamento no local só na reserva comum | Financia a retenção por falta |
-| D12 | Cadastro com login | Paciente precisa voltar à reserva; substitui "sem login" |
-| D13 | Janelas de disponibilidade governam todo alerta | Ninguém é notificado fora do horário em que pode ir |
-| D14 | Foto do pedido como atalho opcional no P1 | Evita o abandono na escolha do exame; sobrevivente do doc Capim |
-| D15 | Canais na demo: push web + e-mail reais; WhatsApp simulado | Custo zero; API oficial exige aprovação |
-| — | Degraus de preço, retenção 30 dias, log por vaga, trava transacional | Lote de engenharia adotado sem objeção |
+| ID  | Decisão                                                                                                  | Porquê                                                                                     |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| D1  | Nicho: exames de imagem                                                                                  | Pedido padronizado (TUSS), preço comparável, resultado em um passo                         |
+| D2  | Web mobile first para paciente e clínica; WhatsApp segundo canal se sobrar tempo                         | Distribuição por link, um código só; web push cobre a demo                                 |
+| D3  | Receita: taxa fixa por agendamento, cobrada da clínica no comparecimento                                 | Decisão do time, reafirmada após alerta do art. 58 do CEM (doc Mateus propunha assinatura) |
+| D4  | Núcleo: marketplace de vagas (oferta primeiro), modelo Mateus                                            | Vaga publicada → alerta → reserva                                                          |
+| D5  | Sem opções gratuitas nem fila do SUS no fluxo                                                            | Modelo Mateus; democratização por preço e tempo                                            |
+| D6  | Exames: USG, ecocardiograma, mamografia, TC e RM sem contraste; raio-X e contraste fora                  | Raio-X sem agendamento quase não gera vaga; contraste exige triagem                        |
+| D7  | Dinheiro: pagamento pelo app com taxa descontada, ou no local com cobrança posterior; parcelamento Capim | Doc Capim                                                                                  |
+| D8  | Web mobile first (PWA) em vez de RN + Expo                                                               | Sem build nativo na última noite; push web no Android e iOS instalado                      |
+| D9  | Agenda = Google Agenda                                                                                   | Reservas criam eventos padronizados; leitura a cada minuto                                 |
+| D10 | No-show com tolerância X, deslocamento Y, onda Z                                                         | Padrões X=15, Y=45, Z=10 min — **delegados**, clínica edita                                |
+| D11 | Sinal obrigatório em encaixe e no-show; pagamento no local só na reserva comum                           | Financia a retenção por falta                                                              |
+| D12 | Cadastro com login                                                                                       | Paciente precisa voltar à reserva; substitui "sem login"                                   |
+| D13 | Janelas de disponibilidade governam todo alerta                                                          | Ninguém é notificado fora do horário em que pode ir                                        |
+| D14 | Foto do pedido como atalho opcional no P1                                                                | Evita o abandono na escolha do exame; sobrevivente do doc Capim                            |
+| D15 | Canais na demo: push web + e-mail reais; WhatsApp simulado                                               | Custo zero; API oficial exige aprovação                                                    |
+| —   | Degraus de preço, retenção 30 dias, log por vaga, trava transacional                                     | Lote de engenharia adotado sem objeção                                                     |
 
 ## Bordas por classificação
 
@@ -147,17 +147,17 @@ Escrever a spec BDD (`docs/templates/feature.md`) a partir deste mapa, começand
 
 ## Stack e decisões técnicas (08/11/2026)
 
-| ID | Decisão | Porquê |
-| --- | --- | --- |
-| T1 | Prisma + Postgres (Neon na demo, Docker local); MongoDB descartado | Domínio relacional e transacional: trava da vaga (RN-41), máquina de estados (RN-24), log (RN-50) e métricas (RN-51). Geo por haversine basta para ~10 clínicas |
-| T2 | Better Auth montada no Nest, adaptador Prisma, cookie httpOnly; papel `paciente`/`clinica` em `additionalFields` | Regra do projeto: não implementar sessão própria. Nest continua dono; Next repassa o cookie e um guard valida |
-| T3 | Motor: `@nestjs/schedule`, cron a cada minuto; sem fila | Suficiente para preço, ondas e expiração |
-| T4 | Tempo real: socket.io (`@nestjs/websockets`), sala por paciente e por clínica, auth pelo cookie no handshake | Pedido do time; polling descartado |
-| T5 | Push: `web-push` com VAPID no Nest; service worker no Next | Exige HTTPS |
-| T6 | E-mail: Resend | Plano gratuito |
-| T7 | WhatsApp real via API não oficial (Evolution API ou WAHA) neste piloto, com número do time; fallback: tela que imita a conversa | Decisão do time (08/11): sem template nem aprovação da Meta. Risco aceito: número pode ser banido; não usar em produção sem migrar para a API oficial |
-| T8 | IA da foto (RN-18) desacoplada: provider com contrato `foto → {exame, confiança}`, OpenAI primeiro, chave só no servidor | Assinatura do ChatGPT não dá acesso à API; precisa de chave da plataforma |
-| T9 | Hospedagem desde o dia 1: Next na Vercel, Nest no Railway/Render (precisa de WebSocket), Postgres no Neon | Push, OAuth Google e banca no celular exigem URL pública; aceito provisoriamente pelo time |
-| T10 | Pagamento simulado: tela de Pix falsa cujo "confirmar" dispara o mesmo fluxo de um webhook real | RN-41, RN-42 |
-| T11 | Um app Next: rotas `/clinica/...` em layout desktop, restante mobile first | Um deploy só |
-| T12 | Google Calendar: `googleapis` com OAuth no Nest, tokens no banco, polling a cada minuto; sem webhook do Google | Canal de webhook exige renovação; polling já atende RN-05 |
+| ID  | Decisão                                                                                                                         | Porquê                                                                                                                                                          |
+| --- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1  | Prisma + Postgres (Neon na demo, Docker local); MongoDB descartado                                                              | Domínio relacional e transacional: trava da vaga (RN-41), máquina de estados (RN-24), log (RN-50) e métricas (RN-51). Geo por haversine basta para ~10 clínicas |
+| T2  | Better Auth montada no Nest, adaptador Prisma, cookie httpOnly; papel `paciente`/`clinica` em `additionalFields`                | Regra do projeto: não implementar sessão própria. Nest continua dono; Next repassa o cookie e um guard valida                                                   |
+| T3  | Motor: `@nestjs/schedule`, cron a cada minuto; sem fila                                                                         | Suficiente para preço, ondas e expiração                                                                                                                        |
+| T4  | Tempo real: socket.io (`@nestjs/websockets`), sala por paciente e por clínica, auth pelo cookie no handshake                    | Pedido do time; polling descartado                                                                                                                              |
+| T5  | Push: `web-push` com VAPID no Nest; service worker no Next                                                                      | Exige HTTPS                                                                                                                                                     |
+| T6  | E-mail: Resend                                                                                                                  | Plano gratuito                                                                                                                                                  |
+| T7  | WhatsApp real via API não oficial (Evolution API ou WAHA) neste piloto, com número do time; fallback: tela que imita a conversa | Decisão do time (08/11): sem template nem aprovação da Meta. Risco aceito: número pode ser banido; não usar em produção sem migrar para a API oficial           |
+| T8  | IA da foto (RN-18) desacoplada: provider com contrato `foto → {exame, confiança}`, OpenAI primeiro, chave só no servidor        | Assinatura do ChatGPT não dá acesso à API; precisa de chave da plataforma                                                                                       |
+| T9  | Hospedagem desde o dia 1: Next na Vercel, Nest no Railway/Render (precisa de WebSocket), Postgres no Neon                       | Push, OAuth Google e banca no celular exigem URL pública; aceito provisoriamente pelo time                                                                      |
+| T10 | Pagamento simulado: tela de Pix falsa cujo "confirmar" dispara o mesmo fluxo de um webhook real                                 | RN-41, RN-42                                                                                                                                                    |
+| T11 | Um app Next: rotas `/clinica/...` em layout desktop, restante mobile first                                                      | Um deploy só                                                                                                                                                    |
+| T12 | Google Calendar: `googleapis` com OAuth no Nest, tokens no banco, polling a cada minuto; sem webhook do Google                  | Canal de webhook exige renovação; polling já atende RN-05                                                                                                       |
