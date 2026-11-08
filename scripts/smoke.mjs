@@ -133,6 +133,39 @@ try {
     'C31: a página com o cookie do login não mostra o e-mail da sessão',
   );
 
+  // HACK-38: token de uso único do socket pelo repasse /api/auth/* do Next.
+  const generateUrl = `${webUrl}/api/auth/one-time-token/generate`;
+  const generated = await fetch(generateUrl, { headers: { cookie } });
+  assert.equal(
+    generated.status,
+    200,
+    `C1: generate com cookie ${generated.status}`,
+  );
+  const { token } = await generated.json();
+  assert.ok(
+    typeof token === 'string' && token.length > 0,
+    'C1: generate sem token',
+  );
+  const anonymous = await fetch(generateUrl);
+  assert.equal(
+    anonymous.status,
+    401,
+    `C1: generate sem cookie ${anonymous.status}`,
+  );
+  assert.ok(!(await anonymous.text()).includes('"token"'), 'C1: 401 com token');
+  const signOut = await fetch(`${webUrl}/api/auth/sign-out`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: webUrl, cookie },
+    body: '{}',
+  });
+  assert.equal(signOut.status, 200, `C1: sign-out pelo Next ${signOut.status}`);
+  const afterSignOut = await fetch(generateUrl, { headers: { cookie } });
+  assert.equal(
+    afterSignOut.status,
+    401,
+    `C1: generate com sessão encerrada ${afterSignOut.status}`,
+  );
+
   await stop(api.child);
   const offlinePage = await fetch(webUrl);
   assert.equal(offlinePage.status, 200);
@@ -144,7 +177,7 @@ try {
   );
   assert.equal(offlineSignIn.status, 502, 'C32: repasse com a API desligada');
   console.log(
-    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e sessão pelo Next, fallback e 502 com API desligada.',
+    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e sessão pelo Next, token do socket, fallback e 502 com API desligada.',
   );
 } finally {
   await Promise.all(processes.map(stop));

@@ -5,6 +5,7 @@ import { ConfigModule } from './config/config.module';
 import type { AppEnv } from './config/env';
 import { ExamplesModule } from './examples/examples.module';
 import { HealthController } from './health/health.controller';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({})
@@ -18,6 +19,7 @@ export class AppModule {
         AuthModule,
         ScheduleModule.forRoot(),
         ExamplesModule,
+        RealtimeModule,
       ],
       controllers: [HealthController],
     };
