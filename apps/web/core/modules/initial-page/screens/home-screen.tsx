@@ -19,7 +19,7 @@ export default async function HomeScreen() {
           </span>
           Hackathon USP
         </Link>
-        <Link href="/buscar">Buscar clínicas</Link>
+        <span className="edition">Da ideia à entrega</span>
       </header>
 
       <section className="hero" aria-labelledby="headline">

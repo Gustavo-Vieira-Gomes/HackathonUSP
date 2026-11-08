@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 4,
+  "next_id": 9,
   "lessons": [
     {
       "id": "L-001",
@@ -52,6 +52,84 @@
       ],
       "created": "2026-11-08T04:35:55Z",
       "last_seen": "2026-11-08T04:35:55Z"
+    },
+    {
+      "id": "L-004",
+      "key": "surviving_mutant::rota movida para outro controller herda o check de protecao so se a prova exercita a rota nova estender o teste de 429 para a rota movida nao so conferir os decorators",
+      "text": "Rota movida para outro controller herda o check de proteção só se a prova exercita a rota nova: estender o teste de 429 para a rota movida, não só conferir os decorators.",
+      "signal": "surviving_mutant",
+      "scope": "apps/api guards",
+      "status": "candidate",
+      "features": ["hack-16-cadastro-login-clinica"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/api/src/modules/clinics/clinic-sign-up.controller.ts:35 F1 (apps/api guards)"
+      ],
+      "created": "2026-11-08T06:25:57Z",
+      "last_seen": "2026-11-08T06:25:57Z"
+    },
+    {
+      "id": "L-005",
+      "key": "spec_precision_gap::check que cita o codigo do fornecedor deve nomear o valor literal ou o teste so afirma o status",
+      "text": "Check que cita 'o código do fornecedor' deve nomear o valor literal, ou o teste só afirma o status.",
+      "signal": "spec_precision_gap",
+      "scope": "",
+      "status": "candidate",
+      "features": ["hack-16-cadastro-login-clinica"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": ["clinic-sign-up.test.ts:270 C9"],
+      "created": "2026-11-08T06:25:57Z",
+      "last_seen": "2026-11-08T06:25:57Z"
+    },
+    {
+      "id": "L-006",
+      "key": "gate_fail::teste que afirma occurredat base 1 precisa de base estritamente depois da ultima transicao semeada publish grava clock now e o mesmo milissegundo vira base 2 pela d6",
+      "text": "Teste que afirma occurredAt = base + 1 precisa de base estritamente depois da última transição semeada: publish grava clock.now() e o mesmo milissegundo vira base + 2 pela D6.",
+      "signal": "gate_fail",
+      "scope": "apps/api/vacancies",
+      "status": "candidate",
+      "features": ["hack-32-continuacao"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/api/src/modules/vacancies/vacancies.service.test.ts:785 (apps/api/vacancies)"
+      ],
+      "created": "2026-11-08T07:06:46Z",
+      "last_seen": "2026-11-08T07:06:46Z"
+    },
+    {
+      "id": "L-007",
+      "key": "ac_gap::callback oauth todo valor de error do provedor e a ausencia de code com state valido precisam de um caso afirmado nao so access denied e falha da troca",
+      "text": "Callback OAuth: todo valor de error do provedor e a ausência de code com state válido precisam de um caso afirmado, não só access_denied e falha da troca.",
+      "signal": "ac_gap",
+      "scope": "apps/api/oauth-callback",
+      "status": "candidate",
+      "features": ["hack-18-google-agenda-oauth"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/api/src/modules/google-calendar/google-calendar-connection.service.ts:153 (apps/api/oauth-callback)"
+      ],
+      "created": "2026-11-08T07:30:12Z",
+      "last_seen": "2026-11-08T07:30:12Z"
+    },
+    {
+      "id": "L-008",
+      "key": "surviving_mutant::callback de renovacao de token ontokens do adaptador google precisa de prova no proprio adaptador contra servidor local o falso do http svc que chama ontokens sozinho nao prova o repasse",
+      "text": "Callback de renovação de token (onTokens) do adaptador Google precisa de prova no próprio adaptador contra servidor local; o falso do HTTP/SVC que chama onTokens sozinho não prova o repasse.",
+      "signal": "surviving_mutant",
+      "scope": "apps/api/google-adapter",
+      "status": "candidate",
+      "features": ["hack-18-google-agenda-oauth"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/api/src/modules/google-calendar/google-oauth.client.ts:225 (R2-M6b), :181 (R2-M4) (apps/api/google-adapter)"
+      ],
+      "created": "2026-11-08T07:42:45Z",
+      "last_seen": "2026-11-08T07:42:45Z"
     }
   ]
 }

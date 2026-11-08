@@ -25,6 +25,8 @@ import { SignUpService } from './sign-up.service';
 /**
  * Cadastros separados por papel (D1): o papel vem da rota, nunca do corpo.
  * Origem e tipo (403/415) antes do limite de taxa (429), nessa ordem.
+ * O de clínica (`POST /api/sign-up/clinica`, perfil completo) fica no
+ * `ClinicSignUpController` do módulo de clínicas (HACK-16), com as mesmas proteções.
  */
 @AllowAnonymous()
 @UseGuards(SignUpRequestGuard, ThrottlerGuard)
@@ -41,16 +43,6 @@ export class SignUpController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignUpResponse> {
     return this.handle('paciente', body, req, res);
-  }
-
-  @Post('clinica')
-  @HttpCode(200)
-  signUpClinica(
-    @Body() body: unknown,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<SignUpResponse> {
-    return this.handle('clinica', body, req, res);
   }
 
   private async handle(

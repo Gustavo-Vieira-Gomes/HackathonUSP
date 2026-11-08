@@ -16,7 +16,7 @@ datasource db {
 }
 
 model User {
-  id            String    @id
+  id            String    @id @default(uuid())
   name          String
   email         String    @unique
   emailVerified Boolean   @default(false)
@@ -92,6 +92,7 @@ model Clinic {
   cnes               String               @unique
   technicalManager   String
   // Teto diário de vagas com desconto (RN-28).
+  // Alvo para conexão manual na demo; não indica OAuth conectado.
   demoCalendarTarget Boolean              @default(false)
   dailyDiscountCap   Int                  @default(5)
   // Percentual do sinal sobre o preço do momento (RN-40, D1).
@@ -104,6 +105,8 @@ model Clinic {
   openingHours       ClinicOpeningHours[]
   exams              Exam[]
   slots              Slot[]
+  // Google Agenda conectada por OAuth (HACK-18); ausência = nunca conectou.
+  calendarConnection CalendarConnection?
 }
 
 // Faixa de expediente num dia da semana, em hora local.
@@ -138,7 +141,6 @@ model Exam {
   toleranceMinutes     Int
   maxTravelMinutes     Int
   // Chave e versão do questionário no catálogo do HACK-41 (D5).
-  questionnaire        Json?
   questionnaireKey     String
   questionnaireVersion Int
   createdAt            DateTime    @default(now())
@@ -165,20 +167,22 @@ model PriceStep {
 
 // Perfil de paciente de um User (role "paciente"), um para um (RN-11).
 model Patient {
-  id                  String         @id @default(uuid()) @db.Uuid
-  userId              String         @unique
-  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String                     @id @default(uuid()) @db.Uuid
+  userId              String                     @unique
+  user                User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   phone               String
   // Telefone confirmado por código; sem isso o WhatsApp não é usado (HACK-34).
   phoneVerifiedAt     DateTime?
   // Canais em que o paciente aceita receber alertas (RN-35, HACK-34).
-  alertChannels       AlertChannel[] @default([push, email])
+  alertChannels       AlertChannel[]             @default([push, email])
   // Aceite do termo LGPD de dado de saúde; sem ele a conta não nasce (F1).
   healthDataConsentAt DateTime
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
   subscriptions       Subscription[]
   reservations        Reservation[]
+  whatsappMessages    SimulatedWhatsappMessage[]
+  phoneVerification   PhoneVerification?
 }
 
 // Inscrição na lista de encaixe (RN-17). Uma por paciente e TUSS: renovar ou se
@@ -280,6 +284,10 @@ enum AlertResult {
   enviado
   falhou
   cancelado
+  // Canal ativo do paciente sem como enviar: sem adapter (fornecedor não
+  // configurado) ou WhatsApp sem telefone verificado. Tira o paciente da fila
+  // daquela vaga, como um alerta enviado (HACK-48).
+  sem_canal
 }
 
 enum TransitionOrigin {
@@ -411,4 +419,72 @@ model DemoClock {
   id            Int      @id @default(1)
   offsetMinutes Int      @default(0)
   updatedAt     DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp simulado (HACK-37)
+// ---------------------------------------------------------------------------
+
+enum SimulatedWhatsappKind {
+  alerta
+  codigo_verificacao
+}
+
+// Mensagem que seria enviada pelo WhatsApp no piloto, mostrada em /demo/whatsapp.
+// Fica no banco, não na memória, para a tela ver o que outra instância gravou.
+model SimulatedWhatsappMessage {
+  id        String                @id @default(uuid()) @db.Uuid
+  patientId String                @db.Uuid
+  patient   Patient               @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  phone     String
+  kind      SimulatedWhatsappKind
+  body      String
+  // Alerta de origem: no máximo uma mensagem por Alert, mesmo no reenvio (HACK-45).
+  alertId   String?               @unique @db.Uuid
+  createdAt DateTime              @default(now())
+
+  @@index([createdAt])
+}
+
+// Código de verificação do telefone em andamento, um por paciente (HACK-37).
+// Só o HMAC do código é guardado; expira e tem limite de tentativas.
+model PhoneVerification {
+  patientId String   @id @db.Uuid
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  phone     String
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  sentAt    DateTime @default(now())
+}
+
+// Status da conexão com a Google Agenda (HACK-18). EXPIRED cobre expirado e revogado:
+// o Google devolve o mesmo invalid_grant nos dois casos.
+enum CalendarConnectionStatus {
+  DISCONNECTED
+  AWAITING_CALENDAR
+  CONNECTED
+  EXPIRED
+}
+
+// Autorização Google de uma clínica e a agenda escolhida (HACK-18, porta 1). Tokens só
+// cifrados no formato v1.<iv>.<tag>.<cifra> (AES-256-GCM, AAD = clinicId, porta 2).
+// O state OAuth pendente mora na mesma linha: só o SHA-256 dele, a sessão que o gerou
+// e a validade (relógio real); é zerado ao ser consumido.
+model CalendarConnection {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  clinicId             String                   @unique @db.Uuid
+  clinic               Clinic                   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  status               CalendarConnectionStatus @default(DISCONNECTED)
+  refreshToken         String?
+  accessToken          String?
+  accessTokenExpiresAt DateTime?
+  calendarId           String?
+  calendarName         String?
+  connectedAt          DateTime?
+  oauthStateHash       String?
+  oauthStateSessionId  String?
+  oauthStateExpiresAt  DateTime?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
 }

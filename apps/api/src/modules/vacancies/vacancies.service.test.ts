@@ -16,6 +16,7 @@ import {
 } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { createSchemaFixtures, examData } from '../../testing/schema-fixtures';
+import { ClockService } from '../clock/clock.service';
 import { VacanciesService } from './vacancies.service';
 
 /**
@@ -664,5 +665,129 @@ test('C23 - recusa registra warn sem motivo', async () => {
     assert.ok(!JSON.stringify(args).includes(marker));
   } finally {
     warn.mock.restore();
+  }
+});
+
+// HACK-32 - ressalva 2 do 29 e relógio da demo (checks.md do HACK-32)
+
+test('HACK-32 C16 - erro que não é 409 numa vaga não para o expireDue', async () => {
+  const now = era(6);
+  await service.expireDue(now);
+  const due = new Date(now.getTime() - HOUR);
+  const a = await createVacancy('alertando', due);
+  const b = await createVacancy('alertando', due);
+  const c = await createVacancy('alertando', due);
+  const spy = replaceTransaction(
+    (original) => (fn, options) =>
+      original(
+        (tx) =>
+          fn(
+            wrap(tx, {
+              vacancy: wrap(tx.vacancy, {
+                findUnique: async (args: Prisma.VacancyFindUniqueArgs) => {
+                  if (args.where.id === b.id) {
+                    throw new Error('falha forçada que não é 409');
+                  }
+                  return tx.vacancy.findUnique(args);
+                },
+              }),
+            }),
+          ),
+        options,
+      ),
+  );
+  const warn = mock.method(Logger.prototype, 'warn', () => undefined);
+  let expired: number;
+  try {
+    expired = await service.expireDue(now);
+  } finally {
+    spy.restore();
+    warn.mock.restore();
+  }
+  assert.equal(expired, 2);
+  assert.equal((await snapshot(a.id)).state, 'expirada');
+  assert.equal((await snapshot(c.id)).state, 'expirada');
+  assert.equal((await snapshot(b.id)).state, 'alertando');
+  const lines = warn.mock.calls.map((call) => String(call.arguments[0]));
+  assert.equal(lines.filter((line) => line.includes(b.id)).length, 1);
+});
+
+test('HACK-32 C22 - serviço de vagas usa o relógio da demo', async () => {
+  const clock = app.get(ClockService);
+  await clock.reset();
+  try {
+    await clock.advance(25 * 60);
+    const before = clock.now();
+    const vacancy = await publishVacancy(new Date(Date.now() + 48 * HOUR));
+    await service.transition(vacancy.id, 'alertando', meta());
+    const after = clock.now();
+    const rows = await service.timeline(vacancy.id);
+    assert.equal(rows.length, 2);
+    for (const row of rows) {
+      const at = row.occurredAt.getTime();
+      assert.ok(
+        at >= before.getTime() && at <= after.getTime(),
+        `${row.occurredAt.toISOString()} fora de [${before.toISOString()}, ${after.toISOString()}]`,
+      );
+      assert.ok(
+        at - Date.now() > 24 * HOUR,
+        'occurredAt devia estar ~25 h à frente',
+      );
+    }
+
+    await service.expireDue(); // drena o que o relógio adiantado já venceu
+    const target = await createVacancy(
+      'publicada',
+      new Date(Date.now() + HOUR),
+    );
+    assert.equal(await service.expireDue(), 1);
+    assert.equal((await snapshot(target.id)).state, 'expirada');
+  } finally {
+    await clock.reset();
+  }
+});
+
+// C23 mudado na continuação, 08/11, decisão do Gustavo via maestro: depois de um
+// recuo de mais de 1 s, a transição grava o agora, não a anterior + 1 ms.
+test('HACK-32 C23 - depois do recuo do relógio occurredAt volta ao agora', async () => {
+  const clock = app.get(ClockService);
+  await clock.reset();
+  try {
+    const vacancy = await publishVacancy(new Date(Date.now() + 48 * HOUR));
+    await clock.advance(60);
+    const ahead = await service.transition(vacancy.id, 'alertando', meta());
+    assert.equal(ahead.state, 'alertando');
+    await clock.reset();
+    await service.transition(vacancy.id, 'alertando', meta());
+    // A linha do tempo ordena por relógio: a transição nova vem antes da adiantada.
+    const [second, first] = (await service.timeline(vacancy.id)).filter(
+      (row) => row.toState === 'alertando',
+    );
+    assert.ok(first && second);
+    assert.ok(first.occurredAt.getTime() - Date.now() > 50 * MINUTE);
+    assert.ok(Math.abs(second.occurredAt.getTime() - Date.now()) <= 1_000);
+
+    // Dentro da tolerância de 1 s não é recuo: a D6 vale e grava anterior + 1 ms.
+    const other = await publishVacancy(new Date(Date.now() + 48 * HOUR));
+    // A base sai do occurredAt real da T1 (publicada), estritamente depois dele: no
+    // mesmo ms da T1 a 1ª alertando viraria T1 + 1 e o assert abaixo ficaria instável.
+    const [published] = await service.timeline(other.id);
+    assert.equal(published?.toState, 'publicada');
+    const base = new Date(published.occurredAt.getTime() + 10);
+    await service.transition(other.id, 'alertando', meta(), undefined, base);
+    await service.transition(
+      other.id,
+      'alertando',
+      meta(),
+      undefined,
+      new Date(base.getTime() - 500),
+    );
+    const rows = (await service.timeline(other.id)).filter(
+      (row) => row.toState === 'alertando',
+    );
+    assert.equal(rows.length, 2);
+    assert.equal(rows[1]!.occurredAt.getTime(), base.getTime() + 1);
+  } finally {
+    await clock.reset();
   }
 });

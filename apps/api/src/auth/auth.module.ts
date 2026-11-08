@@ -27,6 +27,6 @@ import { SignUpService } from './sign-up.service';
   ],
   controllers: [SignUpController, MeController],
   providers: [AuthSessionService, SignUpService, SignUpRequestGuard],
-  exports: [AuthSessionService],
+  exports: [AuthSessionService, SignUpService],
 })
 export class AuthModule {}

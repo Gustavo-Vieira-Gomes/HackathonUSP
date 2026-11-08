@@ -1,0 +1,71 @@
+# HACK-32 continuação: verificação
+
+**Verdict**: PASS
+**Profile**: standard
+**Diff range**: 48c63b0..5243356
+**Round**: 2 - scoped (correção 9792d2b..5243356 sobre a rodada 1 em 9792d2b)
+**Verifier**: independent sub-agent (author != verifier) - Verificador HACK-32 C, sessão nova sob o Maestro Motor · HACK-29
+
+O código de produção está correto nos dois pontos e todas as mutações morreram. A rodada 1 (FAIL) reprovou um teste instável. A prova do K2 (segunda metade do C23 reescrito) falhou 1 vez em 9 execuções da suíte SVC completa, por corrida de milissegundo na fixture. A correção `5243356` mexe só no teste e em texto. Agora a suíte SVC completa passou 20 de 20 vezes.
+
+## Binding sources
+
+Sem fonte binding de interface: o trabalho é só de backend. Fonte de decisão: o `## Intent` deste `checks.md` (decisão técnica do Maestro Motor) e o plano do HACK-32. Os checks não contradizem o Intent. Carregado de `9792d2b`; a correção não toca interface.
+
+## Checks
+
+Provas rodadas de novo em `5243356`. Citações do arquivo de teste tocado foram atualizadas; as demais vêm de `9792d2b`, em arquivos que a correção não tocou.
+
+| Check | Claim                                                                                            | Proof run                                                                                                                                                                                                                                                                                               | Evidence                                                                                                                                                                                                                                                 | Result |
+| ----- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| K1    | recuo dispara onda 2 com `occurredAt` ≈ agora; +1 min não dispara; +10 min dispara onda 3        | `--test-name-pattern="recuo do relógio dispara a próxima onda e respeita Z no relógio novo" MOT` exit 0 (em `npm run check` de `5243356`)                                                                                                                                                               | `apps/api/src/modules/vacancies/vacancy-motor.job.test.ts:1093` `second.length === 5`, `:1094` `wave === 2`, `:1099` `abs(wave2.occurredAt - Date.now()) <= 1_000`, `:1105` `early.length === 0`, `:1106` 2 transições, `:1110-1111` onda 3 com 5 envios | PASS   |
+| K2    | depois do recuo grava ≈ agora, menor que a anterior; anterior a now+500 ms grava anterior + 1 ms | `--test-name-pattern="HACK-32 C23 - depois do recuo do relógio occurredAt volta ao agora" SVC` exit 0; suíte SVC completa **20/20** verdes em `5243356`                                                                                                                                                 | `apps/api/src/modules/vacancies/vacancies.service.test.ts:767` anterior > agora + 50 min, `:768` `abs(second - Date.now()) <= 1_000`, `:776` `base = T1.occurredAt + 10`, `:789` `rows[1].occurredAt === base + 1`                                       | PASS   |
+| K3    | 5 transições sem espera, `occurredAt` estritamente crescente                                     | `--test-name-pattern="C12 - occurredAt estritamente crescente por vaga" SVC` exit 0 (20/20 na suíte SVC)                                                                                                                                                                                                | `apps/api/src/modules/vacancies/vacancies.service.test.ts:364` 5 linhas, `:368` `current - previous >= 1`                                                                                                                                                | PASS   |
+| K4    | só pendentes de `realizada`/`expirada`/`cancelada` viram `cancelado`; devolve 3                  | `--test-name-pattern="HACK-32 C29 - cancela só pendentes de vaga em estado final" NOT` exit 0 (em `npm run check`)                                                                                                                                                                                      | `apps/api/src/modules/notifications/notifications.service.test.ts:394` `cancelPendingOfFinishedVacancies() === 3`, `:396` conjunto final, `:404` `result === expected` por estado/resultado (6 × 3)                                                      | PASS   |
+| K5    | mesmo cenário pelo `tick`                                                                        | `--test-name-pattern="C30 - tick cancela pendentes de vaga em estado final" MOT` exit 0 (em `npm run check`)                                                                                                                                                                                            | `apps/api/src/modules/vacancies/vacancy-motor.job.test.ts:1194` conjunto final, `:1201` `result === expected` (6 × 3)                                                                                                                                    | PASS   |
+| K6    | marcas «mudado na continuação, 08/11» no plano e checks do 32                                    | `grep -c`: checks.md 3, plan.md 3                                                                                                                                                                                                                                                                       | `.specs/features/hack-32-cron-ondas/checks.md:125` (C29), `.specs/features/hack-32-cron-ondas/plan.md:169` (AC 21)                                                                                                                                       | PASS   |
+| K7    | `npm run check` e `npm run build` em 0; suítes MOT, SVC, NOT verdes                              | Em `5243356`, com o lock pesado: build exit 0; check com lint, typecheck e testes verdes (248 + 21 + 10, 0 falhas). O `format:check` só reprovou os arquivos do próprio Verificador (este relatório e a lição), formatados com Prettier antes do commit; `format:check` exit 0 depois disso. SVC 20/20. | `apps/api/src/modules/vacancies/vacancies.service.test.ts:789` (assert antes instável) verde nas 20 execuções                                                                                                                                            | PASS   |
+
+O achado 1 da rodada 1 está **resolvido**. Na rodada 1, `base = clock.now()` era lido logo depois de `publishVacancy`, e a T1 grava `clock.now()` (`vacancies.service.ts:69`). Quando os dois caíam no mesmo milissegundo, a primeira `alertando` virava `base + 1` e a segunda `base + 2`. Agora `base` sai do `occurredAt` real da T1 + 10 ms (`vacancies.service.test.ts:773-776`). A T1 fica estritamente antes de `base`, então a primeira `alertando` grava `base` e a segunda `base + 1`. O assert `base + 1` não mudou e a produção não foi tocada (`git diff 9792d2b..5243356 -- apps/` mexe só no arquivo de teste).
+
+## Coverage
+
+Recomputado em `5243356` para a linha cuja prova a correção tocou (época em `nextOccurredAt`). As outras linhas foram carregadas de `9792d2b`.
+
+| Set (size)                               | Recomputed from                              | Member -> proof                                                                                                                                                                | Unproven |
+| ---------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| estado da vaga × cancelamento (6)        | enum `VacancyState` usado no código + Intent | `reservada`, `publicada`, `alertando` não cancelam; `realizada`, `expirada`, `cancelada` cancelam: K4 e K5, tabela 6 × 3                                                       | -        |
+| resultado do `Alert` (3 relevantes)      | `pendente`/`enviado`/`falhou`                | K4, K5: só `pendente` muda                                                                                                                                                     | -        |
+| época do relógio em `nextOccurredAt` (3) | `vacancies.service.ts:186-196`               | recuo > 1 s: K2 1ª metade e K1; dentro de 1 s: K2 2ª metade (estável, 20/20); sequência rápida sem recuo: K3                                                                   | -        |
+| época do relógio na janela Z (2)         | `waves.service.ts:98-113`                    | sem `alertando` na época, a janela está vencida: K1 onda 2; com `alertando` na época, respeita Z: K1 +1 min e +10 min                                                          | -        |
+| cenários pedidos pelo Maestro (4)        | brief do Verificador                         | recuo: K1/K2; sequência rápida: K3; recuo seguido de avanço que passa as linhas antigas e `expireDue` após recuo: análise abaixo (comportamento aceito, não é membro de check) | -        |
+
+Análise dos dois cenários sem teste dedicado (registro, sem reprovação):
+
+- **Recuo seguido de avanço que passa as linhas antigas.** A linha antiga da onda 1 fica em R+600 e a onda 2 em R, depois do recuo. O relógio avança para R+700, e as duas linhas ficam ≤ now + 1 s. A janela usa a maior (R+600), então a onda 3 só sai em R+1200; pela onda 2 sairia em R+600. O atraso fica limitado a Z e a vaga não trava. `nextOccurredAt` grava `now`, porque R+700 > R+600. A alternativa original do Intent daria o mesmo resultado.
+- **`expireDue` depois do recuo.** Passa por `apply → nextOccurredAt` com `now` e grava `now`, ignorando as linhas futuras. A condição `startsAt <= now` não depende de transições. Sem problema.
+
+## Faults injected
+
+Worktree descartável a partir de HEAD. O `git status --porcelain` do worktree real ficou igual antes e depois, nas duas rodadas.
+
+| Mutation                                                                           | Location                                                         | Killed                                                              |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
+| tirar o filtro de época em `nextOccurredAt` (`where: { vacancyId }`), em `9792d2b` | `apps/api/src/modules/vacancies/vacancies.service.ts:188`        | yes - K2 (C23) e K1 falham                                          |
+| tirar o filtro de época da janela Z, em `9792d2b`                                  | `apps/api/src/modules/vacancies/waves.service.ts:105`            | yes - K1 falha                                                      |
+| incluir `reservada` nos estados finais, em `9792d2b`                               | `apps/api/src/modules/notifications/notifications.service.ts:91` | yes - K4 (C29) e K5 (C30) falham                                    |
+| tirar `realizada` dos estados finais, em `9792d2b`                                 | `apps/api/src/modules/notifications/notifications.service.ts:91` | yes - K4 falha                                                      |
+| tolerância 1_000 → 0, em `9792d2b`                                                 | `apps/api/src/modules/vacancies/vacancies.service.ts:25`         | yes - K3 (C12) e K2 falham                                          |
+| tolerância 1_000 → 0, em `5243356` (assert corrigido)                              | `apps/api/src/modules/vacancies/vacancies.service.ts:25`         | yes - K2 cai no assert `base + 1` (`vacancies.service.test.ts:789`) |
+| tirar o +1 ms da D6 (`return now`), em `5243356`                                   | `apps/api/src/modules/vacancies/vacancies.service.ts:193`        | yes - K2 cai no assert `base + 1` (`vacancies.service.test.ts:789`) |
+
+## Desvios julgados
+
+1. **`occurredAt <= now + 1 s` em vez de `last > now + 1 s`.** Aceito, e melhor que o Intent. Comparar o máximo global com `now + 1 s` trataria como recuo toda transição posterior ao recuo, enquanto a linha antiga estivesse no futuro. A janela Z ficaria sempre vencida, com onda a cada tick, e `nextOccurredAt` gravaria sempre `now`, quebrando a D6 dentro da época nova. As mutações confirmam que os testes seguram a regra.
+2. **Rename `cancelPendingOfClosedVacancies → cancelPendingOfFinishedVacancies`.** Resolvido em `5243356`: o `checks.md` desta continuação usa o nome novo. Restam menções no `verification.md` do 32, que é histórico. Ressalva menor de texto: o Intent (`checks.md:14`) agora diz que `cancelPendingOfFinishedVacancies` «trata `reservada` como fechada», o que descrevia o método antigo.
+3. **Fixture do C15 trocada para `realizada`.** Necessária: com `reservada`, o pendente não seria mais cancelado e o C15 não exercitaria a etapa `cancel-pending` (`vacancy-motor.job.test.ts:790`).
+4. **Plano do 32, porta 4 e linha HACK-27.** Resolvido em `5243356`: a alternativa rejeitada da porta 4 agora registra que o critério «vaga reservada → pendentes cancelados» mudou em 08/11, por decisão do Gustavo via maestro.
+
+## Gate
+
+Em `5243356`, com o lock pesado: `npm run check` com lint, typecheck e testes verdes (279 passed, 0 failed). O `format:check` só reprovou os arquivos do Verificador; depois de formatados, `format:check` exit 0. `npm run build` exit 0. Suíte SVC completa 20/20.

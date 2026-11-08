@@ -1,8 +1,7 @@
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import { examQuestionnaireSchema } from '@hackathon/contracts';
+import { allowedExams, examQuestionnaireSchema } from '@hackathon/contracts';
 import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { examQuestionnairesSeed } from '../exams/exam-questionnaires.seed';
 
@@ -19,68 +18,27 @@ const clinicSourceSchema = z.object({
 });
 export function readClinics() {
   const path = resolve(process.cwd(), 'src/modules/demo-data/clinics.json');
-  return z
-    .array(clinicSourceSchema)
-    .length(10)
-    .parse(JSON.parse(readFileSync(path, 'utf8')) as unknown);
+  return z.array(clinicSourceSchema).length(10).parse(JSON.parse(readFileSync(path, 'utf8')) as unknown);
 }
-export function demoId(kind: string, index: number): string {
-  const hex = createHash('sha256')
-    .update(`hack15-demo-v1:${kind}:${index}`)
-    .digest('hex');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
-}
-export const protocols = [
-  ['40901130', 'US de abdome superior adulto', 'us-abdomen', 22000, 15000],
-  [
-    '40901181',
-    'US pélvica feminina transabdominal adulta',
-    'us-pelvis-transabdominal',
-    22000,
-    15000,
-  ],
-  ['40901203', 'US de tireoide', 'us-thyroid', 18000, 12000],
-  ['40901114', 'US de mamas', 'us-breast', 18000, 12000],
-  ['40901220', 'US articular de joelho', 'us-musculoskeletal', 22000, 15000],
-  [
-    '40901106',
-    'Ecocardiograma transtorácico em repouso sem contraste ou sedação',
-    'echo-transthoracic',
-    35000,
-    24000,
-  ],
-  ['40808041', 'Mamografia digital bilateral', 'mammography', 25000, 17000],
-  [
-    '41001010',
-    'TC de crânio adulto sem contraste ou sedação',
-    'ct-without-contrast',
-    40000,
-    28000,
-  ],
-  [
-    '41001079',
-    'TC de tórax adulto sem contraste ou sedação',
-    'ct-without-contrast',
-    45000,
-    32000,
-  ],
-  [
-    '41101316',
-    'RM articular de joelho adulto sem contraste ou sedação',
-    'mri-without-contrast',
-    72000,
-    50000,
-  ],
-] as const;
+
+// Preços fictícios, em centavos; não são ofertas das clínicas referenciadas.
+const prices = {
+  'us-abdomen': [22000, 15000],
+  'us-pelvis-transabdominal': [22000, 15000],
+  'us-thyroid': [18000, 12000],
+  'us-breast': [18000, 12000],
+  'us-musculoskeletal': [22000, 15000],
+  'echo-transthoracic': [35000, 24000],
+  mammography: [25000, 17000],
+  'ct-without-contrast': [40000, 28000],
+  'mri-without-contrast': [72000, 50000],
+} as const;
+// O modelo HACK-41 de abdome superior não cobre abdome total.
+export const protocols = allowedExams.filter((exam) => exam.tussCode !== '40901122');
 
 export function validateSeedEnvironment(env: NodeJS.ProcessEnv) {
-  if (
-    !['development', 'test'].includes(env.NODE_ENV ?? '') ||
-    env.DEMO_SEED_ENABLED !== 'true'
-  ) {
-    throw new Error(
-      'Seed exige NODE_ENV development/test e DEMO_SEED_ENABLED=true.',
-    );
+  if (!['development', 'test'].includes(env.NODE_ENV ?? '') || env.DEMO_SEED_ENABLED !== 'true') {
+    throw new Error('Seed exige NODE_ENV development/test e DEMO_SEED_ENABLED=true.');
   }
   if (!env.DATABASE_URL) throw new Error('DATABASE_URL obrigatória.');
   const url = new URL(env.DATABASE_URL);
@@ -89,263 +47,78 @@ export function validateSeedEnvironment(env: NodeJS.ProcessEnv) {
   }
 }
 
-/** Identidades do manifesto nunca são adotadas por email/CNES. Escritas são atômicas. */
+/** Só Prisma gera IDs; chaves naturais tornam execuções repetidas idempotentes. */
 export async function seedDemo(prisma: PrismaClient, clinics = readClinics()) {
-  if (
-    clinics.length !== 10 ||
-    clinics.filter((clinic) => clinic.demoCalendarTarget).length !== 2
-  ) {
-    throw new Error('Manifesto exige dez clínicas e dois alvos de agenda.');
+  if (clinics.length !== 10 || new Set(clinics.map((clinic) => clinic.cnes)).size !== 10 || clinics.filter((clinic) => clinic.demoCalendarTarget).length !== 2) {
+    throw new Error('Manifesto exige dez clínicas distintas e dois alvos de agenda.');
   }
-  return prisma.$transaction(
-    async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(150015)`;
-      for (let index = 0; index < clinics.length; index++) {
-        const clinic = clinics[index]!;
-        const userId = demoId('clinic-user', index);
-        const id = demoId('clinic', index);
-        const email = `clinic-${index}@hack15.demo.invalid`;
-        const user = await tx.user.findFirst({
-          where: { OR: [{ id: userId }, { email }] },
-        });
-        if (
-          user &&
-          (user.id !== userId ||
-            user.email !== email ||
-            user.role !== 'clinica')
-        )
-          throw new Error('Conflito de identidade de clínica.');
-        const existing = await tx.clinic.findFirst({
-          where: { OR: [{ id }, { cnes: clinic.cnes }, { userId }] },
-        });
-        if (
-          existing &&
-          (existing.id !== id ||
-            existing.userId !== userId ||
-            existing.cnes !== clinic.cnes)
-        )
-          throw new Error('Conflito de CNES/identidade de clínica.');
-        await tx.user.upsert({
-          where: { id: userId },
-          create: {
-            id: userId,
-            email,
-            role: 'clinica',
-            name: `Demonstração — ${clinic.name}`,
-          },
-          update: {},
-        });
-        const data = {
-          name: clinic.name,
-          address: clinic.address,
-          latitude: clinic.latitude,
-          longitude: clinic.longitude,
-          cnes: clinic.cnes,
-          technicalManager: clinic.technicalManager,
-          demoCalendarTarget: clinic.demoCalendarTarget,
-        };
-        await tx.clinic.upsert({
-          where: { id },
-          create: { id, userId, ...data },
-          update: data,
-        });
-        for (let day = 0; day < 7; day++) {
-          const hoursId = demoId('opening-hours', index * 7 + day);
-          const existingHours = await tx.clinicOpeningHours.findUnique({
-            where: { id: hoursId },
-          });
-          if (existingHours && existingHours.clinicId !== id)
-            throw new Error('Conflito de expediente.');
-          const hours = {
-            clinicId: id,
-            weekday: day,
-            startMinute: 0,
-            endMinute: 1440,
-          };
-          await tx.clinicOpeningHours.upsert({
-            where: { id: hoursId },
-            create: { id: hoursId, ...hours },
-            update: hours,
-          });
-        }
-        for (
-          let protocolIndex = 0;
-          protocolIndex < protocols.length;
-          protocolIndex++
-        ) {
-          const [tussCode, name, key, fullPriceCents, floorPriceCents] =
-            protocols[protocolIndex]!;
-          const questionnaire = examQuestionnaireSchema.parse(
-            examQuestionnairesSeed.find((item) => item.key === key),
-          );
-          const examId = demoId('exam', index * 10 + protocolIndex);
-          const existingExam = await tx.exam.findFirst({
-            where: { OR: [{ id: examId }, { clinicId: id, tussCode }] },
-          });
-          if (
-            existingExam &&
-            (existingExam.id !== examId ||
-              existingExam.clinicId !== id ||
-              existingExam.tussCode !== tussCode)
-          )
-            throw new Error('Conflito de exame.');
-          const exam = {
-            clinicId: id,
-            tussCode,
-            name,
-            fullPriceCents,
-            floorPriceCents,
-            minLeadMinutes: 60,
-            preparationCondition: questionnaire.preparation.condition,
-            preparationHours: questionnaire.preparation.hoursBefore,
-            contraindications: questionnaire.contraindications.map(
-              (item) => item.id,
-            ),
-            questionnaireKey: questionnaire.key,
-            questionnaireVersion: questionnaire.version,
-            questionnaire: questionnaire as Prisma.InputJsonObject,
-            toleranceMinutes: 15,
-            maxTravelMinutes: 60,
-          };
-          await tx.exam.upsert({
-            where: { id: examId },
-            create: { id: examId, ...exam },
-            update: exam,
-          });
-          for (const [step, leadMinutes, discountPercent] of [
-            [0, 2880, 10],
-            [1, 1440, 20],
-            [2, 360, 30],
-          ] as const) {
-            const stepId = demoId(
-              'price-step',
-              (index * 10 + protocolIndex) * 3 + step,
-            );
-            const existingStep = await tx.priceStep.findFirst({
-              where: { OR: [{ id: stepId }, { examId, leadMinutes }] },
-            });
-            if (
-              existingStep &&
-              (existingStep.id !== stepId || existingStep.examId !== examId)
-            )
-              throw new Error('Conflito de degrau.');
-            await tx.priceStep.upsert({
-              where: { id: stepId },
-              create: { id: stepId, examId, leadMinutes, discountPercent },
-              update: { leadMinutes, discountPercent },
-            });
-          }
-        }
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(150015)`;
+    const clock = await tx.demoClock.findUnique({ where: { id: 1 } });
+    const now = new Date(Date.now() + (clock?.offsetMinutes ?? 0) * 60000);
+    const days = Array.from({ length: 7 }, (_, weekday) => ({ weekday, startMinute: 0, endMinute: 1440 }));
+    const demoUser = async (email: string, name: string, role: string) => {
+      const existing = await tx.user.findUnique({ where: { email }, include: { _count: { select: { accounts: true, sessions: true } } } });
+      if (existing && (existing.role !== role || existing.name !== name || existing._count.accounts || existing._count.sessions)) {
+        throw new Error('Conflito de identidade de demonstração.');
       }
-      for (let index = 0; index < 12; index++) {
-        const userId = demoId('patient-user', index),
-          id = demoId('patient', index),
-          subscriptionId = demoId('subscription', index);
-        const email = `patient-${index}@hack15.demo.invalid`;
-        const user = await tx.user.findFirst({
-          where: { OR: [{ id: userId }, { email }] },
-        });
-        if (
-          user &&
-          (user.id !== userId ||
-            user.email !== email ||
-            user.role !== 'paciente')
-        )
-          throw new Error('Conflito de usuário fictício.');
-        const patient = await tx.patient.findFirst({
-          where: { OR: [{ id }, { userId }] },
-        });
-        if (patient && (patient.id !== id || patient.userId !== userId))
-          throw new Error('Conflito de paciente.');
-        if (
-          (await tx.account.count({ where: { userId } })) ||
-          (await tx.session.count({ where: { userId } }))
-        )
-          throw new Error('Conta fictícia não pode ter login.');
-        await tx.user.upsert({
-          where: { id: userId },
-          create: {
-            id: userId,
-            email,
-            role: 'paciente',
-            name: `Paciente FICTÍCIO de demonstração ${index + 1}`,
-          },
-          update: {},
-        });
-        // Data técnica sintética, nunca representa consentimento de uma pessoa real.
-        const patientData = {
-          phone: 'DEMO-SEM-TELEFONE',
-          alertChannels: [],
-          healthDataConsentAt: new Date('2026-01-01T00:00:00Z'),
-        };
-        await tx.patient.upsert({
-          where: { id },
-          create: { id, userId, ...patientData },
-          update: patientData,
-        });
-        const existingSubscription = await tx.subscription.findFirst({
-          where: {
-            OR: [
-              { id: subscriptionId },
-              { patientId: id, tussCode: '41101316' },
-            ],
-          },
-        });
-        if (
-          existingSubscription &&
-          (existingSubscription.id !== subscriptionId ||
-            existingSubscription.patientId !== id ||
-            existingSubscription.tussCode !== '41101316')
-        )
-          throw new Error('Conflito de inscrição.');
-        const subscription = {
-          patientId: id,
-          tussCode: '41101316',
-          maxPriceCents: 72000,
-          latitude: -23.55,
-          longitude: -46.64,
-          radiusMeters: 50000,
-          expiresAt: new Date(Date.now() + 365 * 86400000),
-        };
-        await tx.subscription.upsert({
-          where: { id: subscriptionId },
-          create: { id: subscriptionId, ...subscription },
-          update: subscription,
-        });
-        for (let day = 0; day < 7; day++) {
-          const windowId = demoId('window', index * 7 + day);
-          const existingWindow = await tx.subscriptionWindow.findUnique({
-            where: { id: windowId },
-          });
-          if (
-            existingWindow &&
-            existingWindow.subscriptionId !== subscriptionId
-          )
-            throw new Error('Conflito de janela.');
-          const window = {
-            subscriptionId,
-            weekday: day,
-            startMinute: 0,
-            endMinute: 1440,
-          };
-          await tx.subscriptionWindow.upsert({
-            where: { id: windowId },
-            create: { id: windowId, ...window },
-            update: window,
-          });
-        }
-      }
-      return {
-        clinics: 10,
-        exams: 100,
-        patients: 12,
-        subscriptions: 12,
-        windows: 84,
+      return tx.user.upsert({ where: { email }, create: { email, name, role }, update: {} });
+    };
+    for (const [index, source] of clinics.entries()) {
+      const user = await demoUser(`clinic-${index}@hack15.demo.invalid`, `Demonstração — ${source.name}`, 'clinica');
+      const existing = await tx.clinic.findFirst({ where: { OR: [{ cnes: source.cnes }, { userId: user.id }] } });
+      if (existing && (existing.userId !== user.id || existing.cnes !== source.cnes)) throw new Error('Conflito de CNES/identidade de clínica.');
+      const data = {
+        name: source.name, address: source.address, latitude: source.latitude, longitude: source.longitude,
+        cnes: source.cnes, technicalManager: source.technicalManager, demoCalendarTarget: source.demoCalendarTarget,
       };
-    },
-    {
-      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
-      timeout: 60000,
-    },
-  );
+      const clinic = await tx.clinic.upsert({ where: { cnes: source.cnes }, create: { userId: user.id, ...data }, update: data });
+      // Sem unique por dia no schema: preservar os IDs de expediente já existentes.
+      for (const day of days) {
+        const hours = await tx.clinicOpeningHours.findFirst({ where: { clinicId: clinic.id, weekday: day.weekday } });
+        if (hours) await tx.clinicOpeningHours.update({ where: { id: hours.id }, data: day });
+        else await tx.clinicOpeningHours.create({ data: { clinicId: clinic.id, ...day } });
+      }
+      for (const protocol of protocols) {
+        const questionnaire = examQuestionnaireSchema.parse(examQuestionnairesSeed.find((item) => item.key === protocol.questionnaireKey));
+        const [fullPriceCents, floorPriceCents] = prices[protocol.questionnaireKey];
+        const data = {
+          name: protocol.name, fullPriceCents, floorPriceCents, minLeadMinutes: 60,
+          preparationCondition: questionnaire.preparation.condition, preparationHours: questionnaire.preparation.hoursBefore,
+          contraindications: questionnaire.contraindications.map((item) => item.id),
+          questionnaireKey: questionnaire.key, questionnaireVersion: questionnaire.version,
+          toleranceMinutes: 15, maxTravelMinutes: 60,
+        };
+        const exam = await tx.exam.upsert({
+          where: { clinicId_tussCode: { clinicId: clinic.id, tussCode: protocol.tussCode } },
+          create: { clinicId: clinic.id, tussCode: protocol.tussCode, ...data }, update: data,
+        });
+        for (const [leadMinutes, discountPercent] of [[2880, 10], [1440, 20], [360, 30]] as const) {
+          await tx.priceStep.upsert({ where: { examId_leadMinutes: { examId: exam.id, leadMinutes } }, create: { examId: exam.id, leadMinutes, discountPercent }, update: { discountPercent } });
+        }
+      }
+    }
+    for (let index = 0; index < 12; index++) {
+      const user = await demoUser(`patient-${index}@hack15.demo.invalid`, `Paciente FICTÍCIO de demonstração ${index + 1}`, 'paciente');
+      // Consentimento e telefone sintéticos; WhatsApp só é operacional no modo simulated.
+      const data = { phone: `+55110000000${String(index + 1).padStart(2, '0')}`, phoneVerifiedAt: new Date('2026-01-01T00:00:00Z'), alertChannels: ['email', 'whatsapp'] as ('email' | 'whatsapp')[], healthDataConsentAt: new Date('2026-01-01T00:00:00Z') };
+      const patient = await tx.patient.upsert({ where: { userId: user.id }, create: { userId: user.id, ...data }, update: data });
+      const subscriptionData = {
+        maxPriceCents: 72000, latitude: -23.55, longitude: -46.64, radiusMeters: 50000,
+        canGoToday: true, currentLatitude: -23.55, currentLongitude: -46.64,
+        expiresAt: new Date(now.getTime() + 30 * 86400000),
+      };
+      const subscription = await tx.subscription.upsert({
+        where: { patientId_tussCode: { patientId: patient.id, tussCode: '41101316' } },
+        create: { patientId: patient.id, tussCode: '41101316', ...subscriptionData, createdAt: new Date(now.getTime() - (12 - index) * 1000) },
+        update: subscriptionData,
+      });
+      for (const day of days) {
+        const window = await tx.subscriptionWindow.findFirst({ where: { subscriptionId: subscription.id, weekday: day.weekday } });
+        if (window) await tx.subscriptionWindow.update({ where: { id: window.id }, data: day });
+        else await tx.subscriptionWindow.create({ data: { subscriptionId: subscription.id, ...day } });
+      }
+    }
+    return { clinics: clinics.length, exams: clinics.length * protocols.length, patients: 12, subscriptions: 12, windows: 84 };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 60000 });
 }

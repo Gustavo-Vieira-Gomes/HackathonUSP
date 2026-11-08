@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { isUniqueViolation } from '../../prisma/prisma-errors';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CHANNEL_ADAPTERS,
@@ -18,16 +19,12 @@ export const STALE_PENDING_MS = 2 * CHANNEL_TIMEOUT_MS;
 
 export interface ChannelOutcome {
   channel: NotificationChannel;
-  result: 'enviado' | 'falhou' | 'duplicado' | 'sem_adapter';
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'P2002'
-  );
+  /**
+   * `sem_canal`: canal ativado pelo paciente sem como enviar (sem adapter ou
+   * WhatsApp sem telefone verificado). Fica gravado em `Alert` para o paciente
+   * sair da fila daquela vaga (HACK-48).
+   */
+  result: 'enviado' | 'falhou' | 'duplicado' | 'sem_canal';
 }
 
 /**
@@ -64,11 +61,30 @@ export class NotificationsService {
       ...renderAlert(message),
       message,
     };
+    // Todo canal ativado gera um Alert, mesmo sem como enviar: senão o paciente
+    // volta em toda onda e trava a fila dos seguintes (HACK-48).
     return Promise.all(
-      recipient.channels.map((channel) =>
+      recipient.preferredChannels.map((channel) =>
         this.sendOnChannel(channel, recipient, notification, context),
       ),
     );
+  }
+
+  /**
+   * Cancela os alertas ainda pendentes de vagas em estado final (RN-36): realizada,
+   * expirada ou cancelada. Reservada não entra: a vaga pode voltar a `publicada`
+   * (T9) ou `alertando` (T11). Enviado e falhou ficam como estão. Chamado a cada
+   * minuto pelo motor de vagas (HACK-32). Devolve quantos foram cancelados.
+   */
+  async cancelPendingOfFinishedVacancies(): Promise<number> {
+    const { count } = await this.prisma.alert.updateMany({
+      where: {
+        result: 'pendente',
+        vacancy: { state: { in: ['realizada', 'expirada', 'cancelada'] } },
+      },
+      data: { result: 'cancelado' },
+    });
+    return count;
   }
 
   /**
@@ -87,7 +103,8 @@ export class NotificationsService {
       },
     });
     const verifiedPhone = patient.phoneVerifiedAt ? patient.phone : null;
-    const channels = [...new Set(patient.alertChannels)].filter(
+    const preferredChannels = [...new Set(patient.alertChannels)];
+    const channels = preferredChannels.filter(
       (channel) => channel !== 'whatsapp' || verifiedPhone !== null,
     );
     return {
@@ -96,6 +113,7 @@ export class NotificationsService {
       name: patient.user.name,
       email: patient.user.email,
       verifiedPhone,
+      preferredChannels,
       channels,
     };
   }
@@ -106,11 +124,21 @@ export class NotificationsService {
     notification: OutgoingNotification,
     context: AlertContext,
   ): Promise<ChannelOutcome> {
-    const adapter = this.adapters.get(channel);
-    if (!adapter) return { channel, result: 'sem_adapter' };
+    const adapter = recipient.channels.includes(channel)
+      ? this.adapters.get(channel)
+      : undefined;
 
     const alertId = await this.claimAlert(channel, context);
     if (!alertId) return { channel, result: 'duplicado' };
+
+    if (!adapter) {
+      // Nada a enviar: só fecha o Alert reservado com o motivo.
+      await this.prisma.alert.update({
+        where: { id: alertId },
+        data: { result: 'sem_canal', sentAt: null },
+      });
+      return { channel, result: 'sem_canal' };
+    }
 
     const sent = await this.callAdapter(adapter, recipient, notification, {
       alertId,

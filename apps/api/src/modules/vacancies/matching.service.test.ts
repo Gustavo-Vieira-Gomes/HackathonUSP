@@ -11,7 +11,10 @@ import type {
 } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { createSchemaFixtures, examData } from '../../testing/schema-fixtures';
-import { STALE_PENDING_MS } from '../notifications/notifications.service';
+import {
+  NotificationsService,
+  STALE_PENDING_MS,
+} from '../notifications/notifications.service';
 import { MatchingService } from './matching.service';
 
 /**
@@ -231,5 +234,54 @@ describe('vagasCompativeis (RN-19)', () => {
       open.id,
     ]);
     assert.deepEqual(await matching.vagasCompativeis(far.id, now), []);
+  });
+});
+
+describe('fila sem canal disponível (HACK-48)', () => {
+  const message = {
+    clinicName: 'Clínica Teste',
+    examName: 'Exame',
+    startsAt: SATURDAY_10H,
+    priceCents: 25000,
+    distanceMeters: 0,
+    preparation: null,
+    vacancyUrl: 'https://app.example/vagas/x',
+  };
+
+  test('sem adapters, onda 1 com 5 candidatos → a onda 2 devolve os seguintes', async () => {
+    // A app de teste não tem RESEND_API_KEY nem WhatsApp: nenhum adapter.
+    const notifications = app.get(NotificationsService);
+    const exam = await createExam();
+    const vacancy = await createVacancy(exam);
+    const queue: Subscription[] = [];
+    for (let i = 0; i < 12; i++) queue.push(await subscribe(exam));
+
+    const wave1 = (await matching.candidatos(vacancy.id, now)).slice(0, 5);
+    assert.deepEqual(ids(wave1), ids(queue.slice(0, 5)));
+    for (const subscription of wave1) {
+      const outcome = await notifications.enviar(
+        subscription.patientId,
+        message,
+        { vacancyId: vacancy.id, subscriptionId: subscription.id, wave: 1 },
+      );
+      assert.ok(outcome.every((o) => o.result === 'sem_canal'));
+    }
+
+    const wave2 = (await matching.candidatos(vacancy.id, now)).slice(0, 5);
+    assert.deepEqual(ids(wave2), ids(queue.slice(5, 10)));
+  });
+
+  test('paciente que desativou todos os canais fica fora da onda', async () => {
+    const exam = await createExam();
+    const vacancy = await createVacancy(exam);
+    const silent = await subscribe(exam);
+    await prisma.patient.update({
+      where: { id: silent.patientId },
+      data: { alertChannels: [] },
+    });
+    const reachable = await subscribe(exam);
+    assert.deepEqual(ids(await matching.candidatos(vacancy.id, now)), [
+      reachable.id,
+    ]);
   });
 });

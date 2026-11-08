@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { randomBytes } from 'node:crypto';
+import { createServer as createHttpServer } from 'node:http';
 import { createServer } from 'node:net';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -76,17 +78,40 @@ async function postJson(url, body, origin) {
     body: JSON.stringify(body),
   });
 }
+// HACK-16: geocodificador falso (forma do Nominatim); o smoke nunca chama o real.
+async function startFakeGeocoder() {
+  const server = createHttpServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify([{ lat: '-23.5617', lon: '-46.6560' }]));
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  return server;
+}
+const geocoder = await startFakeGeocoder();
 try {
   const apiPort = await freePort();
   const apiUrl = `http://127.0.0.1:${apiPort}`;
   const webPort = await freePort();
   const webUrl = `http://127.0.0.1:${webPort}`;
   // DATABASE_URL e BETTER_AUTH_SECRET vêm do ambiente (CI) ou do .env da API (local).
+  // Segredo do operador da demo, novo a cada smoke (HACK-37).
+  const demoToken = randomBytes(24).toString('base64url');
   const api = start(['dist/main.js'], 'apps/api', {
     PORT: String(apiPort),
     HOST: '127.0.0.1',
     BETTER_AUTH_URL: apiUrl,
     WEB_ORIGIN: webUrl,
+    GEOCODER_URL: `http://127.0.0.1:${geocoder.address().port}`,
+    GEOCODER_MIN_INTERVAL_MS: '0',
+    DEMO_CLOCK_ENABLED: 'true',
+    DEMO_CLOCK_TOKEN: demoToken,
+    WHATSAPP_MODE: 'simulated',
+    // HACK-18: smoke sem Google configurado (integração indisponível, 503).
+    GOOGLE_OAUTH_CLIENT_ID: '',
+    GOOGLE_OAUTH_CLIENT_SECRET: '',
+    GOOGLE_OAUTH_REDIRECT_URI: '',
+    GOOGLE_TOKEN_ENCRYPTION_KEY: '',
   });
   const apiResponse = await ready(`${apiUrl}/api/health`, api);
   assert.deepEqual(await apiResponse.json(), { status: 'ok', service: 'api' });
@@ -100,7 +125,7 @@ try {
       '127.0.0.1',
     ],
     'apps/web',
-    { API_BASE_URL: apiUrl },
+    { API_BASE_URL: apiUrl, DEMO_CLOCK_TOKEN: demoToken },
   );
   const webResponse = await ready(`${webUrl}/api/health`, web);
   assert.deepEqual(await webResponse.json(), { status: 'ok', service: 'web' });
@@ -160,6 +185,175 @@ try {
     `C5: a conta hostil existe (login ${hostileSignIn.status})`,
   );
 
+  // HACK-16: cadastro de clínica pelo Next e painel /clinica (SSR).
+  const clinicEmail = `smoke-clinica-${Date.now()}-${process.pid}@teste.local`;
+  const clinicBody = {
+    name: 'Clínica Smoke',
+    email: clinicEmail,
+    password: 'smoke-senha-1',
+    address: 'Av. Paulista, 1000, São Paulo',
+    cnes: String(Date.now() % 10_000_000).padStart(7, '0'),
+    technicalManager: 'Dra. Smoke, CRM 123456',
+    openingHours: [{ weekday: 1, startMinute: 480, endMinute: 1080 }],
+  };
+  const clinicSignUp = await postJson(
+    `${webUrl}/api/sign-up/clinica`,
+    clinicBody,
+    webUrl,
+  );
+  assert.equal(
+    clinicSignUp.status,
+    200,
+    `H16-C31: cadastro de clínica pelo Next ${clinicSignUp.status}`,
+  );
+  const clinicCookie = sessionCookie(clinicSignUp, 'H16-C31 cadastro');
+  const panel = await fetch(`${webUrl}/clinica`, {
+    headers: { cookie: clinicCookie },
+  });
+  assert.equal(panel.status, 200, `H16-C31: painel ${panel.status}`);
+  const panelHtml = await panel.text();
+  for (const expected of [
+    clinicBody.name,
+    clinicBody.address,
+    clinicBody.cnes,
+    clinicBody.technicalManager,
+    'Fechado',
+  ]) {
+    assert.ok(panelHtml.includes(expected), `H16-C31: painel sem ${expected}`);
+  }
+  const anonymousPanel = await fetch(`${webUrl}/clinica`, {
+    redirect: 'manual',
+  });
+  assert.ok(
+    [303, 307, 308].includes(anonymousPanel.status),
+    `H16-C31: /clinica sem cookie ${anonymousPanel.status}`,
+  );
+  assert.match(
+    anonymousPanel.headers.get('location') ?? '',
+    /\/clinica\/login$/,
+    'H16-C31: /clinica sem cookie não vai ao login',
+  );
+  const patientPanel = await fetch(`${webUrl}/clinica`, {
+    headers: { cookie },
+  });
+  const patientHtml = await patientPanel.text();
+  assert.ok(
+    patientHtml.includes('Esta conta não é de clínica') &&
+      patientHtml.includes('Sair'),
+    'H16-C31: paciente em /clinica sem o aviso e o Sair',
+  );
+
+  // HACK-17: /clinica/exames (SSR) e cadastro de exame pelo repasse do Next.
+  const { allowedExams } = require('@hackathon/contracts');
+  const mri = allowedExams.find(
+    (exam) => exam.questionnaireKey === 'mri-without-contrast',
+  );
+  const anonymousExams = await fetch(`${webUrl}/clinica/exames`, {
+    redirect: 'manual',
+  });
+  assert.ok(
+    [303, 307, 308].includes(anonymousExams.status),
+    `H17-C37: /clinica/exames sem cookie ${anonymousExams.status}`,
+  );
+  assert.match(
+    anonymousExams.headers.get('location') ?? '',
+    /\/clinica\/login$/,
+    'H17-C37: /clinica/exames sem cookie não vai ao login',
+  );
+  const patientExams = await fetch(`${webUrl}/clinica/exames`, {
+    headers: { cookie },
+  });
+  assert.ok(
+    (await patientExams.text()).includes('Esta conta não é de clínica'),
+    'H17-C37: paciente em /clinica/exames sem o aviso',
+  );
+  const emptyExams = await fetch(`${webUrl}/clinica/exames`, {
+    headers: { cookie: clinicCookie },
+  });
+  assert.equal(
+    emptyExams.status,
+    200,
+    `H17-C37: /clinica/exames ${emptyExams.status}`,
+  );
+  assert.ok(
+    (await emptyExams.text()).includes('Nenhum exame cadastrado ainda.'),
+    'H17-C37: clínica nova sem o estado vazio',
+  );
+  const createdExam = await fetch(`${webUrl}/api/clinic/exams`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      origin: webUrl,
+      cookie: clinicCookie,
+    },
+    body: JSON.stringify({
+      tussCode: mri.tussCode,
+      fullPriceCents: 72000,
+      floorPriceCents: 50000,
+      minLeadMinutes: 360,
+      preparationCondition: 'nenhum',
+      preparationHours: 0,
+      contraindications: ['pacemaker-or-defibrillator'],
+      toleranceMinutes: 15,
+      maxTravelMinutes: 45,
+      priceSteps: [
+        { leadMinutes: 2880, discountPercent: 10 },
+        { leadMinutes: 1440, discountPercent: 20 },
+        { leadMinutes: 360, discountPercent: 30 },
+      ],
+    }),
+  });
+  assert.equal(
+    createdExam.status,
+    201,
+    `H17-C37: cadastro de exame pelo Next ${createdExam.status}`,
+  );
+  const listedExams = await fetch(`${webUrl}/clinica/exames`, {
+    headers: { cookie: clinicCookie },
+  });
+  assert.ok(
+    (await listedExams.text()).includes(mri.name),
+    'H17-C37: exame cadastrado fora da lista',
+  );
+
+  // HACK-18: /clinica/agenda sem GOOGLE_* (indisponível), alerta do ?google= e login.
+  const agenda = await fetch(`${webUrl}/clinica/agenda`, {
+    headers: { cookie: clinicCookie },
+  });
+  assert.equal(agenda.status, 200, `H18-C6: /clinica/agenda ${agenda.status}`);
+  const agendaHtml = await agenda.text();
+  assert.ok(
+    agendaHtml.includes(
+      'Integração com a Google Agenda indisponível neste ambiente',
+    ),
+    'H18-C6: /clinica/agenda sem o aviso de indisponível',
+  );
+  assert.ok(
+    !agendaHtml.includes('Conectar Google Agenda'),
+    'H18-C6: /clinica/agenda indisponível mostra o botão de conectar',
+  );
+  const denied = await fetch(`${webUrl}/clinica/agenda?google=denied`, {
+    headers: { cookie: clinicCookie },
+  });
+  const deniedHtml = await denied.text();
+  assert.match(
+    deniedHtml,
+    /role="alert"[^>]*>Você não autorizou o acesso à Google Agenda\./,
+    'H18-C30: ?google=denied sem o alerta em role="alert"',
+  );
+  const anonymousAgenda = await fetch(`${webUrl}/clinica/agenda`, {
+    redirect: 'manual',
+  });
+  assert.ok(
+    [303, 307, 308].includes(anonymousAgenda.status),
+    `H18-C32: /clinica/agenda sem cookie ${anonymousAgenda.status}`,
+  );
+  assert.match(
+    anonymousAgenda.headers.get('location') ?? '',
+    /\/clinica\/login$/,
+    'H18-C32: /clinica/agenda sem cookie não vai ao login',
+  );
+
   // HACK-38: token de uso único do socket pelo repasse /api/auth/* do Next.
   const generateUrl = `${webUrl}/api/auth/one-time-token/generate`;
   const generated = await fetch(generateUrl, { headers: { cookie } });
@@ -193,6 +387,38 @@ try {
     `C1: generate com sessão encerrada ${afterSignOut.status}`,
   );
 
+  // HACK-37: /demo/whatsapp só para o operador; sem credencial, nada do conteúdo.
+  const demoUrl = `${webUrl}/demo/whatsapp`;
+  const operator = (password) =>
+    `Basic ${Buffer.from(`operador:${password}`).toString('base64')}`;
+  for (const [label, headers] of [
+    ['sem credencial', {}],
+    ['senha errada', { authorization: operator(`${demoToken}x`) }],
+  ]) {
+    const denied = await fetch(demoUrl, { headers });
+    assert.equal(denied.status, 401, `C1 HACK-37 ${label}: ${denied.status}`);
+    assert.match(
+      denied.headers.get('www-authenticate') ?? '',
+      /^Basic /,
+      `C1 HACK-37 ${label}: sem desafio Basic`,
+    );
+    const html = await denied.text();
+    assert.ok(
+      !html.includes('WhatsApp simulado') && !html.includes('wa-chat'),
+      `C1 HACK-37 ${label}: a resposta traz conteúdo da tela`,
+    );
+  }
+  const allowed = await fetch(demoUrl, {
+    headers: { authorization: operator(demoToken) },
+  });
+  assert.equal(allowed.status, 200, `C2 HACK-37 operador: ${allowed.status}`);
+  const allowedHtml = await allowed.text();
+  assert.match(allowedHtml, /WhatsApp simulado/);
+  assert.match(allowedHtml, /Nenhuma mensagem ainda|wa-chat/);
+  assert.ok(!allowedHtml.includes(demoToken), 'C2 HACK-37: token no HTML');
+  const directApi = await fetch(`${apiUrl}/api/demo/whatsapp/messages`);
+  assert.equal(directApi.status, 401, 'C3 HACK-37: lista da API sem token');
+
   await stop(api.child);
   const offlinePage = await fetch(webUrl);
   assert.equal(offlinePage.status, 200);
@@ -204,8 +430,9 @@ try {
   );
   assert.equal(offlineSignIn.status, 502, 'C32: repasse com a API desligada');
   console.log(
-    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e sessão pelo Next, token do socket, fallback e 502 com API desligada.',
+    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e sessão pelo Next, cadastro e painel da clínica, exames da clínica, token do socket, /demo/whatsapp só com credencial do operador, fallback e 502 com API desligada.',
   );
 } finally {
   await Promise.all(processes.map(stop));
+  geocoder.close();
 }

@@ -87,3 +87,12 @@ test('C9 - main.js com o BETTER_AUTH_SECRET de exemplo sai com 1, cita o nome, n
   assert.equal(result.output.includes(placeholder), false);
   assert.equal(result.listening, false);
 });
+
+test('H18-C4 - main.js com só GOOGLE_OAUTH_CLIENT_ID sai com 1, cita GOOGLE_OAUTH_CLIENT_SECRET e não vaza o client id', async () => {
+  const clientId = 'client-id-de-boot-que-nao-pode-vazar.apps';
+  const result = await boot({ ...values, GOOGLE_OAUTH_CLIENT_ID: clientId });
+  assert.equal(result.code, 1, result.output);
+  assert.match(result.output, /GOOGLE_OAUTH_CLIENT_SECRET/);
+  assert.equal(result.output.includes(clientId), false);
+  assert.equal(result.listening, false);
+});
