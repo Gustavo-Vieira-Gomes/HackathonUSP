@@ -83,6 +83,24 @@ export const IconUser = (p: P) => (
     <path d="M5 20a7 7 0 0 1 14 0" />
   </Ico>
 );
+export const IconInfo = (p: P) => (
+  <Ico {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v6M12 7.5v.01" />
+  </Ico>
+);
+export const IconPin = (p: P) => (
+  <Ico {...p}>
+    <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" />
+    <circle cx="12" cy="9.5" r="2.5" />
+  </Ico>
+);
+export const IconClock = (p: P) => (
+  <Ico {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </Ico>
+);
 export const IconLogout = (p: P) => (
   <Ico {...p}>
     <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />

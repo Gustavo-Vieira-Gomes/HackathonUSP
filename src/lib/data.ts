@@ -280,6 +280,53 @@ export async function listWaitlist(patientId: string) {
 
 // ---------- Clínica ----------
 
+/** Ficha da clínica que o paciente abre pelo «i» na lista de horários. */
+export type ClinicInfo = {
+  id: string;
+  name: string;
+  address: string;
+  distance_km: number;
+  opening_hours: string;
+  agency_name: string;
+  exams: string[];
+};
+
+export async function listClinicInfo(ids: string[]): Promise<Record<string, ClinicInfo>> {
+  await connection();
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return {};
+  const rows = must(
+    await db()
+      .from("clinics")
+      .select("id, name, address, distance_km, opening_hours, agency:agencies(name), clinic_exams(display_name, active, deleted_at)")
+      .in("id", unique),
+  ) as unknown as {
+    id: string;
+    name: string;
+    address: string;
+    distance_km: number;
+    opening_hours: string;
+    agency: { name: string };
+    clinic_exams: { display_name: string; active: boolean; deleted_at: string | null }[];
+  }[];
+  const out: Record<string, ClinicInfo> = {};
+  for (const c of rows) {
+    out[c.id] = {
+      id: c.id,
+      name: c.name,
+      address: c.address,
+      distance_km: Number(c.distance_km),
+      opening_hours: c.opening_hours,
+      agency_name: c.agency.name,
+      exams: c.clinic_exams
+        .filter((e) => e.active && !e.deleted_at)
+        .map((e) => e.display_name)
+        .sort((a, b) => a.localeCompare(b, "pt-BR")),
+    };
+  }
+  return out;
+}
+
 export async function getClinic() {
   await connection();
   return must(await db().from("clinics").select("id, name, address, opening_hours, agency:agencies(name)").eq("id", CLINIC_ID).single()) as unknown as {

@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { getDemoNow, listOffers, listOpenVacancies, type VacancyLive } from "@/lib/data";
+import { getDemoNow, listClinicInfo, listOffers, listOpenVacancies, type ClinicInfo, type VacancyLive } from "@/lib/data";
 import { examName, findRegion, sideSummary } from "@/lib/catalog";
 import { brl, relDay, spInstant, spTime } from "@/lib/format";
 import { TabBar } from "@/components/TabBar";
 import { IconBell, IconCalendar, IconCalendarX, IconMoon, IconTarget } from "@/components/icons";
+import { ClinicInfoButton } from "@/components/paciente/ClinicInfoButton";
 import { Screen, ScreenLoading } from "@/components/paciente/Screen";
 import { Toast } from "@/components/paciente/Toast";
 import { discountPct, param, readSearch, searchQuery, searchSide, vagaHref, type SearchParams } from "@/components/paciente/helpers";
@@ -29,6 +30,7 @@ async function Exames({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const search = readSearch(sp);
   const [vacancies, offers, now] = await Promise.all([listOpenVacancies(search), listOffers(search), getDemoNow()]);
+  const clinics = await listClinicInfo([...vacancies.map((v) => v.clinic_id), ...offers.map((o) => o.exam.clinic.id)]);
   const name = examName(search.regionKey, search.side);
   const avisoHref = `/paciente/aviso?${searchQuery(search)}`;
   const best = vacancies[0];
@@ -122,7 +124,7 @@ async function Exames({ searchParams }: { searchParams: SearchParams }) {
                   </div>
                   <div className="enc-row">
                     <div className="enc-who">
-                      <strong style={{ fontSize: 15 }}>{o.clinic_name}</strong>
+                      <ClinicName name={o.clinic_name} info={clinics[o.clinic_id]} />
                       <span className="small" style={{ color: "var(--ink-2)" }}>
                         {o.agency_name}
                       </span>
@@ -199,7 +201,7 @@ async function Exames({ searchParams }: { searchParams: SearchParams }) {
             </div>
             <div className="enc-row">
               <div className="enc-who">
-                <strong style={{ fontSize: 15 }}>{exam.clinic.name}</strong>
+                <ClinicName name={exam.clinic.name} info={clinics[exam.clinic.id]} />
                 <span className="small" style={{ color: "var(--ink-2)" }}>
                   {exam.clinic.agency.name}
                 </span>
@@ -223,3 +225,12 @@ async function Exames({ searchParams }: { searchParams: SearchParams }) {
   );
 }
 
+/** Nome da clínica com o «i» que abre a ficha dela. */
+function ClinicName({ name, info }: { name: string; info: ClinicInfo | undefined }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+      <strong style={{ fontSize: 15 }}>{name}</strong>
+      {info ? <ClinicInfoButton clinic={info} /> : null}
+    </span>
+  );
+}

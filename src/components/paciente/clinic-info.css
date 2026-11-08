@@ -1,0 +1,70 @@
+/* «i» ao lado do nome da clínica e a ficha que sobe do rodapé (dentro da moldura do celular) */
+.ci-btn {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin: -6px -4px -6px -2px; /* área de toque maior sem empurrar a linha */
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--teal-d);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ci-btn .ico { width: 19px; height: 19px; }
+.ci-btn:hover { background: var(--mint); }
+.ci-btn:focus-visible { outline: 3px solid var(--teal); outline-offset: 1px; }
+
+.vc.ci-layer { background: transparent; }
+.ci-layer { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; justify-content: flex-end; }
+.ci-scrim { position: absolute; inset: 0; background: rgba(23, 54, 58, 0.55); animation: ci-fade 0.2s ease both; }
+.ci-sheet {
+  position: relative;
+  max-height: 86%;
+  overflow-y: auto;
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 24px 24px 0 0;
+  padding: 10px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 -12px 40px -16px rgba(23, 54, 58, 0.4);
+  animation: ci-up 0.32s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.ci-handle { align-self: center; width: 40px; height: 4px; border-radius: 4px; background: var(--line); }
+.ci-close {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ground);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ci-close:focus-visible { outline: 3px solid var(--teal); outline-offset: 1px; }
+.ci-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.ci-list li { display: flex; gap: 12px; align-items: flex-start; }
+.ci-ico {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--mint);
+  color: var(--teal-d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ci-tag { font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 999px; background: var(--ground); box-shadow: inset 0 0 0 1px var(--line); }
+
+@keyframes ci-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes ci-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ci-sheet, .ci-scrim { animation: none; } }
