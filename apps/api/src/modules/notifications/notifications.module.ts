@@ -3,30 +3,47 @@ import { EmailChannelAdapter } from './email/email.adapter';
 import { EmailService } from './email/email.service';
 import { CHANNEL_ADAPTERS, type ChannelAdapter } from './notification.types';
 import { NotificationsService } from './notifications.service';
+import { WhatsappChannelAdapter } from './whatsapp/whatsapp.adapter';
+import { WhatsappDemoController } from './whatsapp/whatsapp-demo.controller';
+import { WhatsappService } from './whatsapp/whatsapp.service';
 
 /**
  * Canais do alerta de vaga. Cada adapter só entra quando o fornecedor está
- * configurado: sem `RESEND_API_KEY`, o e-mail responde `sem_adapter` em vez de
- * fingir que enviou. Push (4.2) e WhatsApp (4.4) entram aqui nos cards deles.
+ * configurado: sem `RESEND_API_KEY` o e-mail, e com `WHATSAPP_MODE=off` o WhatsApp,
+ * ficam `sem_canal` em vez de fingir que enviaram. Push (4.2) entra aqui no
+ * card dele.
  *
- * `EmailService` é exportado para os outros e-mails do produto (confirmação e
- * cancelamento de reserva, renovação, agenda desconectada), com os templates de
- * `email/email-templates.ts`.
+ * `EmailService` e `WhatsappService` são exportados para as outras mensagens do
+ * produto: e-mails de reserva, renovação e agenda (`email/email-templates.ts`) e o
+ * código de verificação do telefone.
  */
 @Module({
+  controllers: [WhatsappDemoController],
   providers: [
     EmailService,
     EmailChannelAdapter,
+    WhatsappService,
+    WhatsappChannelAdapter,
     {
       provide: CHANNEL_ADAPTERS,
-      inject: [EmailService, EmailChannelAdapter],
+      inject: [
+        EmailService,
+        EmailChannelAdapter,
+        WhatsappService,
+        WhatsappChannelAdapter,
+      ],
       useFactory: (
         email: EmailService,
         emailAdapter: EmailChannelAdapter,
-      ): ChannelAdapter[] => (email.isConfigured() ? [emailAdapter] : []),
+        whatsapp: WhatsappService,
+        whatsappAdapter: WhatsappChannelAdapter,
+      ): ChannelAdapter[] => [
+        ...(email.isConfigured() ? [emailAdapter] : []),
+        ...(whatsapp.isEnabled() ? [whatsappAdapter] : []),
+      ],
     },
     NotificationsService,
   ],
-  exports: [NotificationsService, EmailService],
+  exports: [NotificationsService, EmailService, WhatsappService],
 })
 export class NotificationsModule {}

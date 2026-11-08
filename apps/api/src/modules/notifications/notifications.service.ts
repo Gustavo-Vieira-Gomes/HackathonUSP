@@ -18,7 +18,12 @@ export const STALE_PENDING_MS = 2 * CHANNEL_TIMEOUT_MS;
 
 export interface ChannelOutcome {
   channel: NotificationChannel;
-  result: 'enviado' | 'falhou' | 'duplicado' | 'sem_adapter';
+  /**
+   * `sem_canal`: canal ativado pelo paciente sem como enviar (sem adapter ou
+   * WhatsApp sem telefone verificado). Fica gravado em `Alert` para o paciente
+   * sair da fila daquela vaga (HACK-48).
+   */
+  result: 'enviado' | 'falhou' | 'duplicado' | 'sem_canal';
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -64,8 +69,10 @@ export class NotificationsService {
       ...renderAlert(message),
       message,
     };
+    // Todo canal ativado gera um Alert, mesmo sem como enviar: senão o paciente
+    // volta em toda onda e trava a fila dos seguintes (HACK-48).
     return Promise.all(
-      recipient.channels.map((channel) =>
+      recipient.preferredChannels.map((channel) =>
         this.sendOnChannel(channel, recipient, notification, context),
       ),
     );
@@ -103,7 +110,8 @@ export class NotificationsService {
       },
     });
     const verifiedPhone = patient.phoneVerifiedAt ? patient.phone : null;
-    const channels = [...new Set(patient.alertChannels)].filter(
+    const preferredChannels = [...new Set(patient.alertChannels)];
+    const channels = preferredChannels.filter(
       (channel) => channel !== 'whatsapp' || verifiedPhone !== null,
     );
     return {
@@ -112,6 +120,7 @@ export class NotificationsService {
       name: patient.user.name,
       email: patient.user.email,
       verifiedPhone,
+      preferredChannels,
       channels,
     };
   }
@@ -122,11 +131,21 @@ export class NotificationsService {
     notification: OutgoingNotification,
     context: AlertContext,
   ): Promise<ChannelOutcome> {
-    const adapter = this.adapters.get(channel);
-    if (!adapter) return { channel, result: 'sem_adapter' };
+    const adapter = recipient.channels.includes(channel)
+      ? this.adapters.get(channel)
+      : undefined;
 
     const alertId = await this.claimAlert(channel, context);
     if (!alertId) return { channel, result: 'duplicado' };
+
+    if (!adapter) {
+      // Nada a enviar: só fecha o Alert reservado com o motivo.
+      await this.prisma.alert.update({
+        where: { id: alertId },
+        data: { result: 'sem_canal', sentAt: null },
+      });
+      return { channel, result: 'sem_canal' };
+    }
 
     const sent = await this.callAdapter(adapter, recipient, notification, {
       alertId,

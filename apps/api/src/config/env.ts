@@ -15,6 +15,7 @@ export const OPTIONAL_ENV = [
   'RESEND_API_URL',
   'EMAIL_FROM',
   'VACANCY_MOTOR_ENABLED',
+  'WHATSAPP_MODE',
 ] as const;
 
 /** Vazio (como no .env.example) conta como ausente. */
@@ -47,7 +48,7 @@ const envSchema = z
       .default('true')
       .transform((value) => value === 'true'),
     // E-mail transacional via Resend (HACK-36). Sem a chave, o canal de e-mail não é
-    // registrado e responde sem_adapter, em vez de fingir que enviou.
+    // registrado e o Alert fica sem_canal, em vez de fingir que enviou.
     RESEND_API_KEY: z.preprocess(blankAsUndefined, filled.min(10).optional()),
     RESEND_API_URL: z.preprocess(
       blankAsUndefined,
@@ -55,6 +56,12 @@ const envSchema = z
     ),
     // Remetente verificado no Resend, por exemplo "Vagas <alertas@dominio.com.br>".
     EMAIL_FROM: z.preprocess(blankAsUndefined, filled.optional()),
+    // WhatsApp no piloto (HACK-37): off não envia; simulated grava a mensagem para a
+    // tela /demo/whatsapp. Integração real (Evolution/WAHA) fica fora do escopo.
+    WHATSAPP_MODE: z.preprocess(
+      blankAsUndefined,
+      z.enum(['off', 'simulated']).default('off'),
+    ),
   })
   .superRefine((env, ctx) => {
     if (env.DEMO_CLOCK_ENABLED && !env.DEMO_CLOCK_TOKEN) {

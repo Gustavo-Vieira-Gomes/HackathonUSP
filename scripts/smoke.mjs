@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:net';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -82,11 +83,16 @@ try {
   const webPort = await freePort();
   const webUrl = `http://127.0.0.1:${webPort}`;
   // DATABASE_URL e BETTER_AUTH_SECRET vêm do ambiente (CI) ou do .env da API (local).
+  // Segredo do operador da demo, novo a cada smoke (HACK-37).
+  const demoToken = randomBytes(24).toString('base64url');
   const api = start(['dist/main.js'], 'apps/api', {
     PORT: String(apiPort),
     HOST: '127.0.0.1',
     BETTER_AUTH_URL: apiUrl,
     WEB_ORIGIN: webUrl,
+    DEMO_CLOCK_ENABLED: 'true',
+    DEMO_CLOCK_TOKEN: demoToken,
+    WHATSAPP_MODE: 'simulated',
   });
   const apiResponse = await ready(`${apiUrl}/api/health`, api);
   assert.deepEqual(await apiResponse.json(), { status: 'ok', service: 'api' });
@@ -100,7 +106,7 @@ try {
       '127.0.0.1',
     ],
     'apps/web',
-    { API_BASE_URL: apiUrl },
+    { API_BASE_URL: apiUrl, DEMO_CLOCK_TOKEN: demoToken },
   );
   const webResponse = await ready(`${webUrl}/api/health`, web);
   assert.deepEqual(await webResponse.json(), { status: 'ok', service: 'web' });
@@ -193,6 +199,38 @@ try {
     `C1: generate com sessão encerrada ${afterSignOut.status}`,
   );
 
+  // HACK-37: /demo/whatsapp só para o operador; sem credencial, nada do conteúdo.
+  const demoUrl = `${webUrl}/demo/whatsapp`;
+  const operator = (password) =>
+    `Basic ${Buffer.from(`operador:${password}`).toString('base64')}`;
+  for (const [label, headers] of [
+    ['sem credencial', {}],
+    ['senha errada', { authorization: operator(`${demoToken}x`) }],
+  ]) {
+    const denied = await fetch(demoUrl, { headers });
+    assert.equal(denied.status, 401, `C1 HACK-37 ${label}: ${denied.status}`);
+    assert.match(
+      denied.headers.get('www-authenticate') ?? '',
+      /^Basic /,
+      `C1 HACK-37 ${label}: sem desafio Basic`,
+    );
+    const html = await denied.text();
+    assert.ok(
+      !html.includes('WhatsApp simulado') && !html.includes('wa-chat'),
+      `C1 HACK-37 ${label}: a resposta traz conteúdo da tela`,
+    );
+  }
+  const allowed = await fetch(demoUrl, {
+    headers: { authorization: operator(demoToken) },
+  });
+  assert.equal(allowed.status, 200, `C2 HACK-37 operador: ${allowed.status}`);
+  const allowedHtml = await allowed.text();
+  assert.match(allowedHtml, /WhatsApp simulado/);
+  assert.match(allowedHtml, /Nenhuma mensagem ainda|wa-chat/);
+  assert.ok(!allowedHtml.includes(demoToken), 'C2 HACK-37: token no HTML');
+  const directApi = await fetch(`${apiUrl}/api/demo/whatsapp/messages`);
+  assert.equal(directApi.status, 401, 'C3 HACK-37: lista da API sem token');
+
   await stop(api.child);
   const offlinePage = await fetch(webUrl);
   assert.equal(offlinePage.status, 200);
@@ -204,7 +242,7 @@ try {
   );
   assert.equal(offlineSignIn.status, 502, 'C32: repasse com a API desligada');
   console.log(
-    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e sessão pelo Next, token do socket, fallback e 502 com API desligada.',
+    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e sessão pelo Next, token do socket, /demo/whatsapp só com credencial do operador, fallback e 502 com API desligada.',
   );
 } finally {
   await Promise.all(processes.map(stop));

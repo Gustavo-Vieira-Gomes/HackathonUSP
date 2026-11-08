@@ -80,6 +80,9 @@ export class MatchingService {
    * tem `Alert` desta vaga, em qualquer canal ou onda, fica de fora: assim a próxima
    * onda pega os seguintes da fila em vez de repetir os primeiros (RN-34, RN-36).
    *
+   * Inclui `Alert` com `sem_canal`: canal ativo sem como enviar também conta como
+   * alertado, para o paciente não voltar em toda onda (HACK-48).
+   *
    * Exceção: um `Alert` pendente há mais de STALE_PENDING_MS foi abandonado por um
    * processo que caiu entre gravar e enviar. Esse não conta, para que a inscrição
    * volte e o `NotificationsService` reivindique e reenvie o alerta (HACK-45).
@@ -109,6 +112,9 @@ export class MatchingService {
         id: { in: inRadius.map((row) => row.id) },
         tussCode: vacancy.slot.exam.tussCode,
         expiresAt: { gt: now },
+        // Sem nenhum canal ativo não há como alertar nem onde gravar o Alert que
+        // tira o paciente da fila; ele fica fora da onda (HACK-48).
+        patient: { alertChannels: { isEmpty: false } },
         alerts: {
           none: {
             vacancyId,
