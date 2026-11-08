@@ -146,3 +146,7 @@ Proof: `npm run check` (com o lock pesado)
 
 - S1-S4 = `schema.prisma` (~8 KB → ~14 KB), migration nova (~10 KB), `booking-schema.test.ts` novo (~25 KB), `domain-schema.test.ts` (~15 KB, só o C12), leitura de `prisma.service.ts`/`env.ts` (~3 KB) ≈ 67 KB / 4 ≈ 17k, mais plano e checks (~55 KB, ~14k) ≈ 31k, abaixo do orçamento de 150k - um construtor
 - Pré-requisito: Postgres do worktree no ar (54313, `hack_13`) e `node_modules` presente; nenhuma dependência nova
+- Mecanismo: um construtor (abaixo do orçamento)
+- **Boundary:** C1-C23 fechados em `3489f77`
+- **Settled mid-build:** o predicado dos 3 índices parciais (porta 3) está escrito na forma que o Postgres guarda, `state = ANY (ARRAY['confirmada'::"ReservationState", …])`, e não `"state" IN (…)`: com `IN`, o `migrate diff` seguinte via drift e gerava `DROP INDEX` + `CREATE UNIQUE INDEX` (o risco da porta 4); a semântica é a mesma. Fixtures da fatia 1 extraídas para `apps/api/src/testing/schema-fixtures.ts` (segundo consumidor).
+- **Abandoned:** `prisma migrate dev --create-only` (recusa ambiente não interativo); a migration nasceu de `migrate diff --from-config-datasource --to-schema --script`, completada à mão e aplicada com `migrate deploy` no banco local. `migrate reset` pede consentimento do usuário e não foi usado: depois de corrigir o predicado na própria migration (ainda não mergeada), o checksum local foi alinhado em `_prisma_migrations` e a aplicação do zero foi provada num banco descartável (`hack_13_f2_scratch`, criado e apagado), com `migrate diff` em 0.
