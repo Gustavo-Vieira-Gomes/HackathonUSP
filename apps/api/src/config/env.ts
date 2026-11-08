@@ -8,7 +8,10 @@ export const REQUIRED_ENV = [
 ] as const;
 
 /** Opcionais: ausentes valem o padrão do schema. */
-export const OPTIONAL_ENV = ['DEMO_CLOCK_ENABLED'] as const;
+export const OPTIONAL_ENV = [
+  'DEMO_CLOCK_ENABLED',
+  'VACANCY_MOTOR_ENABLED',
+] as const;
 
 const filled = z.string().trim().min(1);
 
@@ -26,6 +29,12 @@ const envSchema = z.object({
   DEMO_CLOCK_ENABLED: z
     .enum(['true', 'false'])
     .default('false')
+    .transform((value) => value === 'true'),
+  // Liga o motor de vagas a cada minuto (HACK-32). Os testes desligam, para o cron
+  // real não mexer no banco compartilhado no meio de outro arquivo de teste.
+  VACANCY_MOTOR_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
     .transform((value) => value === 'true'),
 });
 

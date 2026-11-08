@@ -13,6 +13,8 @@ Perfil `standard` e não `light`: o card mexe em preço (`currentPriceCents`, RN
 
 **Ajuste à PR #17.** C11, C19 e C25 ajustados à #17 em 08/11/2026, aprovado pelo Maestro Motor: a mudança vem da dependência, não de escopo novo.
 
+**Exemplo de preço.** C19, C20 e C21 (e o AC 14 do plano): exemplo corrigido em 08/11 (aritmética dos degraus), aprovado pelo Maestro Motor. Faltando 30 h vale o degrau de 48 h (−10%): 72000 → 64800, não 57600; a regra não muda.
+
 **Como as provas rodam.** Em `apps/api`, com o Postgres do worktree no ar (`127.0.0.1:54329`, banco `hack_32`, `DATABASE_URL` do `.env` da API conferido antes, nunca banco compartilhado), depois de `npx prisma generate && npx tsc -p tsconfig.json --outDir .test-dist` (o mesmo passo do `npm run test`). O `node --test` só filtra com `--test-name-pattern` **antes** do arquivo. Abreviações: `RUN` = `node --env-file-if-exists=.env --test`; `MOT` = `.test-dist/modules/vacancies/vacancy-motor.job.test.js` (novo); `SVC` = `.test-dist/modules/vacancies/vacancies.service.test.js`; `NOT` = `.test-dist/modules/notifications/notifications.service.test.js`. Nos testes do motor, os canais usam adapters de teste em `CHANNEL_ADAPTERS` que contam e registram as chamadas: nenhum envio real. N e Z vêm da clínica semeada (`waveSize = 5`, `waveWindowMinutes = 10`); «t0+10» é `tick(now)` com `now = t0 + 10 min`.
 
 ## Checks
@@ -79,13 +81,13 @@ Proof: `RUN --test-name-pattern="pendente da vaga que expira é cancelado no mes
 
 ### S4 - preço cai pelos degraus · 1 arquivo · ~4k
 
-**C19** - Vaga `publicada` com `fullPriceCents = 72000`, `floorPriceCents = 50000`, degraus −10%/2880 min, −20%/1440 min, −30%/360 min, `currentPriceCents = 72000` e `startsAt = now + 30 h`: `tick(now)` grava `currentPriceCents = 57600` e chama `RealtimeService.vagaPreco` exatamente 1 vez com `{ vagaId, precoCentavos: 57600 }` (espião no módulo de teste); a etapa `prices` chama `PricingService.recalculatePrices` exatamente 1 vez com o mesmo `now` do `tick` (espião), sem segundo cálculo de preço no motor (S4, AC 14; plan, Flow passo 3)
-Proof: `RUN --test-name-pattern="preço cai para 57600 a 30 h e o socket avisa" MOT`
+**C19** - Vaga `publicada` com `fullPriceCents = 72000`, `floorPriceCents = 50000`, degraus −10%/2880 min, −20%/1440 min, −30%/360 min, `currentPriceCents = 72000` e `startsAt = now + 30 h`: `tick(now)` grava `currentPriceCents = 64800` e chama `RealtimeService.vagaPreco` exatamente 1 vez com `{ vagaId, precoCentavos: 64800 }` (espião no módulo de teste); a etapa `prices` chama `PricingService.recalculatePrices` exatamente 1 vez com o mesmo `now` do `tick` (espião), sem segundo cálculo de preço no motor (S4, AC 14; plan, Flow passo 3)
+Proof: `RUN --test-name-pattern="preço cai para 64800 a 30 h e o socket avisa" MOT`
 
-**C20** - No cenário do C19, um segundo `tick(now)` mantém 57600 e não chama `vagaPreco`; uma vaga com `currentPriceCents = 50000` gravado e preço calculado 57600 continua 50000 sem evento (RN-27, nunca sobe); uma vaga `reservada` a 30 h com 72000 continua 72000 sem evento (S4, AC 15)
+**C20** - No cenário do C19, um segundo `tick(now)` mantém 64800 e não chama `vagaPreco`; uma vaga com `currentPriceCents = 50000` gravado e preço calculado 64800 continua 50000 sem evento (RN-27, nunca sobe); uma vaga `reservada` a 30 h com 72000 continua 72000 sem evento (S4, AC 15)
 Proof: `RUN --test-name-pattern="preço igual, maior ou de vaga fechada não muda nem emite" MOT`
 
-**C21** - No cenário do C19, com 5 candidatos, a mensagem de cada `enviar` da onda desse mesmo `tick` tem `priceCents = 57600` (S4, AC 16; D3 = a, `prices` antes de `waves`)
+**C21** - No cenário do C19, com 5 candidatos, a mensagem de cada `enviar` da onda desse mesmo `tick` tem `priceCents = 64800` (S4, AC 16; D3 = a, `prices` antes de `waves`)
 Proof: `RUN --test-name-pattern="onda do mesmo tick leva o preço novo" MOT`
 
 ### S5 - tempo da demo · 2 arquivos · ~8k · [relógio]
@@ -142,25 +144,25 @@ Proof: `npm run build`
 
 ## Coverage
 
-| Set (size) | Member -> proof | Unproven |
-| --- | --- | --- |
-| estados da vaga no motor (6) | `publicada` C1 · `alertando` C4 · `reservada` C9 · `realizada` C9 · `expirada` C9 · `cancelada` C9 | - |
-| ramos da decisão da onda (6) | `publicada` com candidatos C1 · `publicada` sem candidatos C5 · `alertando` dentro de Z C3 · `alertando` Z vencido com candidatos C4 · `alertando` Z vencido sem candidatos C5 · linha travada C8 | - |
-| tamanho da onda (3) | N cheio C2 · resto menor que N C2 · zero C5 | - |
-| transições gravadas pelo motor (4) | T2 C1 · T3 C4 · T4 C5 · T8 C17 | - |
-| etapas do `tick`, porta 2 (4) | `prices` C15 · `expire` C15 · `cancel-pending` C15 · `waves` C15 | - |
-| ordem das etapas, D3 (3) | `prices` antes de `waves` C21 · `expire` antes de `waves` C17 · `expire` antes de `cancel-pending` C18 | - |
-| falha isolada (5) | envio de um paciente C13 · vaga nas ondas C14 · etapa C15 · vaga no `expireDue` C16 · socket C28 | - |
-| execução sobreposta (2) | entre processos ou chamadas concorrentes C7 · mesmo processo C32 | - |
-| repetição (2) | tick em sequência C6 · tick concorrente C7 | - |
-| preço gravado × calculado (4) | calculado menor C19 · igual C20 · gravado menor que calculado C20 · vaga fechada C20 | - |
-| campos da mensagem (7) | `clinicName` C11 · `examName` C11 · `startsAt` C11 · `priceCents` C11 · `preparation` com e sem valor C11 · `vacancyUrl` C11 · `distanceMeters` C11 | - |
-| estados no cancelamento de pendentes (5) | `reservada` C29 · `expirada` C29 · `cancelada` C29 · `publicada` C29 · `alertando` C29 | - |
-| resultados de `Alert` no cancelamento (3) | `pendente` C29 · `enviado` C29 · `falhou` C29 | - |
-| trocas de `new Date()` pelo relógio (5) | `publish` C22 · `transition` C22 · `expireDue` padrão C22 · `nextOccurredAt` C23 · `@Cron` com `refresh()` C25 | - |
-| portas de uma via em `Landing` (4) | porta 1 C31 · porta 2 C15 · porta 3 C7 · porta 4 C29 | - |
-| startup config: `VacancyMotorJob` e `WavesService` no `AppModule` (1 montagem compartilhada) | `createApp`, usada por `main.ts` e `startTestApp` C31 | - |
-| `Surface` (0 rotas) | plan, `Surface` = Nenhum | - |
+| Set (size)                                                                                   | Member -> proof                                                                                                                                                                                   | Unproven |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| estados da vaga no motor (6)                                                                 | `publicada` C1 · `alertando` C4 · `reservada` C9 · `realizada` C9 · `expirada` C9 · `cancelada` C9                                                                                                | -        |
+| ramos da decisão da onda (6)                                                                 | `publicada` com candidatos C1 · `publicada` sem candidatos C5 · `alertando` dentro de Z C3 · `alertando` Z vencido com candidatos C4 · `alertando` Z vencido sem candidatos C5 · linha travada C8 | -        |
+| tamanho da onda (3)                                                                          | N cheio C2 · resto menor que N C2 · zero C5                                                                                                                                                       | -        |
+| transições gravadas pelo motor (4)                                                           | T2 C1 · T3 C4 · T4 C5 · T8 C17                                                                                                                                                                    | -        |
+| etapas do `tick`, porta 2 (4)                                                                | `prices` C15 · `expire` C15 · `cancel-pending` C15 · `waves` C15                                                                                                                                  | -        |
+| ordem das etapas, D3 (3)                                                                     | `prices` antes de `waves` C21 · `expire` antes de `waves` C17 · `expire` antes de `cancel-pending` C18                                                                                            | -        |
+| falha isolada (5)                                                                            | envio de um paciente C13 · vaga nas ondas C14 · etapa C15 · vaga no `expireDue` C16 · socket C28                                                                                                  | -        |
+| execução sobreposta (2)                                                                      | entre processos ou chamadas concorrentes C7 · mesmo processo C32                                                                                                                                  | -        |
+| repetição (2)                                                                                | tick em sequência C6 · tick concorrente C7                                                                                                                                                        | -        |
+| preço gravado × calculado (4)                                                                | calculado menor C19 · igual C20 · gravado menor que calculado C20 · vaga fechada C20                                                                                                              | -        |
+| campos da mensagem (7)                                                                       | `clinicName` C11 · `examName` C11 · `startsAt` C11 · `priceCents` C11 · `preparation` com e sem valor C11 · `vacancyUrl` C11 · `distanceMeters` C11                                               | -        |
+| estados no cancelamento de pendentes (5)                                                     | `reservada` C29 · `expirada` C29 · `cancelada` C29 · `publicada` C29 · `alertando` C29                                                                                                            | -        |
+| resultados de `Alert` no cancelamento (3)                                                    | `pendente` C29 · `enviado` C29 · `falhou` C29                                                                                                                                                     | -        |
+| trocas de `new Date()` pelo relógio (5)                                                      | `publish` C22 · `transition` C22 · `expireDue` padrão C22 · `nextOccurredAt` C23 · `@Cron` com `refresh()` C25                                                                                    | -        |
+| portas de uma via em `Landing` (4)                                                           | porta 1 C31 · porta 2 C15 · porta 3 C7 · porta 4 C29                                                                                                                                              | -        |
+| startup config: `VacancyMotorJob` e `WavesService` no `AppModule` (1 montagem compartilhada) | `createApp`, usada por `main.ts` e `startTestApp` C31                                                                                                                                             | -        |
+| `Surface` (0 rotas)                                                                          | plan, `Surface` = Nenhum                                                                                                                                                                          | -        |
 
 - Afirmações sobre eventos de socket: C19, C20, C27, C28 - espião sobre o `RealtimeService` real no módulo de teste; a forma do payload é validada pelos schemas do HACK-38 (existente).
 - C7 chama o `WavesService` direto para que a prova atravesse a trava do banco, e não a guarda `running` em memória, que o C32 prova à parte.
@@ -169,12 +171,12 @@ Proof: `npm run build`
 
 ## Test policy
 
-| Code | Required proofs | Coverage expectation |
-| --- | --- | --- |
-| Decide, com banco real (`WavesService`: estado, janela Z, candidatos, trava, número da onda) | integração contra o Postgres do worktree pelo `tick`/`dispatchDue` | um caso por ramo da decisão da onda: C1, C3, C4, C5, C8, C9 |
-| Decide, com banco real (`VacancyMotorJob`: ordem, isolamento por etapa, guarda `running`, `refresh` do relógio) | integração pelo `tick` e pelo handler do cron | C15 tabela sobre as 4 etapas; C25, C32 |
-| Decide, com banco real (`NotificationsService.cancelPendingOfClosedVacancies`) | na própria camada (C29) **e** pelo consumidor (C30) | os 5 estados × 3 resultados nos dois |
-| Repasse (`expireDue`, `candidatos`, `enviar`, `PricingService.recalculatePrices` existentes) | nenhuma prova nova além da ressalva 2 (C16), das trocas de relógio (C22, C23) e da chamada pela etapa `prices` (C19, C20 pelo `tick`) | já provados nos HACK-29, 30, 31 e 34 e em `pricing.service.test.ts` da #17 |
+| Code                                                                                                            | Required proofs                                                                                                                       | Coverage expectation                                                       |
+| --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Decide, com banco real (`WavesService`: estado, janela Z, candidatos, trava, número da onda)                    | integração contra o Postgres do worktree pelo `tick`/`dispatchDue`                                                                    | um caso por ramo da decisão da onda: C1, C3, C4, C5, C8, C9                |
+| Decide, com banco real (`VacancyMotorJob`: ordem, isolamento por etapa, guarda `running`, `refresh` do relógio) | integração pelo `tick` e pelo handler do cron                                                                                         | C15 tabela sobre as 4 etapas; C25, C32                                     |
+| Decide, com banco real (`NotificationsService.cancelPendingOfClosedVacancies`)                                  | na própria camada (C29) **e** pelo consumidor (C30)                                                                                   | os 5 estados × 3 resultados nos dois                                       |
+| Repasse (`expireDue`, `candidatos`, `enviar`, `PricingService.recalculatePrices` existentes)                    | nenhuma prova nova além da ressalva 2 (C16), das trocas de relógio (C22, C23) e da chamada pela etapa `prices` (C19, C20 pelo `tick`) | já provados nos HACK-29, 30, 31 e 34 e em `pricing.service.test.ts` da #17 |
 
 Evidence:
 
@@ -203,3 +205,6 @@ Dimensões da casa: tenant - não se aplica, tarefa agendada sem sessão; dinhei
 - Lidos: `vacancies/` (~48 KB com testes), `notifications/` (~16 KB), `realtime.service.ts` (~3 KB), `examples/` (~2 KB), `testing/` (~7 KB), `app.module.ts` (~1 KB), `schema.prisma` (~15 KB), e da #17 `clock/` (~3 KB) e `pricing.service.ts` (~4 KB) ≈ 99 KB; plano e checks ≈ 50 KB; escritos: `vacancy-motor.job.ts` + `waves.service.ts` (~12 KB), `vacancy-motor.job.test.ts` (~30 KB), acréscimos em `vacancies.service.ts`/teste e `notifications.service.ts`/teste (~10 KB) ≈ 52 KB. Total ≈ 201 KB / 4 ≈ 50k, abaixo do orçamento de 150k - um construtor, sem pergunta.
 - Ordem: só depois da PR #17 em `main` → `git merge origin/main` (traz a #16, já em `main`, e a migration `20261108050644_hack_30_34_relogio_demo_e_preferencias_de_canal` da #17), conferir o `DATABASE_URL` do `.env` (`hack_32` em 54329), `npm run db:migrate -w @hackathon/api`; o primeiro commit leva `plan.md` e `checks.md`.
 - Mecanismo: um construtor (dentro do orçamento, sem pergunta).
+- **Boundary:** C1-C34 fechados no último commit do card (base `9c99e08`, `main` com a PR #17); `npm run check` e `npm run build` verdes; suíte da API em série com 205 testes em 40,3 s (`duration_ms`).
+- **Settled mid-build:** `--test-concurrency=1` aceito pelo Maestro Motor apesar de 2,66x (12,7 s → 33,9 s antes do card); exemplo de preço corrigido para 64800 (C19 a C21, AC 14); porta 5 (`VACANCY_MOTOR_ENABLED`, achada no build, em `Landing`); `transition` ganhou o `now` opcional para a onda gravar o instante do tick (Flow, Impact); banco `hack_32` criado no container `hack-29-postgres-1` (54329), porque o `docker compose up` deste worktree disputaria a porta; teste extra «C7 (extra)» prova a trava na onda seguinte (`alertando → alertando`), porque o C7 sozinho passa sem a trava (o update condicional do HACK-29 já separa a primeira onda); conferido removendo o `FOR UPDATE SKIP LOCKED`: o extra e o C8 ficam vermelhos.
+- **Abandoned:** montar o motor pela DI da app nos testes: o `CHANNEL_ADAPTERS` é `useValue: []` e não há `@nestjs/testing`; os testes montam `WavesService` e `VacancyMotorJob` pelo construtor com os serviços reais da app, como o `notifications.service.test.ts` faz com o `NotificationsService`.
