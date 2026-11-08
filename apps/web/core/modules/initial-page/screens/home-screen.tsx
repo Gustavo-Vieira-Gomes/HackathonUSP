@@ -1,8 +1,14 @@
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { isApiAvailable } from '@/core/shared/services/api-health.service';
+import { getSessionUser } from '@/core/shared/services/session.service';
 
 export default async function HomeScreen() {
-  const apiAvailable = await isApiAvailable();
+  const cookieHeader = (await cookies()).toString();
+  const [apiAvailable, user] = await Promise.all([
+    isApiAvailable(),
+    getSessionUser(cookieHeader),
+  ]);
 
   return (
     <main>
@@ -64,6 +70,11 @@ export default async function HomeScreen() {
                 ? 'API conectada'
                 : 'API indisponível neste momento'}
             </span>
+            <p className="session" data-testid="session-status">
+              {user
+                ? `Sessão ativa: ${user.email} (${user.role})`
+                : 'Sem sessão ativa'}
+            </p>
           </article>
           <article className="card">
             <span className="card-number">03</span>

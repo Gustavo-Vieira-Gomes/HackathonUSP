@@ -8,6 +8,10 @@ Recomendado: Node 24 LTS (`nvm use`) e npm.
 
 ```sh
 npm ci
+cp .env.example .env                  # porta e banco do Postgres deste worktree
+cp apps/api/.env.example apps/api/.env  # DATABASE_URL, BETTER_AUTH_*, WEB_ORIGIN
+docker compose up -d --wait           # Postgres local (um container e volume por worktree)
+npm run db:migrate -w @hackathon/api  # aplica as migrations do Prisma no banco local
 npm run dev
 ```
 
@@ -15,13 +19,13 @@ npm run dev
 - Saúde Next: http://localhost:3000/api/health
 - Saúde Nest: http://localhost:3001/api/health
 
-A página inicial consulta a API no servidor e mostra seu estado real. Defaults locais funcionam sem .env; para customizar, veja `apps/web/.env.example` e `apps/api/.env.example`. Arquivos .env não são versionados. O script dev recompila contratos antes de iniciar; alterações posteriores no pacote exigem recompilação e reinício.
+A página inicial consulta a API no servidor e mostra seu estado real e a sessão. A API não sobe sem `DATABASE_URL`, `BETTER_AUTH_SECRET` (32+ caracteres), `BETTER_AUTH_URL` e `WEB_ORIGIN`; veja `apps/api/.env.example` e `apps/web/.env.example`. Arquivos .env não são versionados. O script dev recompila contratos antes de iniciar; alterações posteriores no pacote exigem recompilação e reinício.
 
 ```sh
 npm run dev:web       # apenas Next, API aparece indisponível se desligada
 npm run check         # lint, tipos, testes e formatação
 npm run build         # builds de produção em ordem
-npm run smoke         # após build: HTTP real, integração e API desligada
+npm run smoke         # após build, com o Postgres de pé: HTTP real, cadastro/login pelo Next e API desligada
 npm run format        # formatação
 ```
 
@@ -41,7 +45,7 @@ Após build, execute `npm run start -w @hackathon/api` e `npm run start -w @hack
 
 Há uma base de código e dois perfis de harness. O perfil alternativo fica inativo até a decisão de migrar; não existe segunda aplicação duplicada para sincronizar. npm workspaces descobre os pacotes; a transição ainda exige adaptar fluxos, scripts e remover referências conforme checklist.
 
-Banco, login, autorização, fila, WebSocket e deploy ainda não estão implementados. Saúde atual é liveness; não comprova prontidão dessas futuras dependências.
+Fundação (HACK-12): Postgres + Prisma, Better Auth no Nest com cookie httpOnly no domínio do Next (repasse em `/api/auth/*` e `/api/sign-up/{paciente,clinica}`), guard global (rota nova nasce protegida; pública usa `@AllowAnonymous()`), `@nestjs/schedule` e socket.io com job e gateway de exemplo. Fila e deploy ainda não existem. Saúde atual é liveness; não comprova prontidão do banco.
 
 ## Validação
 

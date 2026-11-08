@@ -9,3 +9,9 @@ coverage/
 .DS_Store
 *.log
 .test-dist/
+
+# Cliente Prisma gerado
+apps/api/src/generated/
+
+# Pasta local do Maestri (roles e notas), fora do repositório
+.maestri/

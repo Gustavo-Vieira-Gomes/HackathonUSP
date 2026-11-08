@@ -61,17 +61,35 @@ async function ready(url, process) {
   }
   throw new Error(`Servidor não iniciou: ${url}\n${process.output()}`);
 }
+function sessionCookie(response, label) {
+  const cookie = response.headers
+    .getSetCookie()
+    .map((line) => line.split(';')[0])
+    .find((pair) => pair.includes('session_token='));
+  assert.ok(cookie, `${label}: resposta sem cookie de sessão`);
+  return cookie;
+}
+async function postJson(url, body, origin) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin },
+    body: JSON.stringify(body),
+  });
+}
 try {
   const apiPort = await freePort();
   const apiUrl = `http://127.0.0.1:${apiPort}`;
+  const webPort = await freePort();
+  const webUrl = `http://127.0.0.1:${webPort}`;
+  // DATABASE_URL e BETTER_AUTH_SECRET vêm do ambiente (CI) ou do .env da API (local).
   const api = start(['dist/main.js'], 'apps/api', {
     PORT: String(apiPort),
     HOST: '127.0.0.1',
+    BETTER_AUTH_URL: apiUrl,
+    WEB_ORIGIN: webUrl,
   });
   const apiResponse = await ready(`${apiUrl}/api/health`, api);
   assert.deepEqual(await apiResponse.json(), { status: 'ok', service: 'api' });
-  const webPort = await freePort();
-  const webUrl = `http://127.0.0.1:${webPort}`;
   const web = start(
     [
       require.resolve('next/dist/bin/next'),
@@ -88,13 +106,45 @@ try {
   assert.deepEqual(await webResponse.json(), { status: 'ok', service: 'web' });
   const page = await fetch(webUrl);
   assert.equal(page.status, 200);
-  assert.match(await page.text(), /API conectada/);
+  const pageHtml = await page.text();
+  assert.match(pageHtml, /API conectada/);
+  assert.match(pageHtml, /Sem sessão ativa/);
+
+  const email = `smoke-${Date.now()}-${process.pid}@teste.local`;
+  const password = 'smoke-senha-1';
+  const signUp = await postJson(
+    `${webUrl}/api/sign-up/paciente`,
+    { name: 'Smoke', email, password },
+    webUrl,
+  );
+  assert.equal(signUp.status, 200, `C29: cadastro pelo Next ${signUp.status}`);
+  sessionCookie(signUp, 'C29 cadastro');
+  const signIn = await postJson(
+    `${webUrl}/api/auth/sign-in/email`,
+    { email, password },
+    webUrl,
+  );
+  assert.equal(signIn.status, 200, `C29: login pelo Next ${signIn.status}`);
+  const cookie = sessionCookie(signIn, 'C29 login');
+  const sessionPage = await fetch(webUrl, { headers: { cookie } });
+  assert.equal(sessionPage.status, 200);
+  assert.ok(
+    (await sessionPage.text()).includes(`Sessão ativa: ${email}`),
+    'C31: a página com o cookie do login não mostra o e-mail da sessão',
+  );
+
   await stop(api.child);
   const offlinePage = await fetch(webUrl);
   assert.equal(offlinePage.status, 200);
   assert.match(await offlinePage.text(), /API indisponível neste momento/);
+  const offlineSignIn = await postJson(
+    `${webUrl}/api/auth/sign-in/email`,
+    { email, password },
+    webUrl,
+  );
+  assert.equal(offlineSignIn.status, 502, 'C32: repasse com a API desligada');
   console.log(
-    'Smoke HTTP passou: saúde Next/Nest, integração e fallback com API desligada.',
+    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e sessão pelo Next, fallback e 502 com API desligada.',
   );
 } finally {
   await Promise.all(processes.map(stop));

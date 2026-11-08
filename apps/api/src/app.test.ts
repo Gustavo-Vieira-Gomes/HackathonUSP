@@ -3,7 +3,7 @@ import test from 'node:test';
 import { healthResponseSchema } from '@hackathon/contracts';
 import { createApp, parsePort } from './app';
 
-test('API expõe saúde via HTTP e mantém rotas desconhecidas como 404', async () => {
+test('C21 - sem cookie, saúde responde 200 e rota desconhecida 404', async () => {
   const app = await createApp({ logger: false });
   try {
     await app.listen(0, '127.0.0.1');
