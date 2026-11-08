@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
 import { APP_ENV, type AppEnv } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
 import { createAuth } from './auth.config';
 import { AuthSessionService } from './auth-session.service';
 import { MeController } from './me.controller';
+import { SIGN_UP_RATE_LIMIT, SignUpRequestGuard } from './sign-up-protection';
 import { SignUpController } from './sign-up.controller';
 import { SignUpService } from './sign-up.service';
 
@@ -20,9 +22,11 @@ import { SignUpService } from './sign-up.service';
         auth: createAuth(env, prisma),
       }),
     }),
+    // Armazenamento em memória (uma instância); só vale onde o ThrottlerGuard é aplicado.
+    ThrottlerModule.forRoot([SIGN_UP_RATE_LIMIT]),
   ],
   controllers: [SignUpController, MeController],
-  providers: [AuthSessionService, SignUpService],
+  providers: [AuthSessionService, SignUpService, SignUpRequestGuard],
   exports: [AuthSessionService],
 })
 export class AuthModule {}

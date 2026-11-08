@@ -78,3 +78,12 @@ test('C5 - main.js com BETTER_AUTH_SECRET de 31 caracteres sai com 1', async () 
   assert.equal(result.output.includes('b'.repeat(31)), false);
   assert.equal(result.listening, false);
 });
+
+test('C9 - main.js com o BETTER_AUTH_SECRET de exemplo sai com 1, cita o nome, não vaza o valor e não abre a porta', async () => {
+  const placeholder = 'troque-por-um-segredo-local-de-32-caracteres';
+  const result = await boot({ ...values, BETTER_AUTH_SECRET: placeholder });
+  assert.equal(result.code, 1, result.output);
+  assert.match(result.output, /BETTER_AUTH_SECRET/);
+  assert.equal(result.output.includes(placeholder), false);
+  assert.equal(result.listening, false);
+});
