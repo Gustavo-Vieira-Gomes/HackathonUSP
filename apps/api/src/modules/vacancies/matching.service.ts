@@ -55,7 +55,11 @@ const slotInclude = {
 export class MatchingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Inscrições ativas candidatas à vaga, da mais antiga para a mais nova. */
+  /**
+   * Inscrições ativas candidatas à vaga, da mais antiga para a mais nova. Quem já
+   * tem `Alert` desta vaga, em qualquer canal ou onda, fica de fora: assim a próxima
+   * onda pega os seguintes da fila em vez de repetir os primeiros (RN-34, RN-36).
+   */
   async candidatos(vacancyId: string, now: Date) {
     const vacancy = await this.prisma.vacancy.findUniqueOrThrow({
       where: { id: vacancyId },
@@ -63,7 +67,11 @@ export class MatchingService {
     });
     const matchable = toMatchable(vacancy);
     const subscriptions = await this.prisma.subscription.findMany({
-      where: { tussCode: vacancy.slot.exam.tussCode, expiresAt: { gt: now } },
+      where: {
+        tussCode: vacancy.slot.exam.tussCode,
+        expiresAt: { gt: now },
+        alerts: { none: { vacancyId } },
+      },
       include: { windows: true },
       orderBy: { createdAt: 'asc' },
     });
