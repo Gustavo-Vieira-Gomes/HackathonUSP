@@ -7,7 +7,9 @@ import {
   type NotificationChannel,
   type NotificationMessage,
   type NotificationRecipient,
+  type OutgoingNotification,
 } from './notification.types';
+import { renderAlert } from './render-alert';
 
 export const CHANNEL_TIMEOUT_MS = 5_000;
 /** Alerta pendente há mais que isso foi abandonado por um processo que caiu (HACK-45). */
@@ -47,23 +49,60 @@ export class NotificationsService {
     );
   }
 
+  /**
+   * Alerta o paciente da vaga pelos canais que ele ativou. O texto é montado uma vez
+   * (`renderAlert`) e entregue igual a todos os canais.
+   */
   async enviar(
-    recipient: NotificationRecipient,
+    patientId: string,
     message: NotificationMessage,
     context: AlertContext,
   ): Promise<ChannelOutcome[]> {
-    const channels = [...new Set(recipient.channels)];
+    const recipient = await this.recipientFor(patientId);
+    const notification: OutgoingNotification = {
+      ...renderAlert(message),
+      message,
+    };
     return Promise.all(
-      channels.map((channel) =>
-        this.sendOnChannel(channel, recipient, message, context),
+      recipient.channels.map((channel) =>
+        this.sendOnChannel(channel, recipient, notification, context),
       ),
     );
+  }
+
+  /**
+   * Contato e canais efetivos do paciente (HACK-34). WhatsApp só entra com o
+   * telefone verificado, para não mandar dado de saúde para um número errado.
+   */
+  async recipientFor(patientId: string): Promise<NotificationRecipient> {
+    const patient = await this.prisma.patient.findUniqueOrThrow({
+      where: { id: patientId },
+      select: {
+        id: true,
+        phone: true,
+        phoneVerifiedAt: true,
+        alertChannels: true,
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+    const verifiedPhone = patient.phoneVerifiedAt ? patient.phone : null;
+    const channels = [...new Set(patient.alertChannels)].filter(
+      (channel) => channel !== 'whatsapp' || verifiedPhone !== null,
+    );
+    return {
+      patientId: patient.id,
+      userId: patient.user.id,
+      name: patient.user.name,
+      email: patient.user.email,
+      verifiedPhone,
+      channels,
+    };
   }
 
   private async sendOnChannel(
     channel: NotificationChannel,
     recipient: NotificationRecipient,
-    message: NotificationMessage,
+    notification: OutgoingNotification,
     context: AlertContext,
   ): Promise<ChannelOutcome> {
     const adapter = this.adapters.get(channel);
@@ -72,7 +111,7 @@ export class NotificationsService {
     const alertId = await this.claimAlert(channel, context);
     if (!alertId) return { channel, result: 'duplicado' };
 
-    const sent = await this.callAdapter(adapter, recipient, message);
+    const sent = await this.callAdapter(adapter, recipient, notification);
     try {
       await this.prisma.alert.update({
         where: { id: alertId },
@@ -141,13 +180,13 @@ export class NotificationsService {
   private async callAdapter(
     adapter: ChannelAdapter,
     recipient: NotificationRecipient,
-    message: NotificationMessage,
+    notification: OutgoingNotification,
   ): Promise<boolean> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), CHANNEL_TIMEOUT_MS);
     try {
       await Promise.race([
-        adapter.send(recipient, message, controller.signal),
+        adapter.send(recipient, notification, controller.signal),
         new Promise<never>((_, reject) =>
           controller.signal.addEventListener('abort', () =>
             reject(

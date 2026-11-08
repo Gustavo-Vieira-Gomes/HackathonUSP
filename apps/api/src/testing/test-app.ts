@@ -20,8 +20,9 @@ export interface TestApp {
   close(): Promise<void>;
 }
 
+/** Overrides entram como variáveis de ambiente cruas, antes da validação. */
 export async function startTestApp(
-  overrides: Partial<AppEnv> = {},
+  overrides: Partial<Record<keyof AppEnv, string>> = {},
 ): Promise<TestApp> {
   const env = loadEnv({ ...process.env, ...overrides });
   const app = await createApp({ logger: false, env });

@@ -1,271 +1,327 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
-import type { PrismaService } from '../../prisma/prisma.service';
+import { after, before, describe, test } from 'node:test';
+import type { INestApplication } from '@nestjs/common';
+import { createApp } from '../../app';
+import type { AlertChannel, Clinic, Exam } from '../../generated/prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { createSchemaFixtures, examData } from '../../testing/schema-fixtures';
 import type {
   AlertContext,
   ChannelAdapter,
   NotificationChannel,
   NotificationMessage,
+  NotificationRecipient,
+  OutgoingNotification,
 } from './notification.types';
 import {
+  CHANNEL_TIMEOUT_MS,
   NotificationsService,
   STALE_PENDING_MS,
 } from './notifications.service';
 
+/**
+ * Serviço de notificação contra o Postgres (HACK-34, HACK-45): a unicidade
+ * (vaga, inscrição, canal), o P2002 e o `updateMany` condicional são os reais. Os
+ * adapters são falsos, porque os fornecedores entram nos cards 4.2 a 4.4.
+ */
+
 const message: NotificationMessage = {
   clinicName: 'Clínica Teste',
   examName: 'Ultrassonografia de abdome total',
-  startsAt: new Date('2026-11-14T13:00:00Z'),
+  startsAt: new Date('2027-01-16T13:00:00Z'),
   priceCents: 30000,
   distanceMeters: 1200,
   preparation: 'jejum de 8 h',
   vacancyUrl: 'https://app.example/vagas/1',
 };
-const context: AlertContext = {
-  vacancyId: 'v1',
-  subscriptionId: 's1',
-  wave: 1,
+
+let app: INestApplication;
+let prisma: PrismaService;
+let fixtures: ReturnType<typeof createSchemaFixtures>;
+let clinic: Clinic;
+let exam: Exam;
+
+before(async () => {
+  app = await createApp({ logger: false });
+  prisma = app.get(PrismaService);
+  fixtures = createSchemaFixtures(prisma);
+  clinic = await fixtures.createClinic();
+  exam = await prisma.exam.create({
+    data: examData(clinic.id, { tussCode: '60000001' }),
+  });
+});
+
+after(async () => {
+  const ownClinic = { clinic: { userId: { in: fixtures.userIds } } };
+  await prisma.alert.deleteMany({ where: { vacancy: { slot: ownClinic } } });
+  await prisma.subscription.deleteMany({
+    where: { patient: { userId: { in: fixtures.userIds } } },
+  });
+  await prisma.vacancy.deleteMany({ where: { slot: ownClinic } });
+  await prisma.slot.deleteMany({ where: ownClinic });
+  await prisma.exam.deleteMany({ where: ownClinic });
+  await prisma.patient.deleteMany({
+    where: { userId: { in: fixtures.userIds } },
+  });
+  await prisma.clinic.deleteMany({
+    where: { userId: { in: fixtures.userIds } },
+  });
+  await prisma.user.deleteMany({ where: { id: { in: fixtures.userIds } } });
+  await app.close();
+});
+
+let slotSeq = 0;
+
+/** Paciente com as preferências pedidas, uma vaga nova e a inscrição dele. */
+async function scenario(
+  options: { channels?: AlertChannel[]; phoneVerified?: boolean } = {},
+) {
+  const patient = await fixtures.createPatient();
+  await prisma.patient.update({
+    where: { id: patient.id },
+    data: {
+      alertChannels: options.channels ?? ['push', 'email', 'whatsapp'],
+      phoneVerifiedAt: options.phoneVerified === false ? null : new Date(),
+    },
+  });
+  const startsAt = new Date(Date.UTC(2027, 0, 16, 13, ++slotSeq));
+  const slot = await prisma.slot.create({
+    data: {
+      clinicId: clinic.id,
+      examId: exam.id,
+      startsAt,
+      endsAt: new Date(startsAt.getTime() + 30 * 60_000),
+      origin: 'manual',
+    },
+  });
+  const vacancy = await prisma.vacancy.create({
+    data: { slotId: slot.id, origin: 'vazio', currentPriceCents: 25000 },
+  });
+  const subscription = await prisma.subscription.create({
+    data: {
+      patientId: patient.id,
+      tussCode: exam.tussCode,
+      maxPriceCents: 30000,
+      latitude: clinic.latitude,
+      longitude: clinic.longitude,
+      radiusMeters: 5000,
+      expiresAt: new Date('2027-12-31T00:00:00Z'),
+    },
+  });
+  const context: AlertContext = {
+    vacancyId: vacancy.id,
+    subscriptionId: subscription.id,
+    wave: 1,
+  };
+  return { patientId: patient.id, context };
+}
+
+type Sent = {
+  channel: NotificationChannel;
+  recipient: NotificationRecipient;
+  notification: OutgoingNotification;
 };
 
-interface Row {
-  id: string;
-  channel: NotificationChannel;
-  result: string;
-  createdAt: Date;
-}
-
-/**
- * Banco em memória com uma vaga e uma inscrição: reproduz a unicidade
- * (vaga, inscrição, canal) e o `updateMany` condicional da reivindicação.
- */
-function fakePrisma(options: { failUpdate?: boolean } = {}) {
-  const rows: Row[] = [];
-  const prisma = {
-    alert: {
-      create: async ({
-        data,
-      }: {
-        data: AlertContext & { channel: NotificationChannel; result: string };
-      }) => {
-        if (rows.some((r) => r.channel === data.channel)) {
-          throw Object.assign(new Error('unique'), { code: 'P2002' });
-        }
-        const row = {
-          id: `a${rows.length + 1}`,
-          channel: data.channel,
-          result: data.result,
-          createdAt: new Date(),
-        };
-        rows.push(row);
-        return { id: row.id };
-      },
-      update: async ({
-        where,
-        data,
-      }: {
-        where: { id: string };
-        data: { result: string };
-      }) => {
-        if (options.failUpdate) throw new Error('banco fora');
-        const row = rows.find((r) => r.id === where.id);
-        if (row) row.result = data.result;
-      },
-      updateMany: async ({
-        where,
-        data,
-      }: {
-        where: {
-          channel: NotificationChannel;
-          result: string;
-          createdAt: { lt: Date };
-        };
-        data: { createdAt: Date };
-      }) => {
-        const matched = rows.filter(
-          (r) =>
-            r.channel === where.channel &&
-            r.result === where.result &&
-            r.createdAt < where.createdAt.lt,
-        );
-        for (const row of matched) row.createdAt = data.createdAt;
-        return { count: matched.length };
-      },
-      findUnique: async ({
-        where,
-      }: {
-        where: {
-          vacancyId_subscriptionId_channel: { channel: NotificationChannel };
-        };
-      }) => {
-        const row = rows.find(
-          (r) => r.channel === where.vacancyId_subscriptionId_channel.channel,
-        );
-        return row ? { id: row.id } : null;
-      },
-    },
-  };
-  return { rows, prisma: prisma as unknown as PrismaService };
-}
-
-/** Alerta já gravado por um processo anterior, criado `ageMs` atrás. */
-function seed(
-  rows: Row[],
-  channel: NotificationChannel,
-  result: string,
-  ageMs: number,
+function recording(
+  channels: NotificationChannel[],
+  behavior: Partial<Record<NotificationChannel, 'fail' | 'hang'>> = {},
 ) {
-  rows.push({
-    id: `old-${channel}`,
+  const sent: Sent[] = [];
+  const adapters: ChannelAdapter[] = channels.map((channel) => ({
     channel,
-    result,
-    createdAt: new Date(Date.now() - ageMs),
-  });
+    send: async (recipient, notification) => {
+      if (behavior[channel] === 'fail') throw new Error('fornecedor fora');
+      if (behavior[channel] === 'hang') await new Promise(() => {});
+      sent.push({ channel, recipient, notification });
+    },
+  }));
+  return { sent, service: new NotificationsService(prisma, adapters) };
 }
 
-const ok = (channel: NotificationChannel): ChannelAdapter => ({
-  channel,
-  send: async () => {},
-});
-const failing = (channel: NotificationChannel): ChannelAdapter => ({
-  channel,
-  send: async () => {
-    throw new Error('fornecedor fora');
-  },
-});
+const ALL: NotificationChannel[] = ['push', 'email', 'whatsapp'];
 
-describe('NotificationsService.enviar', () => {
-  it('WhatsApp fora: push e e-mail enviados, Alert registra a falha do WhatsApp', async () => {
-    const { rows, prisma } = fakePrisma();
-    const service = new NotificationsService(prisma, [
-      ok('push'),
-      ok('email'),
-      failing('whatsapp'),
+async function alertsOf(context: AlertContext) {
+  const rows = await prisma.alert.findMany({
+    where: {
+      vacancyId: context.vacancyId,
+      subscriptionId: context.subscriptionId,
+    },
+  });
+  return Object.fromEntries(rows.map((row) => [row.channel, row.result]));
+}
+
+const outcomeMap = (outcomes: { channel: string; result: string }[]) =>
+  Object.fromEntries(outcomes.map((o) => [o.channel, o.result]));
+
+describe('critérios do card (HACK-34)', () => {
+  test('WhatsApp fora: push e e-mail enviados, Alert registra a falha do WhatsApp', async () => {
+    const { patientId, context } = await scenario();
+    const { service } = recording(ALL, { whatsapp: 'fail' });
+    const outcome = await service.enviar(patientId, message, context);
+    const expected = { push: 'enviado', email: 'enviado', whatsapp: 'falhou' };
+    assert.deepEqual(outcomeMap(outcome), expected);
+    assert.deepEqual(await alertsOf(context), expected);
+  });
+
+  test('um paciente, uma vaga: no máximo um Alert por canal, sem reenviar', async () => {
+    const { patientId, context } = await scenario({ channels: ['push'] });
+    const { sent, service } = recording(ALL);
+    await service.enviar(patientId, message, context);
+    const second = await service.enviar(patientId, message, context);
+    const concurrent = await Promise.all([
+      service.enviar(patientId, message, context),
+      service.enviar(patientId, message, context),
     ]);
-    const outcome = await service.enviar(
-      { patientId: 'p1', channels: ['push', 'email', 'whatsapp'] },
-      message,
-      context,
-    );
-    assert.deepEqual(
-      Object.fromEntries(outcome.map((o) => [o.channel, o.result])),
-      { push: 'enviado', email: 'enviado', whatsapp: 'falhou' },
-    );
-    assert.deepEqual(
-      Object.fromEntries(rows.map((r) => [r.channel, r.result])),
-      { push: 'enviado', email: 'enviado', whatsapp: 'falhou' },
-    );
-  });
-
-  it('um paciente, uma vaga: segunda chamada não cria outro Alert nem reenvia', async () => {
-    const { rows, prisma } = fakePrisma();
-    let sends = 0;
-    const counting: ChannelAdapter = {
-      channel: 'push',
-      send: async () => void sends++,
-    };
-    const service = new NotificationsService(prisma, [counting]);
-    const recipient = { patientId: 'p1', channels: ['push'] as const };
-    await service.enviar(recipient, message, context);
-    const second = await service.enviar(recipient, message, context);
-    assert.equal(rows.length, 1);
-    assert.equal(sends, 1);
+    assert.equal(sent.length, 1);
     assert.equal(second[0]?.result, 'duplicado');
-  });
-
-  it('canal sem adapter é ignorado e não grava Alert', async () => {
-    const { rows, prisma } = fakePrisma();
-    const service = new NotificationsService(prisma, [ok('push')]);
-    const outcome = await service.enviar(
-      { patientId: 'p1', channels: ['push', 'email'] },
-      message,
-      context,
+    assert.deepEqual(
+      concurrent.map((o) => o[0]?.result),
+      ['duplicado', 'duplicado'],
     );
     assert.equal(
-      outcome.find((o) => o.channel === 'email')?.result,
-      'sem_adapter',
+      await prisma.alert.count({ where: { vacancyId: context.vacancyId } }),
+      1,
     );
-    assert.equal(rows.length, 1);
-  });
-
-  it('canal repetido na lista envia uma vez só', async () => {
-    const { rows, prisma } = fakePrisma();
-    const service = new NotificationsService(prisma, [ok('push')]);
-    await service.enviar(
-      { patientId: 'p1', channels: ['push', 'push'] },
-      message,
-      context,
-    );
-    assert.equal(rows.length, 1);
   });
 });
 
-describe('NotificationsService.enviar · alerta pendente abandonado (HACK-45)', () => {
-  const recipient = { patientId: 'p1', channels: ['push'] as const };
-  const counting = () => {
-    const state = { sends: 0 };
-    const adapter: ChannelAdapter = {
-      channel: 'push',
-      send: async () => void state.sends++,
-    };
-    return { state, adapter };
-  };
-
-  it('pendente antigo é reivindicado, reenviado e fica enviado', async () => {
-    const { rows, prisma } = fakePrisma();
-    seed(rows, 'push', 'pendente', STALE_PENDING_MS + 1_000);
-    const { state, adapter } = counting();
-    const service = new NotificationsService(prisma, [adapter]);
-    const outcome = await service.enviar(recipient, message, context);
-    assert.equal(outcome[0]?.result, 'enviado');
-    assert.equal(state.sends, 1);
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0]?.result, 'enviado');
+describe('preferências do paciente', () => {
+  test('só os canais que o paciente ativou são usados', async () => {
+    const { patientId, context } = await scenario({ channels: ['email'] });
+    const { sent, service } = recording(ALL);
+    await service.enviar(patientId, message, context);
+    assert.deepEqual(
+      sent.map((s) => s.channel),
+      ['email'],
+    );
   });
 
-  it('pendente recente pertence a um envio em andamento: duplicado, sem reenviar', async () => {
-    const { rows, prisma } = fakePrisma();
-    seed(rows, 'push', 'pendente', 1_000);
-    const { state, adapter } = counting();
-    const service = new NotificationsService(prisma, [adapter]);
-    const outcome = await service.enviar(recipient, message, context);
-    assert.equal(outcome[0]?.result, 'duplicado');
-    assert.equal(state.sends, 0);
+  test('WhatsApp não é usado sem telefone verificado', async () => {
+    const { patientId, context } = await scenario({ phoneVerified: false });
+    const { sent, service } = recording(ALL);
+    const recipient = await service.recipientFor(patientId);
+    assert.equal(recipient.verifiedPhone, null);
+    assert.deepEqual([...recipient.channels].sort(), ['email', 'push']);
+    await service.enviar(patientId, message, context);
+    assert.deepEqual(sent.map((s) => s.channel).sort(), ['email', 'push']);
+    assert.equal((await alertsOf(context)).whatsapp, undefined);
   });
 
-  it('alerta antigo já enviado ou falhado não é reenviado', async () => {
-    for (const result of ['enviado', 'falhou']) {
-      const { rows, prisma } = fakePrisma();
-      seed(rows, 'push', result, STALE_PENDING_MS * 10);
-      const { state, adapter } = counting();
-      const service = new NotificationsService(prisma, [adapter]);
-      const outcome = await service.enviar(recipient, message, context);
-      assert.equal(outcome[0]?.result, 'duplicado', result);
-      assert.equal(state.sends, 0, result);
+  test('o destinatário vem do banco e o texto é o mesmo em todos os canais', async () => {
+    const { patientId, context } = await scenario();
+    const { sent, service } = recording(ALL);
+    await service.enviar(patientId, message, context);
+    assert.equal(sent.length, 3);
+    const [first] = sent;
+    assert.ok(first);
+    assert.equal(first.recipient.patientId, patientId);
+    assert.match(first.recipient.email, /@schema\.teste\.local$/);
+    assert.equal(first.recipient.verifiedPhone, '+5511999990000');
+    assert.ok(first.notification.body.includes(message.vacancyUrl));
+    for (const other of sent) {
+      assert.equal(other.notification.body, first.notification.body);
+      assert.equal(other.notification.title, first.notification.title);
     }
   });
 
-  it('duas chamadas concorrentes sobre o mesmo pendente antigo enviam uma vez', async () => {
-    const { rows, prisma } = fakePrisma();
-    seed(rows, 'push', 'pendente', STALE_PENDING_MS + 1_000);
-    const { state, adapter } = counting();
-    const service = new NotificationsService(prisma, [adapter]);
+  test('canal ativo sem adapter é ignorado e não grava Alert', async () => {
+    const { patientId, context } = await scenario({
+      channels: ['push', 'email'],
+    });
+    const { service } = recording(['push']);
+    const outcome = await service.enviar(patientId, message, context);
+    assert.equal(outcomeMap(outcome).email, 'sem_adapter');
+    assert.deepEqual(await alertsOf(context), { push: 'enviado' });
+  });
+});
+
+describe('alerta pendente abandonado (HACK-45)', () => {
+  async function seedPending(context: AlertContext, ageMs: number) {
+    await prisma.alert.create({
+      data: {
+        ...context,
+        channel: 'push',
+        result: 'pendente',
+        createdAt: new Date(Date.now() - ageMs),
+      },
+    });
+  }
+
+  test('pendente antigo é reivindicado, reenviado e fica enviado', async () => {
+    const { patientId, context } = await scenario({ channels: ['push'] });
+    await seedPending(context, STALE_PENDING_MS + 1_000);
+    const { sent, service } = recording(ALL);
+    const outcome = await service.enviar(patientId, message, context);
+    assert.equal(outcome[0]?.result, 'enviado');
+    assert.equal(sent.length, 1);
+    assert.deepEqual(await alertsOf(context), { push: 'enviado' });
+  });
+
+  test('pendente recente é envio em andamento: duplicado, sem reenviar', async () => {
+    const { patientId, context } = await scenario({ channels: ['push'] });
+    await seedPending(context, 1_000);
+    const { sent, service } = recording(ALL);
+    const outcome = await service.enviar(patientId, message, context);
+    assert.equal(outcome[0]?.result, 'duplicado');
+    assert.equal(sent.length, 0);
+  });
+
+  test('duas chamadas concorrentes sobre o mesmo pendente antigo enviam uma vez', async () => {
+    const { patientId, context } = await scenario({ channels: ['push'] });
+    await seedPending(context, STALE_PENDING_MS + 1_000);
+    const { sent, service } = recording(ALL);
     const outcomes = await Promise.all([
-      service.enviar(recipient, message, context),
-      service.enviar(recipient, message, context),
+      service.enviar(patientId, message, context),
+      service.enviar(patientId, message, context),
     ]);
-    assert.equal(state.sends, 1);
+    assert.equal(sent.length, 1);
     assert.deepEqual(outcomes.map((o) => o[0]?.result).sort(), [
       'duplicado',
       'enviado',
     ]);
   });
 
-  it('falha ao gravar o resultado não derruba o envio já feito', async () => {
-    const { prisma } = fakePrisma({ failUpdate: true });
-    const { state, adapter } = counting();
-    const service = new NotificationsService(prisma, [adapter]);
-    const outcome = await service.enviar(recipient, message, context);
+  test('falha ao gravar o resultado não derruba o envio já feito', async () => {
+    const { patientId, context } = await scenario({ channels: ['push'] });
+    let sends = 0;
+    // O adapter apaga o Alert durante o envio: o update seguinte falha de verdade
+    // no banco (P2025), depois de o fornecedor já ter entregado.
+    const vanishing: ChannelAdapter = {
+      channel: 'push',
+      send: async () => {
+        sends++;
+        await prisma.alert.deleteMany({
+          where: { vacancyId: context.vacancyId },
+        });
+      },
+    };
+    const service = new NotificationsService(prisma, [vanishing]);
+    const outcome = await service.enviar(patientId, message, context);
     assert.equal(outcome[0]?.result, 'enviado');
-    assert.equal(state.sends, 1);
+    assert.equal(sends, 1);
   });
 });
+
+test(
+  'canal que não responde em 5 s é cortado e registrado como falha',
+  { timeout: CHANNEL_TIMEOUT_MS + 5_000 },
+  async () => {
+    const { patientId, context } = await scenario({
+      channels: ['push', 'email'],
+    });
+    const { service } = recording(['push', 'email'], { email: 'hang' });
+    const started = Date.now();
+    const outcome = await service.enviar(patientId, message, context);
+    const elapsed = Date.now() - started;
+    assert.deepEqual(outcomeMap(outcome), { push: 'enviado', email: 'falhou' });
+    assert.ok(
+      elapsed >= CHANNEL_TIMEOUT_MS - 100 &&
+        elapsed < CHANNEL_TIMEOUT_MS + 2_000,
+      `levou ${elapsed} ms`,
+    );
+    assert.deepEqual(await alertsOf(context), {
+      push: 'enviado',
+      email: 'falhou',
+    });
+  },
+);

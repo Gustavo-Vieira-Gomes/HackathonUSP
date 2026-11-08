@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { MatchingService } from './matching.service';
+import { PricingService } from './pricing.service';
 import { VacanciesService } from './vacancies.service';
 
 /**
@@ -8,7 +10,8 @@ import { VacanciesService } from './vacancies.service';
  * do estado fora daqui é recusado na revisão.
  */
 @Module({
-  providers: [VacanciesService, MatchingService],
-  exports: [VacanciesService, MatchingService],
+  imports: [RealtimeModule],
+  providers: [VacanciesService, MatchingService, PricingService],
+  exports: [VacanciesService, MatchingService, PricingService],
 })
 export class VacanciesModule {}
