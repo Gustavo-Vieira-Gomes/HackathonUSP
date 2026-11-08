@@ -12,6 +12,7 @@ import type {
   Vacancy,
   VacancyState,
 } from '../../generated/prisma/client';
+import { isUniqueViolation } from '../../prisma/prisma-errors';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ClockService } from '../clock/clock.service';
 import { canTransition } from './vacancy-transitions';
@@ -50,26 +51,68 @@ export class VacanciesService {
 
   /** Cria a vaga em `publicada` com a primeira linha do log (T1). */
   async publish(
-    data: Omit<Prisma.VacancyUncheckedCreateInput, 'state'>,
+    data: Pick<
+      Prisma.VacancyUncheckedCreateInput,
+      'slotId' | 'origin' | 'currentPriceCents'
+    >,
     meta: TransitionMeta,
     tx?: Prisma.TransactionClient,
   ): Promise<Vacancy> {
     const reason = this.validReason(meta);
-    return this.run(tx, async (db) => {
-      const vacancy = await db.vacancy.create({
-        data: { ...data, state: 'publicada' },
+    try {
+      return await this.run(tx, async (db) => {
+        const vacancy = await db.vacancy.create({
+          data: {
+            slotId: data.slotId,
+            origin: data.origin,
+            currentPriceCents: data.currentPriceCents,
+            state: 'publicada',
+          },
+        });
+        await db.transition.create({
+          data: {
+            vacancyId: vacancy.id,
+            fromState: null,
+            toState: 'publicada',
+            origin: meta.origin,
+            reason,
+            occurredAt: this.clock.now(),
+          },
+        });
+        return vacancy;
       });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('Já existe uma vaga ativa neste horário');
+      }
+      throw error;
+    }
+  }
+
+  /** Cancelamento confirmado pela agenda; CAS e log na mesma transação. */
+  async cancelReservation(
+    reservationId: string,
+    meta: TransitionMeta,
+    tx?: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const reason = this.validReason(meta);
+    return this.run(tx, async (db) => {
+      const changed = await db.reservation.updateMany({
+        where: { id: reservationId, state: 'confirmada' },
+        data: { state: 'cancelada' },
+      });
+      if (changed.count !== 1) return false;
       await db.transition.create({
         data: {
-          vacancyId: vacancy.id,
-          fromState: null,
-          toState: 'publicada',
+          reservationId,
+          fromState: 'confirmada',
+          toState: 'cancelada',
           origin: meta.origin,
           reason,
           occurredAt: this.clock.now(),
         },
       });
-      return vacancy;
+      return true;
     });
   }
 

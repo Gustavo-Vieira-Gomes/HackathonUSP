@@ -17,3 +17,7 @@ Frontend alinhado à estrutura atual do Portal Speedmilhas, inspecionada localme
 Estrutura frontend aprovada: organização simplificada do Portal. Páginas simples podem permanecer em app; screens e subpastas dos módulos são extraídas conforme necessidade, sem estrutura obrigatória por rota.
 
 Políticas centralizadas em .claude/rules: project, engineering, security e design-patterns globais; frontend/backend/contracts com frontmatter paths. AGENTS e CLAUDE são pontos de entrada para a mesma fonte. Extração na segunda ocorrência da mesma regra com invariantes comuns; regras sensíveis têm dono único desde a primeira implementação. Padrões adotados por necessidade concreta, preservando os recursos nativos do Nest.
+
+## Decisões HACK-19
+
+Autorizado pelo Gustavo: execução sem aprovação entre etapas, commits/push/PR main e aviso ao maestro; sem merge pelo implementador. Slots comuns em fatias de 30 minutos porque Exam não define duração. Snapshot completo antes de efeitos; falha de API suspende conexão e não usa leitura parcial. Nenhuma mudança em Vacancy.slotId ou Exam.clinicId. Banco local isolado hack_19 na porta 54319.

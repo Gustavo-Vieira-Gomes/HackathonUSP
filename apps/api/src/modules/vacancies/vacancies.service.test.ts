@@ -791,3 +791,83 @@ test('HACK-32 C23 - depois do recuo do relógio occurredAt volta ao agora', asyn
     await clock.reset();
   }
 });
+
+test('HACK-19 - publicação duplicada vira 409 sem log extra', async () => {
+  const vacancy = await publishVacancy();
+  await assertConflict(
+    service.publish(
+      {
+        slotId: vacancy.slotId,
+        origin: 'cancelamento',
+        currentPriceCents: 20000,
+      },
+      meta('agenda'),
+    ),
+  );
+  assert.equal(
+    await prisma.vacancy.count({ where: { slotId: vacancy.slotId } }),
+    1,
+  );
+  assert.equal(
+    await prisma.transition.count({ where: { vacancyId: vacancy.id } }),
+    1,
+  );
+});
+
+test('HACK-19 - cancelamento de reserva é condicional, auditado e atômico', async () => {
+  const slot = await createSlot(new Date(Date.now() + 24 * HOUR));
+  const patient = await fixtures.createPatient();
+  const reservation = await prisma.reservation.create({
+    data: {
+      slotId: slot.id,
+      patientId: patient.id,
+      type: 'comum',
+      state: 'confirmada',
+      chargedPriceCents: 20000,
+      depositCents: 0,
+      paymentMethod: 'no_local',
+    },
+  });
+  await assert.rejects(
+    prisma.$transaction(async (tx) => {
+      assert.equal(
+        await service.cancelReservation(reservation.id, meta('agenda'), tx),
+        true,
+      );
+      throw new Error('rollback');
+    }),
+    /rollback/,
+  );
+  assert.equal(
+    (
+      await prisma.reservation.findUniqueOrThrow({
+        where: { id: reservation.id },
+      })
+    ).state,
+    'confirmada',
+  );
+  assert.equal(
+    await prisma.transition.count({ where: { reservationId: reservation.id } }),
+    0,
+  );
+  const results = await Promise.all([
+    service.cancelReservation(reservation.id, meta('agenda')),
+    service.cancelReservation(reservation.id, meta('agenda')),
+  ]);
+  assert.deepEqual(results.sort(), [false, true]);
+  assert.equal(
+    (
+      await prisma.reservation.findUniqueOrThrow({
+        where: { id: reservation.id },
+      })
+    ).state,
+    'cancelada',
+  );
+  const transitions = await prisma.transition.findMany({
+    where: { reservationId: reservation.id },
+  });
+  assert.equal(transitions.length, 1);
+  assert.equal(transitions[0]?.fromState, 'confirmada');
+  assert.equal(transitions[0]?.toState, 'cancelada');
+  assert.equal(transitions[0]?.origin, 'agenda');
+});
