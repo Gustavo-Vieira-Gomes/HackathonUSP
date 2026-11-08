@@ -23,3 +23,10 @@ Clínicas/endereço/CNES/coordenadas vêm do manifesto pesquisado do handoff. Si
 
 - `npm run check`: passou (API 350/350, web 40/40, contratos 19/19; zero skipped). Lint, tipos e formatação verdes.
 - SQL após os testes: 10 clínicas de demo, exatamente 2 com `demoCalendarTarget`.
+- `npm run build`: passou (contratos, Nest e Next em produção).
+- `npm run smoke`: passou (saúde, cadastro/login/sessão, clínica/exames, socket, WhatsApp com credencial, fallback/502).
+- Gates pesados serializados pelo lock global `.worktrees/.lock-pesado`. Smoke usa os doubles já previstos pelo repositório para serviços externos; não prova OAuth/envio real.
+
+## Rastreabilidade
+
+H15-01 a H15-04 verificados: SQL/manifesto e dois alvos; catálogo/questionários/preços; matching real com doze candidatos; repetição preservando IDs e rollback. Nenhuma obrigação pendente de implementação neste card.

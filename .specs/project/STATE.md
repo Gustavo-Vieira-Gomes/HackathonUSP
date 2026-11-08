@@ -26,3 +26,4 @@ Políticas centralizadas em .claude/rules: project, engineering, security e desi
 - IDs gerados pelo Prisma: acrescentar default uuid() client-side ao User.id (Better Auth continua podendo informar seu próprio id); usar chaves naturais para idempotência.
 - Catálogo HACK-17 é a fonte TUSS. Não semear abdome total com protocolo de abdome superior; excluir o TC de tórax fora da lista fechada vigente.
 - Substituir testes WIP de rotas retiradas por provas do seed, sem enfraquecer testes já presentes em main.
+- HACK-15 concluído no worktree: seed duplo, matching SQL com 12 candidatos, 10 clínicas/2 alvos; check 409 testes, build e smoke verdes. Publicação em PR para main, revisão/merge ficam com a esteira do maestro.
