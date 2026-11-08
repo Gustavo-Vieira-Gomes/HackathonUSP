@@ -38,3 +38,11 @@ Políticas centralizadas em .claude/rules: project, engineering, security e desi
 - Artefatos de navegação e ownership ficam em README e spec; não há descoberta adicional que justifique duplicação em .notebook.
 
 - HACK-23 validado: check (414 testes sem falhas/ignorados), build e smoke verdes no banco hack_23. Inclui páginas por ID e smoke de 404 no Next. Sem dependências/migrations novas e sem deploy.
+
+## Decisões HACK-35
+
+- Implementar web push no adapter existente; VAPID apenas no Nest, chave pública via endpoint autenticado.
+- Maestro confirmou: HACK-24 ainda não começou. Entregar PushPermission exportado e testado com prop subscribed; HACK-24 fará a montagem após inscrição. Não criar página falsa nem esperar o HACK-24.
+- Manifest e worker sem cache offline de dados pessoais. Clique aceita apenas rota de vaga na mesma origem.
+- Dependência HACK-35: web-push 3.x compatível com @types/web-push 3 e com o cliente CJS da API. A instalação inicial de 4.x trouxe exports ESM imutáveis incompatíveis com o transporte falso dos testes; mantida a API estável 3.6.7, sem alterar a lógica para contornar testes.
+- Autorização reutiliza PatientOnly/CurrentPatientId do HACK-23; validação HTTP mantém o status 422 do ZodBodyPipe existente.

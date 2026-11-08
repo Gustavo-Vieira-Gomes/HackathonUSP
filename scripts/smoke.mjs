@@ -135,6 +135,19 @@ try {
   assert.match(pageHtml, /API conectada/);
   assert.match(pageHtml, /Sem sessão ativa/);
 
+  // HACK-35: recursos PWA reais no build; nunca solicitar permissão na visita.
+  const manifest = await fetch(`${webUrl}/manifest.webmanifest`);
+  assert.equal(manifest.status, 200);
+  assert.equal((await manifest.json()).display, 'standalone');
+  const worker = await fetch(`${webUrl}/sw.js`);
+  assert.equal(worker.status, 200);
+  assert.match(worker.headers.get('cache-control'), /no-store/);
+  assert.match(await worker.text(), /notificationclick/);
+  for (const size of [192, 512]) {
+    assert.equal((await fetch(`${webUrl}/icons/icon-${size}.png`)).status, 200);
+  }
+  assert.equal((await fetch(`${webUrl}/api/patient/push/key`)).status, 401);
+
   const email = `smoke-${Date.now()}-${process.pid}@teste.local`;
   const password = 'smoke-senha-1';
   const signUp = await postJson(
@@ -178,6 +191,11 @@ try {
   );
   assert.equal(signIn.status, 200, `C29: login pelo Next ${signIn.status}`);
   const cookie = sessionCookie(signIn, 'C29 login');
+  const pushKey = await fetch(`${webUrl}/api/patient/push/key`, {
+    headers: { cookie },
+  });
+  assert.equal(pushKey.status, 200);
+  assert.ok('publicKey' in (await pushKey.json()));
   const patientPage = await fetch(`${webUrl}/paciente`, {
     headers: { cookie },
   });
