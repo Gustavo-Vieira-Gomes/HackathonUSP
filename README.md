@@ -36,6 +36,7 @@ Após build, execute `npm run start -w @hackathon/api` e `npm run start -w @hack
 - [Engenharia](.claude/rules/engineering.md), [segurança](.claude/rules/security.md) e [extração e padrões de projeto](.claude/rules/design-patterns.md): regras globais; frontend, backend e contratos têm rules com escopo por caminho.
 - [Estrutura de pastas e responsabilidades](docs/architecture/structure.md): guia para implementar novas funcionalidades.
 - [Perfil ativo](docs/architecture/ACTIVE.md), [Next + Nest](docs/architecture/next-nest.md) e [transição para Next full stack](docs/architecture/next-fullstack.md).
+- [Spec BDD do produto](docs/product/marketplace-vagas-imagem.md): fonte de verdade das regras de negócio (`RN-xx`) e cenários.
 - [Template de funcionalidade](docs/templates/feature.md), `.specs/project`: planejamento e decisões.
 
 Há uma base de código e dois perfis de harness. O perfil alternativo fica inativo até a decisão de migrar; não existe segunda aplicação duplicada para sincronizar. npm workspaces descobre os pacotes; a transição ainda exige adaptar fluxos, scripts e remover referências conforme checklist.
