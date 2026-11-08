@@ -1,4 +1,5 @@
 import type { ClinicProfile } from '@hackathon/contracts';
+import Link from 'next/link';
 import { SignOutButton } from '../components/sign-out-button';
 import { formatMinutes, WEEKDAYS } from '../opening-hours';
 
@@ -51,6 +52,9 @@ export default function ClinicPanelScreen(props: Props) {
       <h1 id="panel-title" className="clinic-title">
         {profile.name}
       </h1>
+      <nav aria-label="Gestão da clínica">
+        <Link href="/clinica/vagas">Vagas e reservas</Link>
+      </nav>
       <div className="clinic-form">
         <section className="form-group" aria-labelledby="profile-title">
           <h2 id="profile-title">Perfil</h2>
