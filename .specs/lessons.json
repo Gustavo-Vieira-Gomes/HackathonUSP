@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 2,
+  "next_id": 4,
   "lessons": [
     {
       "id": "L-001",
@@ -20,6 +20,38 @@
       ],
       "created": "2026-11-08T03:37:47Z",
       "last_seen": "2026-11-08T03:37:47Z"
+    },
+    {
+      "id": "L-002",
+      "key": "spec_precision_gap::check de recusa por entrada invalida fixa o tipo e o status da excecao e o assert rejects confere os dois rejeicao generica nao prova o contrato de erro",
+      "text": "Check de recusa por entrada inválida fixa o tipo e o status da exceção, e o assert.rejects confere os dois; rejeição genérica não prova o contrato de erro.",
+      "signal": "spec_precision_gap",
+      "scope": "apps/api",
+      "status": "candidate",
+      "features": ["hack-29-maquina-estados"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/api/src/modules/vacancies/vacancies.service.test.ts:243 (apps/api)"
+      ],
+      "created": "2026-11-08T04:35:55Z",
+      "last_seen": "2026-11-08T04:35:55Z"
+    },
+    {
+      "id": "L-003",
+      "key": "spec_precision_gap::teste de corrida sincroniza por sinal explicito promessa liberada pelo ponto de leitura nao por sleep com sleep o caminho do 409 pode nao rodar e o teste passa vazio",
+      "text": "Teste de corrida sincroniza por sinal explícito (promessa liberada pelo ponto de leitura), não por sleep; com sleep o caminho do 409 pode não rodar e o teste passa vazio.",
+      "signal": "spec_precision_gap",
+      "scope": "apps/api",
+      "status": "candidate",
+      "features": ["hack-29-maquina-estados"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/api/src/modules/vacancies/vacancies.service.test.ts:632 (apps/api)"
+      ],
+      "created": "2026-11-08T04:35:55Z",
+      "last_seen": "2026-11-08T04:35:55Z"
     }
   ]
 }

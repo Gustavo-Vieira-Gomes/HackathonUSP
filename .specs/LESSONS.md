@@ -21,6 +21,20 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: apps/web/core/shared/services/realtime-client.ts:48 (C27) (apps/web)
 - last seen: 2026-11-08T03:37:47Z
 
+### L-002 - Check de recusa por entrada inválida fixa o tipo e o status da exceção, e o assert.rejects confere os dois; rejeição genérica não prova o contrato de erro.
+
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `apps/api` · harmful: 0
+- features: hack-29-maquina-estados
+- evidence: apps/api/src/modules/vacancies/vacancies.service.test.ts:243 (apps/api)
+- last seen: 2026-11-08T04:35:55Z
+
+### L-003 - Teste de corrida sincroniza por sinal explícito (promessa liberada pelo ponto de leitura), não por sleep; com sleep o caminho do 409 pode não rodar e o teste passa vazio.
+
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `apps/api` · harmful: 0
+- features: hack-29-maquina-estados
+- evidence: apps/api/src/modules/vacancies/vacancies.service.test.ts:632 (apps/api)
+- last seen: 2026-11-08T04:35:55Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
