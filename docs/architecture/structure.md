@@ -157,7 +157,7 @@ Hoje o schema de saúde está diretamente em `index.ts`; não precisa ser movido
 ## Testes e automação
 
 - Na API, testes de regra e serviço ficam junto ao arquivo testado como `*.test.ts`. Testes HTTP da funcionalidade podem usar `*.http.test.ts`, fechando sempre a aplicação.
-- Atualmente o comando Nest executa os testes compilados na raiz de `.test-dist`, e o de contratos procura `src/*.test.ts`. **Antes de colocar testes em subpastas, atualizar os comandos para descoberta recursiva e confirmar que esses testes foram executados.** Compilação Nest deve preservar os metadados de decorators.
+- O comando Nest compila com tsc e executa `.test-dist/**/*.test.js` (descoberta recursiva, um arquivo por vez por compartilhar o Postgres de teste); o de contratos procura `src/*.test.ts`. Antes de colocar testes de contratos em subpastas, atualizar o comando dele. Compilação Nest deve preservar os metadados de decorators. Helpers de teste da API ficam em `src/test-support/`, fora do build.
 - No frontend, testes ficam em `core/modules/<feature>/test/` ou junto do recurso compartilhado em `core/shared`. O frontend ainda não tem runner de testes próprio. Ao criar testes de componentes, escolher/configurar o runner e adicioná-lo ao comando `check`; não apenas criar arquivos que ninguém executa.
 - Testes completos de navegação, quando adotados, ficam em `apps/web/tests/e2e`, com configuração do runner nessa aplicação. Não pertencem a `app`, evitando rotas acidentais.
 - Testes dos contratos ficam no próprio pacote. Fixtures ficam junto ao teste e não incluem dados pessoais ou credenciais reais.

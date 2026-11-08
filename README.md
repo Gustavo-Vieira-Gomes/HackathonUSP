@@ -8,8 +8,13 @@ Recomendado: Node 24 LTS (`nvm use`) e npm.
 
 ```sh
 npm ci
+docker compose up -d --wait postgres   # Postgres 17 local (dev e testes)
+cp apps/api/.env.example apps/api/.env # troque BETTER_AUTH_SECRET
+npm run db:deploy -w @hackathon/api    # aplica as migrations no banco de dev
 npm run dev
 ```
+
+A API exige `DATABASE_URL` e `BETTER_AUTH_SECRET` (mínimo 32 caracteres) e não inicia sem eles. Os testes da API usam o banco `hackathon_test` (ou `TEST_DATABASE_URL`): aplicam as migrations e esvaziam as tabelas antes de cada teste. O smoke usa o mesmo banco de teste.
 
 - Web: http://localhost:3000
 - Saúde Next: http://localhost:3000/api/health
@@ -41,7 +46,7 @@ Após build, execute `npm run start -w @hackathon/api` e `npm run start -w @hack
 
 Há uma base de código e dois perfis de harness. O perfil alternativo fica inativo até a decisão de migrar; não existe segunda aplicação duplicada para sincronizar. npm workspaces descobre os pacotes; a transição ainda exige adaptar fluxos, scripts e remover referências conforme checklist.
 
-Banco, login, autorização, fila, WebSocket e deploy ainda não estão implementados. Saúde atual é liveness; não comprova prontidão dessas futuras dependências.
+Cadastro, login e sessão do paciente (F1) usam PostgreSQL com Prisma e Better Auth dentro do Nest; decisões em `.specs/project/STATE.md` (AD-001 a AD-005). Fila, WebSocket e deploy ainda não estão implementados. Saúde atual é liveness; não comprova prontidão do banco.
 
 ## Validação
 

@@ -12,4 +12,4 @@ Usar a arquitetura convencional do Nest: módulos por funcionalidade, controller
 
 `npm run dev` executa as duas aplicações. Web: 3000; API: 3001, prefixo /api. Cada aplicação tem .env.example; o Next lê seu .env.local. A API carrega seu .env local na inicialização com o suporte nativo do Node; variáveis já definidas no processo têm precedência. Defaults locais não exigem arquivo.
 
-Sem banco ou autenticação até definir o produto. Endpoints /api/health provam liveness, não prontidão de dependências futuras.
+Banco: PostgreSQL 17 com Prisma (`apps/api/prisma/`), local por `compose.yaml`. Autenticação: Better Auth usado só pelo servidor Nest, sem o handler `/api/auth/*`; o Nest expõe `POST /api/patients`, `POST /api/sessions`, `DELETE /api/sessions/current` e `GET /api/patients/me`. Sessão: cookie HttpOnly emitido pelo Nest e regravado na origem do Next por Server Actions; o Next encaminha só esse cookie ao Nest e o navegador nunca chama o Nest. Rotas de paciente identificam o dono só pela sessão (`SessionGuard`). Endpoints /api/health provam liveness, não prontidão do banco.
