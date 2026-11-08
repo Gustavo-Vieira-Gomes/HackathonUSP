@@ -13,6 +13,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { PhoneVerificationModule } from './modules/phone-verification/phone-verification.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { VacanciesModule } from './modules/vacancies/vacancies.module';
+import { PatientsModule } from './modules/patients/patients.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({})
@@ -24,6 +25,7 @@ export class AppModule {
         ConfigModule.forRoot(env),
         PrismaModule,
         AuthModule,
+        PatientsModule,
         ScheduleModule.forRoot(),
         ClockModule,
         RealtimeModule,

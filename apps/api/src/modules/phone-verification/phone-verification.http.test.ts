@@ -28,8 +28,9 @@ after(async () => {
 async function patientSession(app: TestApp) {
   const account = await signUpWithCookie(app, 'paciente');
   const phone = `+55119${String(randomInt(0, 1e8)).padStart(8, '0')}`;
-  const patient = await app.prisma.patient.create({
-    data: { userId: account.id, phone, healthDataConsentAt: new Date() },
+  const patient = await app.prisma.patient.update({
+    where: { userId: account.id },
+    data: { phone },
   });
   return { cookie: account.cookie, patientId: patient.id, phone };
 }

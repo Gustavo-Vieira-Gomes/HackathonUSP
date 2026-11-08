@@ -26,3 +26,24 @@ Políticas centralizadas em .claude/rules: project, engineering, security e desi
 - Horários de negócio pelo ClockService; teto diário mantém semântica real do PricingService.
 - node_modules principal estava incompleto (Prisma ausente); cópia complementada a partir de HACK-17, sem instalar/alterar dependências. Banco isolado hack_20 na porta 54320, migrations existentes aplicadas.
 - HACK-20 concluído: check (352 API/43 web/19 contratos), build e smoke verdes; evidências em .specs/features/hack-20-clinic-vacancies/verification.md.
+
+## Decisões — HACK-15
+
+- Retomada do handoff 909a786; integrar main e preservar cadastro/login/exames/agenda atuais. A busca web/API extra do WIP sai desta entrega por não fazer parte do card.
+- São Paulo conforme manifesto já pesquisado; manter proveniência por clínica. Preços/expediente/canais e consentimentos são sintéticos de demonstração.
+- `demoCalendarTarget` só marca duas clínicas para conexão futura. Não criar tokens nem conexões Google falsas.
+- IDs gerados pelo Prisma: acrescentar default uuid() client-side ao User.id (Better Auth continua podendo informar seu próprio id); usar chaves naturais para idempotência.
+- Catálogo HACK-17 é a fonte TUSS. Não semear abdome total com protocolo de abdome superior; excluir o TC de tórax fora da lista fechada vigente.
+- Substituir testes WIP de rotas retiradas por provas do seed, sem enfraquecer testes já presentes em main.
+- HACK-15 concluído no worktree: seed duplo, matching SQL com 12 candidatos, 10 clínicas/2 alvos; check 409 testes, build e smoke verdes. Publicação em PR para main, revisão/merge ficam com a esteira do maestro.
+
+## Decisões HACK-23
+
+- Autorizado executar a esteira e publicar PR sem pausas. Base HTTPS feat/hack-23-complete resolveu para 0d7ee6e, sem WIP/handoff mencionado no card.
+- Reutilizar Better Auth e os proxies existentes; cadastro de paciente passa a exigir telefone e aceite explícito.
+- Retenção usa fim do horário do exame para reserva e expiresAt da inscrição; excluir dependentes para não deixar histórico identificável nem FKs bloqueando.
+
+- Prova inicial: quatro cenários HACK-23 da API passaram. Check completo identificou import explícito de ClockModule ausente em AuthModule (consumidor isolado GoogleCalendarModule); corrigido sem alterar o teste existente. Nova página exigiu recompilar contracts antes dos testes frontend.
+- Artefatos de navegação e ownership ficam em README e spec; não há descoberta adicional que justifique duplicação em .notebook.
+
+- HACK-23 validado: check (414 testes sem falhas/ignorados), build e smoke verdes no banco hack_23. Inclui páginas por ID e smoke de 404 no Next. Sem dependências/migrations novas e sem deploy.

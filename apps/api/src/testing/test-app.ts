@@ -1,5 +1,6 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import type { UserRole } from '@hackathon/contracts';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import type { INestApplication } from '@nestjs/common';
 import { createApp } from '../app';
 import { AuthSessionService } from '../auth/auth-session.service';
@@ -40,6 +41,7 @@ export async function startTestApp(
   });
   const app = await createApp({ logger: false, env });
   await app.listen(0, '127.0.0.1');
+  app.get(SchedulerRegistry).getCronJob('patient-data-retention').stop();
   const url = await app.getUrl();
   const prisma = app.get(PrismaService);
   const tag = randomUUID().slice(0, 8);
@@ -139,7 +141,13 @@ export async function signUpWithCookie(
     role,
     role === 'clinica'
       ? clinicSignUpBody(email, { password })
-      : { name: `Teste ${role}`, email, password },
+      : {
+          name: `Teste ${role}`,
+          email,
+          password,
+          phone: '+5511999999999',
+          healthDataConsent: true,
+        },
   );
   if (response.status !== 200) {
     throw new Error(

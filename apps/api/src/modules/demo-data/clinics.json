@@ -1,0 +1,302 @@
+[
+  {
+    "name": "SCOPP Diagnósticos - Pompéia",
+    "address": "Av. Pompéia, 1137 - Vila Pompéia, São Paulo - SP, 05023-000",
+    "latitude": -23.5340373,
+    "longitude": -46.6874997,
+    "cnes": "7330847",
+    "technicalManager": "Luiz Carlos Donoso Scoppetta — CRM-SP 37686",
+    "sources": [
+      "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550307330847",
+      "https://scoppdiagnosticos.com.br/",
+      "https://maps.firecrawl.dev/place/0x94ce57e720dd82ab%3A0xed0957a12b0e645a"
+    ],
+    "verifiedAt": "2026-11-08",
+    "demoCalendarTarget": true,
+    "fieldSources": {
+      "name": [
+        "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550307330847",
+        "https://scoppdiagnosticos.com.br/"
+      ],
+      "address": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550307330847",
+      "cnes": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550307330847",
+      "latitude": "https://maps.firecrawl.dev/place/0x94ce57e720dd82ab%3A0xed0957a12b0e645a",
+      "longitude": "https://maps.firecrawl.dev/place/0x94ce57e720dd82ab%3A0xed0957a12b0e645a",
+      "technicalManager": "https://scoppdiagnosticos.com.br/"
+    },
+    "verificationNotes": [
+      "Responsável técnico explicitamente publicado pelo site oficial da marca. A publicação não discrimina responsabilidade regulatória de cada filial; não inferida de gerente CNES ou lista de médicos.",
+      "Coordenadas reaproveitadas da consulta Firecrawl Maps registrada em research.md em 2026-11-08; não reaferidas topograficamente."
+    ]
+  },
+  {
+    "name": "SCOPP Diagnósticos - Santo Amaro",
+    "address": "Av. Adolfo Pinheiro, 1178, complemento 1166 - Santo Amaro, São Paulo - SP, 04734-002",
+    "latitude": -23.6434861,
+    "longitude": -46.6993819,
+    "cnes": "9472940",
+    "technicalManager": "Luiz Carlos Donoso Scoppetta — CRM-SP 37686",
+    "sources": [
+      "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309472940",
+      "https://scoppdiagnosticos.com.br/",
+      "https://maps.firecrawl.dev/place/0x94ce51552fd5821b%3A0x8dfa2ca9705c6a35"
+    ],
+    "verifiedAt": "2026-11-08",
+    "demoCalendarTarget": false,
+    "fieldSources": {
+      "name": [
+        "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309472940",
+        "https://scoppdiagnosticos.com.br/"
+      ],
+      "address": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309472940",
+      "cnes": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309472940",
+      "latitude": "https://maps.firecrawl.dev/place/0x94ce51552fd5821b%3A0x8dfa2ca9705c6a35",
+      "longitude": "https://maps.firecrawl.dev/place/0x94ce51552fd5821b%3A0x8dfa2ca9705c6a35",
+      "technicalManager": "https://scoppdiagnosticos.com.br/"
+    },
+    "verificationNotes": [
+      "Responsável técnico explicitamente publicado pelo site oficial da marca. A publicação não discrimina responsabilidade regulatória de cada filial; não inferida de gerente CNES ou lista de médicos.",
+      "Coordenadas reaproveitadas da consulta Firecrawl Maps registrada em research.md em 2026-11-08; não reaferidas topograficamente."
+    ]
+  },
+  {
+    "name": "CURA Medicina Diagnóstica - Jardins",
+    "address": "Av. Brigadeiro Luís Antônio, 4469 - Jardim Paulista, São Paulo - SP, 01401-002",
+    "latitude": -23.5808842,
+    "longitude": -46.6642361,
+    "cnes": "3451682",
+    "technicalManager": "Luci Mara Barbiero — CRM 120.433/SP",
+    "sources": [
+      "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303451682",
+      "https://www.cura.com.br/unidades/jardins",
+      "https://maps.firecrawl.dev/place/0x94ce59ba6b0f9a4f%3A0xceb6d2cb9fee3095"
+    ],
+    "verifiedAt": "2026-11-08",
+    "demoCalendarTarget": true,
+    "fieldSources": {
+      "name": [
+        "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303451682",
+        "https://www.cura.com.br/unidades/jardins"
+      ],
+      "address": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303451682",
+      "cnes": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303451682",
+      "latitude": "https://maps.firecrawl.dev/place/0x94ce59ba6b0f9a4f%3A0xceb6d2cb9fee3095",
+      "longitude": "https://maps.firecrawl.dev/place/0x94ce59ba6b0f9a4f%3A0xceb6d2cb9fee3095",
+      "technicalManager": "https://www.cura.com.br/unidades/jardins"
+    },
+    "verificationNotes": [
+      "Responsável técnico explicitamente publicado pelo site oficial da marca. A publicação não discrimina responsabilidade regulatória de cada filial; não inferida de gerente CNES ou lista de médicos.",
+      "Coordenadas reaproveitadas da consulta Firecrawl Maps registrada em research.md em 2026-11-08; não reaferidas topograficamente."
+    ]
+  },
+  {
+    "name": "CURA Medicina Diagnóstica - Moema",
+    "address": "Av. Pavão, 322 - Moema, São Paulo - SP, 04516-010",
+    "latitude": -23.6038081,
+    "longitude": -46.6719417,
+    "cnes": "5665558",
+    "technicalManager": "Luci Mara Barbiero — CRM 120.433/SP",
+    "sources": [
+      "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550305665558",
+      "https://www.cura.com.br/unidades/moema",
+      "https://maps.firecrawl.dev/place/0x94ce50aa23cfc4db%3A0xbd035f703c902c31"
+    ],
+    "verifiedAt": "2026-11-08",
+    "demoCalendarTarget": false,
+    "fieldSources": {
+      "name": [
+        "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550305665558",
+        "https://www.cura.com.br/unidades/jardins"
+      ],
+      "address": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550305665558",
+      "cnes": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550305665558",
+      "latitude": "https://maps.firecrawl.dev/place/0x94ce50aa23cfc4db%3A0xbd035f703c902c31",
+      "longitude": "https://maps.firecrawl.dev/place/0x94ce50aa23cfc4db%3A0xbd035f703c902c31",
+      "technicalManager": "https://www.cura.com.br/unidades/moema"
+    },
+    "verificationNotes": [
+      "Responsável técnico explicitamente publicado pelo site oficial da marca. A publicação não discrimina responsabilidade regulatória de cada filial; não inferida de gerente CNES ou lista de médicos.",
+      "Coordenadas reaproveitadas da consulta Firecrawl Maps registrada em research.md em 2026-11-08; não reaferidas topograficamente."
+    ]
+  },
+  {
+    "name": "ZDI Diagnósticos & Imagens",
+    "address": "Rua Padre Adelino, 735 - Belém, São Paulo - SP, 03303-000",
+    "latitude": -23.5445395,
+    "longitude": -46.586881,
+    "cnes": "9547231",
+    "technicalManager": "Iman Hassan Zoghbi — CRM-SP 74483",
+    "sources": [
+      "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309547231",
+      "https://zdidiagnosticos.com.br/trabalhe-conosco/",
+      "https://maps.firecrawl.dev/place/0x94ce5ecf19b54a3d%3A0x4ca3d7e1a2e5c111"
+    ],
+    "verifiedAt": "2026-11-08",
+    "demoCalendarTarget": false,
+    "fieldSources": {
+      "name": [
+        "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309547231",
+        "https://zdidiagnosticos.com.br/trabalhe-conosco/"
+      ],
+      "address": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309547231",
+      "cnes": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309547231",
+      "latitude": "https://maps.firecrawl.dev/place/0x94ce5ecf19b54a3d%3A0x4ca3d7e1a2e5c111",
+      "longitude": "https://maps.firecrawl.dev/place/0x94ce5ecf19b54a3d%3A0x4ca3d7e1a2e5c111",
+      "technicalManager": "https://zdidiagnosticos.com.br/trabalhe-conosco/"
+    },
+    "verificationNotes": [
+      "RT e endereço publicados juntos no rodapé da unidade, com CNPJ correspondente ao CNES.",
+      "Coordenadas reaproveitadas da consulta Firecrawl Maps registrada em research.md em 2026-11-08; não reaferidas topograficamente."
+    ]
+  },
+  {
+    "name": "CDB Inteligência Diagnóstica - Ana Rosa",
+    "address": "Av. Conselheiro Rodrigues Alves, 300 - Vila Mariana, São Paulo - SP, 04014-000",
+    "latitude": -23.5829877,
+    "longitude": -46.6413286,
+    "cnes": "9060774",
+    "technicalManager": "Luci Mara Barbiero — CRM 120.433/SP",
+    "sources": [
+      "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309060774",
+      "https://www.cdb.com.br/unidades/ana-rosa",
+      "https://maps.firecrawl.dev/place/0x94ce5985f1099a27%3A0x564160515f890482"
+    ],
+    "verifiedAt": "2026-11-08",
+    "demoCalendarTarget": false,
+    "fieldSources": {
+      "name": [
+        "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309060774",
+        "https://www.cdb.com.br/unidades/ana-rosa"
+      ],
+      "address": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309060774",
+      "cnes": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309060774",
+      "latitude": "https://maps.firecrawl.dev/place/0x94ce5985f1099a27%3A0x564160515f890482",
+      "longitude": "https://maps.firecrawl.dev/place/0x94ce5985f1099a27%3A0x564160515f890482",
+      "technicalManager": "https://www.cdb.com.br/unidades/ana-rosa"
+    },
+    "verificationNotes": [
+      "Responsável técnico explicitamente publicado pelo site oficial da marca. A publicação não discrimina responsabilidade regulatória de cada filial; não inferida de gerente CNES ou lista de médicos.",
+      "Coordenadas observadas nesta pesquisa via Firecrawl Maps, correspondência por logradouro e número; endereço legível do mapa pode divergir em bairro/CEP do cadastro CNES."
+    ]
+  },
+  {
+    "name": "CDB Inteligência Diagnóstica - Brasil 350",
+    "address": "Av. Brasil, 350 - Jardim América, São Paulo - SP, 01430-000",
+    "latitude": -23.5766882,
+    "longitude": -46.6638392,
+    "cnes": "3094146",
+    "technicalManager": "Luci Mara Barbiero — CRM 120.433/SP",
+    "sources": [
+      "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303094146",
+      "https://www.cdb.com.br/unidades/brasil-350",
+      "https://maps.firecrawl.dev/place/0x94ce5957f87e95db%3A0x19c82b336f9d6dd"
+    ],
+    "verifiedAt": "2026-11-08",
+    "demoCalendarTarget": false,
+    "fieldSources": {
+      "name": [
+        "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303094146",
+        "https://www.cdb.com.br/unidades/brasil-350"
+      ],
+      "address": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303094146",
+      "cnes": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303094146",
+      "latitude": "https://maps.firecrawl.dev/place/0x94ce5957f87e95db%3A0x19c82b336f9d6dd",
+      "longitude": "https://maps.firecrawl.dev/place/0x94ce5957f87e95db%3A0x19c82b336f9d6dd",
+      "technicalManager": "https://www.cdb.com.br/unidades/brasil-350"
+    },
+    "verificationNotes": [
+      "Responsável técnico explicitamente publicado pelo site oficial da marca. A publicação não discrimina responsabilidade regulatória de cada filial; não inferida de gerente CNES ou lista de médicos.",
+      "Coordenadas observadas nesta pesquisa via Firecrawl Maps, correspondência por logradouro e número; endereço legível do mapa pode divergir em bairro/CEP do cadastro CNES."
+    ]
+  },
+  {
+    "name": "CDB Inteligência Diagnóstica - Borba Gato",
+    "address": "Av. Adolfo Pinheiro, 2366 - Santo Amaro, São Paulo - SP, 04734-004",
+    "latitude": -23.6343025,
+    "longitude": -46.6928112,
+    "cnes": "7841272",
+    "technicalManager": "Luci Mara Barbiero — CRM 120.433/SP",
+    "sources": [
+      "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550307841272",
+      "https://www.cdb.com.br/unidades/borba-gato",
+      "https://maps.firecrawl.dev/place/0x94ce50ed9657eb35%3A0x6f80bdedab88b14e"
+    ],
+    "verifiedAt": "2026-11-08",
+    "demoCalendarTarget": false,
+    "fieldSources": {
+      "name": [
+        "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550307841272",
+        "https://www.cdb.com.br/unidades/borba-gato"
+      ],
+      "address": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550307841272",
+      "cnes": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550307841272",
+      "latitude": "https://maps.firecrawl.dev/place/0x94ce50ed9657eb35%3A0x6f80bdedab88b14e",
+      "longitude": "https://maps.firecrawl.dev/place/0x94ce50ed9657eb35%3A0x6f80bdedab88b14e",
+      "technicalManager": "https://www.cdb.com.br/unidades/borba-gato"
+    },
+    "verificationNotes": [
+      "Responsável técnico explicitamente publicado pelo site oficial da marca. A publicação não discrimina responsabilidade regulatória de cada filial; não inferida de gerente CNES ou lista de médicos.",
+      "Coordenadas observadas nesta pesquisa via Firecrawl Maps, correspondência por logradouro e número; endereço legível do mapa pode divergir em bairro/CEP do cadastro CNES."
+    ]
+  },
+  {
+    "name": "CDB Inteligência Diagnóstica - Marselhesa",
+    "address": "Rua Marselhesa, 500 - Vila Clementino, São Paulo - SP, 04020-060",
+    "latitude": -23.5965893,
+    "longitude": -46.6415158,
+    "cnes": "3094162",
+    "technicalManager": "Luci Mara Barbiero — CRM 120.433/SP",
+    "sources": [
+      "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303094162",
+      "https://www.cdb.com.br/unidades/marselhesa",
+      "https://maps.firecrawl.dev/place/0x94ce5a2f891ac9bf%3A0xa6fd4eade2bbe720"
+    ],
+    "verifiedAt": "2026-11-08",
+    "demoCalendarTarget": false,
+    "fieldSources": {
+      "name": [
+        "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303094162",
+        "https://www.cdb.com.br/unidades/marselhesa"
+      ],
+      "address": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303094162",
+      "cnes": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550303094162",
+      "latitude": "https://maps.firecrawl.dev/place/0x94ce5a2f891ac9bf%3A0xa6fd4eade2bbe720",
+      "longitude": "https://maps.firecrawl.dev/place/0x94ce5a2f891ac9bf%3A0xa6fd4eade2bbe720",
+      "technicalManager": "https://www.cdb.com.br/unidades/marselhesa"
+    },
+    "verificationNotes": [
+      "Responsável técnico explicitamente publicado pelo site oficial da marca. A publicação não discrimina responsabilidade regulatória de cada filial; não inferida de gerente CNES ou lista de médicos.",
+      "Coordenadas observadas nesta pesquisa via Firecrawl Maps, correspondência por logradouro e número; endereço legível do mapa pode divergir em bairro/CEP do cadastro CNES."
+    ]
+  },
+  {
+    "name": "CDB Inteligência Diagnóstica - Mooca",
+    "address": "Av. Paes de Barros, 1696 - Mooca, São Paulo - SP, 03114-001",
+    "latitude": -23.567425,
+    "longitude": -46.591622,
+    "cnes": "9182772",
+    "technicalManager": "Luci Mara Barbiero — CRM 120.433/SP",
+    "sources": [
+      "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309182772",
+      "https://www.cdb.com.br/unidades/mooca",
+      "https://maps.firecrawl.dev/place/0x94ce5eab6ee42661%3A0x4a19610d97e33e28"
+    ],
+    "verifiedAt": "2026-11-08",
+    "demoCalendarTarget": false,
+    "fieldSources": {
+      "name": [
+        "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309182772",
+        "https://www.cdb.com.br/unidades/mooca"
+      ],
+      "address": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309182772",
+      "cnes": "https://cnes2.datasus.gov.br/Mod_Conjunto.asp?VCo_Unidade=3550309182772",
+      "latitude": "https://maps.firecrawl.dev/place/0x94ce5eab6ee42661%3A0x4a19610d97e33e28",
+      "longitude": "https://maps.firecrawl.dev/place/0x94ce5eab6ee42661%3A0x4a19610d97e33e28",
+      "technicalManager": "https://www.cdb.com.br/unidades/mooca"
+    },
+    "verificationNotes": [
+      "Responsável técnico explicitamente publicado pelo site oficial da marca. A publicação não discrimina responsabilidade regulatória de cada filial; não inferida de gerente CNES ou lista de médicos.",
+      "Coordenadas observadas nesta pesquisa via Firecrawl Maps, correspondência por logradouro e número; endereço legível do mapa pode divergir em bairro/CEP do cadastro CNES."
+    ]
+  }
+]

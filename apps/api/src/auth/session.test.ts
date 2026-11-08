@@ -119,6 +119,8 @@ test('C18 - cookie de sessão leva Secure só quando BETTER_AUTH_URL é https', 
     name: 'Http',
     email: t.email(),
     password: '12345678',
+    phone: '+5511999999999',
+    healthDataConsent: true,
   });
   assert.equal(plain.status, 200);
   assert.doesNotMatch(sessionLine(plain), /;\s*Secure/i);
@@ -131,6 +133,8 @@ test('C18 - cookie de sessão leva Secure só quando BETTER_AUTH_URL é https', 
       name: 'Https',
       email: secure.email(),
       password: '12345678',
+      phone: '+5511999999999',
+      healthDataConsent: true,
     });
     assert.equal(response.status, 200);
     assert.match(sessionLine(response), /;\s*Secure/i);

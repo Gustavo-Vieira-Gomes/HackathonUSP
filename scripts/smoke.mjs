@@ -139,11 +139,38 @@ try {
   const password = 'smoke-senha-1';
   const signUp = await postJson(
     `${webUrl}/api/sign-up/paciente`,
-    { name: 'Smoke', email, password },
+    {
+      name: 'Smoke',
+      email,
+      password,
+      phone: '11999990000',
+      healthDataConsent: true,
+    },
     webUrl,
   );
   assert.equal(signUp.status, 200, `C29: cadastro pelo Next ${signUp.status}`);
   sessionCookie(signUp, 'C29 cadastro');
+  const refused = await postJson(
+    `${webUrl}/api/sign-up/paciente`,
+    {
+      name: 'Sem aceite',
+      email: `no-consent-${email}`,
+      password,
+      phone: '11999990000',
+      healthDataConsent: false,
+    },
+    webUrl,
+  );
+  assert.equal(refused.status, 422);
+  assert.match(
+    JSON.stringify(await refused.json()),
+    /consentimento obrigatório/i,
+  );
+  for (const route of ['/paciente/cadastro', '/paciente/login']) {
+    const screen = await fetch(`${webUrl}${route}`);
+    assert.equal(screen.status, 200, route);
+    assert.match(await screen.text(), /E-mail/);
+  }
   const signIn = await postJson(
     `${webUrl}/api/auth/sign-in/email`,
     { email, password },
@@ -151,6 +178,19 @@ try {
   );
   assert.equal(signIn.status, 200, `C29: login pelo Next ${signIn.status}`);
   const cookie = sessionCookie(signIn, 'C29 login');
+  const patientPage = await fetch(`${webUrl}/paciente`, {
+    headers: { cookie },
+  });
+  assert.equal(patientPage.status, 200);
+  assert.match(await patientPage.text(), /Olá, .*Smoke/);
+  for (const resource of ['reservas', 'inscricoes']) {
+    const missing = await fetch(
+      `${webUrl}/paciente/${resource}/00000000-0000-4000-8000-000000000001`,
+      { headers: { cookie } },
+    );
+    assert.equal(missing.status, 404, `Paciente: ${resource} inexistente`);
+  }
+
   const sessionPage = await fetch(webUrl, { headers: { cookie } });
   assert.equal(sessionPage.status, 200);
   assert.ok(

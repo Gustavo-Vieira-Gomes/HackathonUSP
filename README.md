@@ -54,3 +54,19 @@ Checks, builds e smoke HTTP verificados com Node 24. Veja [evidências e limites
 ## Referências
 
 [Next: instalação](https://nextjs.org/docs/app/getting-started/installation), [Next: backend](https://nextjs.org/docs/app/guides/backend-for-frontend), [Nest: primeiros passos](https://docs.nestjs.com/first-steps), [Claude: memória e instruções](https://code.claude.com/docs/en/memory).
+
+## Dados de demonstração (HACK-15)
+
+Com Postgres **local exclusivo** e migrations aplicadas (`npm run db:deploy -w @hackathon/api`), configure em `apps/api/.env`: `NODE_ENV=development`, `DEMO_SEED_ENABLED=true` e `DATABASE_URL` local. Compile contratos e gere o client (`npm run build -w @hackathon/contracts` e `npm run db:generate -w @hackathon/api`), depois rode `npm run seed`. Repetir mantém as identidades e não duplica dados.
+
+O manifesto em `apps/api/src/modules/demo-data/clinics.json` contém dez unidades reais de São Paulo e fontes por campo. Preços, expediente, consentimentos e doze pacientes são **sintéticos de demo**, sem contas de login. Não representam parceria ou oferta das clínicas. RM de joelho: R$ 720, piso R$ 500. As duas clínicas `demoCalendarTarget=true` são alvos para conexão manual, sem OAuth simulado. Questionários HACK-41 continuam pendentes de revisão clínica.
+
+As inscrições cobrem toda a semana e raio de 50 km, com e-mail `.invalid` e WhatsApp sintético. Para visualizar alertas sem contatar pessoas, use `WHATSAPP_MODE=simulated`; o seed não envia mensagens nem configura fornecedores. A execução recusa produção e banco remoto.
+
+## Pacientes (HACK-23)
+
+Cadastro em `/paciente/cadastro`, login em `/paciente/login` e área autenticada em `/paciente`. O cadastro usa Better Auth pela rota existente `POST /api/sign-up/paciente`, agora com `name`, `email`, `password`, `phone` (dígitos e `+` opcional) e `healthDataConsent: true`. Sem aceite: 422 `consentimento obrigatório`, sem criar conta. O perfil registra o instante do aceite no servidor.
+
+`GET /api/patient/reservations/:id` e `GET /api/patient/subscriptions/:id` resolvem o paciente pela sessão e respondem 404 para recurso alheio ou inexistente. Novas operações de paciente devem usar `@PatientOnly()` e filtrar por `@CurrentPatientId()`. O job de retenção roda a cada minuto usando `ClockService.now()`: remove reservas a partir de 30 dias após o fim do exame e inscrições a partir de 30 dias após expiração, junto dos dependentes identificáveis. A conta e o registro do consentimento permanecem.
+
+HACK-23: cadastro e login do paciente em `/paciente/cadastro` e `/paciente/login`, com telefone e consentimento obrigatório para dados de saúde. A conta autenticada acessa seus registros por `/paciente/reservas/<id>` e `/paciente/inscricoes/<id>`; registros inexistentes ou de outro paciente respondem não encontrado sem exibir dados.
