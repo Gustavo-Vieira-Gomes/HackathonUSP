@@ -396,3 +396,84 @@ legend:focus-visible,
   gap: 8px;
   justify-items: start;
 }
+/* WhatsApp simulado (HACK-37) */
+.wa-demo {
+  max-width: 760px;
+  padding: 32px 24px 64px;
+}
+.wa-header h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+.wa-notice {
+  margin: 0 0 24px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-left: 4px solid #b58900;
+  background: #fffbea;
+}
+.wa-status {
+  color: var(--muted);
+}
+.wa-conversations,
+.wa-messages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.wa-chat {
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #e8e2d7;
+  overflow: hidden;
+}
+.wa-chat-title {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 16px;
+  background: #075e54;
+  color: #fff;
+}
+.wa-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+.wa-bubble {
+  align-self: flex-start;
+  max-width: 85%;
+  padding: 8px 12px 4px;
+  border-radius: 0 8px 8px 8px;
+  background: #fff;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 12%);
+}
+.wa-tag {
+  display: inline-block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #075e54;
+}
+.wa-text {
+  margin: 0;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.wa-line {
+  display: block;
+}
+.wa-text a {
+  color: #0b57d0;
+}
+.wa-text a:focus-visible {
+  outline-offset: 2px;
+}
+.wa-time {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  text-align: right;
+  color: var(--muted);
+}

@@ -6,7 +6,7 @@ import {
   startTestApp,
   type TestApp,
 } from '../../testing/test-app';
-import { DEMO_CLOCK_TOKEN_HEADER } from './clock.controller';
+import { DEMO_OPERATOR_TOKEN_HEADER as DEMO_CLOCK_TOKEN_HEADER } from '../../common/guards/demo-operator.guard';
 import { ClockService } from './clock.service';
 
 const TOKEN = 'token-do-operador-da-demo-com-32-chars';

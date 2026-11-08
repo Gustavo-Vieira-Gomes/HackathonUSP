@@ -78,7 +78,7 @@ Alívios possíveis:
 - **Pedro:** função pura de preço com testes (3.2); contrato do serviço de notificação e adapters contra interface (4.1, 4.3, 4.4); subir Evolution/WAHA em Docker e ler o QR.
 - **Mateus:** projeto no Google Cloud, Calendar API e client OAuth (1.3); códigos TUSS e lista fechada em `packages/contracts` (1.2); números do pitch (6.3).
 - **Luiz:** 10 clínicas reais com endereço e coordenadas (0.4); telas do paciente com dados estáticos (2.1, 2.2, 2.4).
-- **Nicolas:** contas Vercel, Railway/Render e Neon (0.3); chave da API da OpenAI (5.1); questionários por exame e conversa com mentor (6.2).
+- **Nicolas:** contas Vercel, Railway/Render e Neon (0.3); chave da API da OpenAI (5.1); questionários por exame (6.2); mentor dispensado para o aceite por decisão do usuário no HACK-41. A associação aos exames aguarda o seed HACK-15 de Luiz.
 
 ## Contratos a combinar antes de codar
 

@@ -118,7 +118,7 @@ M4. Log por vaga: publicada, alertada, reservada, expirada
 
 - **Tratar:** B2, B5, B7, B8, B9, B11.
 - **Aceitar:** B6 (canibalização, com controles), B10 (eventos fora do padrão), B12 (art. 58, validar com mentores).
-- **Bloqueia go-live, não a demo:** questionário de preparo e contraindicação por exame escrito pelo time e conferido por mentor médico.
+- **Registro histórico, requisito de aceite atualizado no HACK-41:** a previsão original era questionário de preparo e contraindicação por exame escrito pelo time e conferido por mentor médico. O usuário dispensou o mentor como requisito de conclusão do card; permanece a associação e conferência de cobertura no seed HACK-15. A dispensa não constitui aprovação clínica.
 
 ## Premissas sem confirmação
 

@@ -3,11 +3,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import type { AppEnv } from './config/env';
-import { ExamplesModule } from './examples/examples.module';
 import { HealthController } from './health/health.controller';
 import { ClinicsModule } from './modules/clinics/clinics.module';
 import { ClockModule } from './modules/clock/clock.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PhoneVerificationModule } from './modules/phone-verification/phone-verification.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { VacanciesModule } from './modules/vacancies/vacancies.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -22,12 +22,12 @@ export class AppModule {
         PrismaModule,
         AuthModule,
         ScheduleModule.forRoot(),
-        ExamplesModule,
         ClockModule,
         RealtimeModule,
         VacanciesModule,
         NotificationsModule,
         ClinicsModule,
+        PhoneVerificationModule,
       ],
       controllers: [HealthController],
     };

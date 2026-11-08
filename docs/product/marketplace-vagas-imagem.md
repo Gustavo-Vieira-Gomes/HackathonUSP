@@ -530,7 +530,7 @@ Funcionalidade: Registro e métricas
 ## 6. Premissas e riscos aceitos
 
 - Taxa fixa por reserva realizada (RN-46) foi mantida pelo time mesmo com o art. 58 do Código de Ética Médica apontado como risco; validar com mentores antes de qualquer cobrança real.
-- Questionários de contraindicação e preparo por exame (RN-37) precisam de conferência por mentor médico antes do go-live; não bloqueiam a demo.
+- Questionários de contraindicação e preparo por exame (RN-37): por decisão do usuário registrada no HACK-41, mentor médico não é requisito de aceite desse card. A conclusão técnica exige associação e cobertura dos exames efetivos do seed HACK-15; essa dispensa não declara aprovação clínica nem valida protocolos para pacientes reais.
 - Demo: 2 clínicas com Google Agenda real e 8 pré-carregadas; pagamentos simulados; sem dado real de paciente.
 - Padrões X = 15, Y = 45, Z = 10 min e degraus de preço são valores iniciais editáveis pela clínica.
 - Núcleo de regras independente do canal: web hoje, WhatsApp e app nativo depois sem reescrever regras.
