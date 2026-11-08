@@ -1,6 +1,6 @@
 # f1-patient-auth proofs
 
-**HEAD**: 2924815
+**HEAD**: 10d2829
 **Tree**: dirty - graphify-out/
 **Shell**: /bin/sh
 **Result**: 48 pass, 0 fail
@@ -61,10 +61,10 @@
 `Run api` - exit 0
 
 ```
-✔ C21 /me com sessão válida devolve o dono da sessão (123.766264ms)
-✔ C22 /me sem sessão válida responde 401 (241.151582ms)
-✔ C32 identidade vem só da sessão, ignorando o id enviado pelo cliente (206.897547ms)
-✔ C33 não existe rota de paciente por id (207.935499ms)
+✔ C21 /me com sessão válida devolve o dono da sessão (116.378644ms)
+✔ C22 /me sem sessão válida responde 401 (244.333179ms)
+✔ C32 identidade vem só da sessão, ignorando o id enviado pelo cliente (207.878014ms)
+✔ C33 não existe rota de paciente por id (203.622302ms)
 ℹ tests 29
 ℹ suites 0
 ℹ pass 29
@@ -72,7 +72,7 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 9693.235968
+ℹ duration_ms 9692.687368
 Loaded Prisma config from prisma.config.ts.
 
 Prisma schema loaded from prisma/schema.prisma.
@@ -84,9 +84,9 @@ Prisma schema loaded from prisma/schema.prisma.
 > @hackathon/contracts@0.1.0 test
 > tsx --test src/*.test.ts
 
-✔ rejeita um serviço indisponível declarado como saudável (2.807852ms)
-✔ aceita resposta de saúde de ambos os adaptadores (0.274002ms)
-✔ C41 schema de cadastro aceita e recusa os exemplos do plano (7.081745ms)
+✔ rejeita um serviço indisponível declarado como saudável (2.205556ms)
+✔ aceita resposta de saúde de ambos os adaptadores (0.27798ms)
+✔ C41 schema de cadastro aceita e recusa os exemplos do plano (7.002461ms)
 ℹ tests 3
 ℹ suites 0
 ℹ pass 3
@@ -94,7 +94,7 @@ Prisma schema loaded from prisma/schema.prisma.
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 285.353718
+ℹ duration_ms 265.070118
 ```
 
 `npm run smoke` - exit 0
