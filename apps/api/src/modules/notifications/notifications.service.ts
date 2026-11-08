@@ -79,6 +79,22 @@ export class NotificationsService {
   }
 
   /**
+   * Cancela os alertas ainda pendentes de vagas que fecharam (RN-36): reservada,
+   * expirada ou cancelada. Enviado e falhou ficam como estão. Chamado a cada minuto
+   * pelo motor de vagas (HACK-32). Devolve quantos foram cancelados.
+   */
+  async cancelPendingOfClosedVacancies(): Promise<number> {
+    const { count } = await this.prisma.alert.updateMany({
+      where: {
+        result: 'pendente',
+        vacancy: { state: { in: ['reservada', 'expirada', 'cancelada'] } },
+      },
+      data: { result: 'cancelado' },
+    });
+    return count;
+  }
+
+  /**
    * Contato e canais efetivos do paciente (HACK-34). WhatsApp só entra com o
    * telefone verificado, para não mandar dado de saúde para um número errado.
    */

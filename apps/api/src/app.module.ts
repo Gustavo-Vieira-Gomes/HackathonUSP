@@ -3,7 +3,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import type { AppEnv } from './config/env';
-import { ExamplesModule } from './examples/examples.module';
 import { HealthController } from './health/health.controller';
 import { ClockModule } from './modules/clock/clock.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -22,7 +21,6 @@ export class AppModule {
         PrismaModule,
         AuthModule,
         ScheduleModule.forRoot(),
-        ExamplesModule,
         ClockModule,
         RealtimeModule,
         VacanciesModule,
