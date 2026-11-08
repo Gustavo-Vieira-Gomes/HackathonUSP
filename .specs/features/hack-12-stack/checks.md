@@ -151,7 +151,7 @@ Proof: `npm run build > log 2>&1`
 Proof: `npm run smoke > log 2>&1`
 
 **C37** - `npm test -w @hackathon/api` executa os testes de subpastas de `src/`: a saída contém os nomes de `C6` (`auth/`) e `C4` (`config/`) (S7, AC 33)
-Proof: `npm test -w @hackathon/api > log 2>&1 && grep -q '^# pass' log && grep -q 'C6 - ' log && grep -q 'C4 - ' log`
+Proof: `npm test -w @hackathon/api > log 2>&1 && grep -q '^ℹ fail 0$' log && grep -q 'C6 - ' log && grep -q 'C4 - ' log`
 
 **C38** - `.github/workflows/ci.yml` declara um serviço `postgres` com healthcheck e um passo `prisma migrate deploy` (via `npm run db:deploy -w @hackathon/api`) antes de `npm run check`, `npm run build` e `npm run smoke` (S7, AC 34)
 Proof: `awk '/services:/{s=1} /postgres/{if(s)p=1} /db:deploy/{d=NR} /npm run check/{c=NR} /npm run build/{b=NR} /npm run smoke/{m=NR} END{exit !(p && d && d<c && c<b && b<m)}' .github/workflows/ci.yml`
@@ -210,3 +210,8 @@ Proof: `awk '/services:/{s=1} /postgres/{if(s)p=1} /db:deploy/{d=NR} /npm run ch
 - Base da verificação: `ad7ff67` (merge-base com `origin/main` quando o worktree foi criado). `origin/main` já avançou para `5f35745` (HACK-41); não é trazido para esta branch neste card.
 
 - **Settled mid-build:** C3 - o comando da prova tirava o usuário do `DATABASE_URL` (`://hackathon`) como host e só passava pelo comportamento do `grep -vq` do macOS; trocado por extração do host sem a parte `usuário:senha@`, com controle negativo (`http://evil.com` reprova). A afirmação não mudou.
+- **Settled mid-build:** C37 - o comando da prova procurava `^# pass` (saída TAP), mas o reporter padrão do `node --test` gravado em arquivo escreve `ℹ pass N` / `ℹ fail N`; trocado por `^ℹ fail 0$`, que também exige zero falhas. A afirmação não mudou.
+- **Settled mid-build:** C36 - decisão do Maestro Fundação em 08/11/2026: `npm run check` está verde em lint, tipos e testes (API 30, web 5, contracts 2) e reprova só no `format:check` de 4 docs que o card não toca e que já reprovam na base `ad7ff67` e em `origin/main` (conteúdo idêntico nas duas): `.specs/features/marketplace-vagas-imagem/brainstorm.md`, `.specs/features/prontuario-pessoal/brainstorm.md`, `docs/product/fluxo-de-trabalho.md`, `docs/product/marketplace-vagas-imagem.md`. Prova da causa pré-existente: `git show ad7ff67:<arquivo> | npx prettier --check --stdin-filepath <arquivo>` falha nos 4. Não formatados aqui (outras frentes editam esses arquivos); o Maestro leva a correção ao geral para a main. `npm run build` e `npm run smoke` verdes. `.maestri/` (pasta local do Maestri) entrou no `.gitignore` e no `.prettierignore` em commit `chore` próprio.
+- **Settled mid-build:** porta 7 - `module`/`moduleResolution` ficaram em `nodenext` (o plano aceitava `node16` ou `nodenext`; só o `nodenext` do TS 5.9 aceita `require` de ESM). Tipos de request/response nos controllers vêm de `node:http` para não adicionar `@types/express`. Repasse do Next encaminha também `origin`, `user-agent`, `x-forwarded-for` e `accept` (a checagem de origem do Better Auth e o rate limit por IP dependem deles). Timeout da consulta de sessão no Server Component: 5 s (o plano só fixava os 10 s do repasse). A página inicial mostra a linha de sessão para o smoke provar o C31.
+- **Boundary:** C1-C38 fechados em `a83fbbe` (um construtor, sem lotes)
+- **Abandoned:** nenhum.
