@@ -1,3 +1,5 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+import type { IncomingMessage as Request } from 'node:http';
 import {
   type DemoClockResponse,
   demoClockAdvanceBodySchema,
@@ -17,30 +19,36 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
-import type { IncomingMessage as Request } from 'node:http';
-import { AuthSessionService } from '../../auth/auth-session.service';
 import { APP_ENV, type AppEnv } from '../../config/env';
 import { ClockService } from './clock.service';
+
+/** Header com o segredo do operador da demo. */
+export const DEMO_CLOCK_TOKEN_HEADER = 'x-demo-clock-token';
+
+const digest = (value: string) => createHash('sha256').update(value).digest();
 
 /**
  * Controle de tempo da demo (HACK-30), chamado pela tela do card 6.1. Só existe com
  * `DEMO_CLOCK_ENABLED=true`: fora disso responde 404, como uma rota que não existe.
- * Exige sessão de clínica, porque mover o relógio mexe no preço de todas as vagas.
- * `@AllowAnonymous` só tira o guard global da frente: a flag é conferida antes da
- * sessão, para a rota desligada responder 404 mesmo sem cookie.
+ *
+ * O relógio é global e o preço só desce, então adiantá-lo é irreversível para todas
+ * as clínicas. Por isso a autorização é um segredo do operador (`DEMO_CLOCK_TOKEN`,
+ * header `x-demo-clock-token`), não uma sessão: o cadastro de clínica é aberto e
+ * qualquer um teria o papel (HACK-46). Uma lista de e-mails também não serviria,
+ * porque o cadastro não confirma o e-mail. A tela do 6.1 envia o token pelo servidor
+ * do Next, nunca pelo navegador.
  */
 @AllowAnonymous()
 @Controller('demo/clock')
 export class ClockController {
   constructor(
     private readonly clock: ClockService,
-    private readonly sessions: AuthSessionService,
     @Inject(APP_ENV) private readonly env: AppEnv,
   ) {}
 
   @Get()
   async read(@Req() req: Request): Promise<DemoClockResponse> {
-    await this.authorize(req);
+    this.authorize(req);
     await this.clock.refresh();
     return this.snapshot();
   }
@@ -51,7 +59,7 @@ export class ClockController {
     @Req() req: Request,
     @Body() body: unknown,
   ): Promise<DemoClockResponse> {
-    await this.authorize(req);
+    this.authorize(req);
     const parsed = demoClockAdvanceBodySchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({
@@ -66,16 +74,25 @@ export class ClockController {
 
   @Delete()
   async reset(@Req() req: Request): Promise<DemoClockResponse> {
-    await this.authorize(req);
+    this.authorize(req);
     await this.clock.reset();
     return this.snapshot();
   }
 
-  private async authorize(req: Request): Promise<void> {
-    if (!this.env.DEMO_CLOCK_ENABLED) throw new NotFoundException();
-    const session = await this.sessions.getSession(req.headers);
-    if (!session) throw new UnauthorizedException();
-    if (session.user.role !== 'clinica') throw new ForbiddenException();
+  /** 404 com a flag desligada; 401 sem token; 403 com token errado. */
+  private authorize(req: Request): void {
+    const expected = this.env.DEMO_CLOCK_TOKEN;
+    if (!this.env.DEMO_CLOCK_ENABLED || !expected) {
+      throw new NotFoundException();
+    }
+    const sent = req.headers[DEMO_CLOCK_TOKEN_HEADER];
+    if (typeof sent !== 'string' || sent.length === 0) {
+      throw new UnauthorizedException();
+    }
+    // Compara digests de mesmo tamanho em tempo constante.
+    if (!timingSafeEqual(digest(sent), digest(expected))) {
+      throw new ForbiddenException();
+    }
   }
 
   private snapshot(): DemoClockResponse {

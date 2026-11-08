@@ -6,18 +6,20 @@ import {
   startTestApp,
   type TestApp,
 } from '../../testing/test-app';
+import { DEMO_CLOCK_TOKEN_HEADER } from './clock.controller';
 import { ClockService } from './clock.service';
+
+const TOKEN = 'token-do-operador-da-demo-com-32-chars';
 
 let t: TestApp;
 let off: TestApp;
-let clinic: string;
-let patient: string;
 
 before(async () => {
-  t = await startTestApp({ DEMO_CLOCK_ENABLED: 'true' });
+  t = await startTestApp({
+    DEMO_CLOCK_ENABLED: 'true',
+    DEMO_CLOCK_TOKEN: TOKEN,
+  });
   off = await startTestApp();
-  clinic = (await signUpWithCookie(t, 'clinica')).cookie;
-  patient = (await signUpWithCookie(t, 'paciente')).cookie;
   await t.app.get(ClockService).reset();
 });
 
@@ -27,53 +29,50 @@ after(async () => {
   await off.close();
 });
 
-const advance = (cookie: string, body: unknown) =>
-  jsonRequest(t, 'POST', '/api/demo/clock', body, { cookie });
+const call = (
+  app: TestApp,
+  method: string,
+  body?: unknown,
+  headers: Record<string, string> = { [DEMO_CLOCK_TOKEN_HEADER]: TOKEN },
+) => jsonRequest(app, method, '/api/demo/clock', body, headers);
 
-test('clínica adianta 25 h: offset soma e now() anda junto', async () => {
-  const clock = t.app.get(ClockService);
+const advance = (minutes: number) =>
+  call(t, 'POST', { advanceMinutes: minutes });
+
+test('operador adianta 25 h: offset soma e now() anda junto', async () => {
   const before = Date.now();
-  const first = await advance(clinic, { advanceMinutes: 25 * 60 });
+  const first = await advance(25 * 60);
   assert.equal(first.status, 200);
   assert.equal(
     ((await first.json()) as { offsetMinutes: number }).offsetMinutes,
     1500,
   );
-  const second = await advance(clinic, { advanceMinutes: 60 });
-  const body = (await second.json()) as { offsetMinutes: number; now: string };
+  const body = (await (await advance(60)).json()) as {
+    offsetMinutes: number;
+    now: string;
+  };
   assert.equal(body.offsetMinutes, 1560);
   const shift = new Date(body.now).getTime() - before;
   assert.ok(
     shift >= 1560 * 60_000 && shift < 1561 * 60_000,
     `deslocamento ${shift}`,
   );
-  assert.ok(clock.now().getTime() - Date.now() >= 1560 * 60_000 - 1_000);
 });
 
 test('o deslocamento sobrevive a um restart: outra instância lê do banco', async () => {
   await t.app.get(ClockService).reset();
-  await advance(clinic, { advanceMinutes: 90 });
-  const otherInstance = off.app.get(ClockService);
-  assert.equal(await otherInstance.refresh(), 90);
+  await advance(90);
+  assert.equal(await off.app.get(ClockService).refresh(), 90);
 });
 
 test('DELETE volta ao relógio real', async () => {
-  await advance(clinic, { advanceMinutes: 30 });
-  const response = await jsonRequest(
-    t,
-    'DELETE',
-    '/api/demo/clock',
-    undefined,
-    {
-      cookie: clinic,
-    },
-  );
+  await advance(30);
+  const response = await call(t, 'DELETE');
   assert.equal(response.status, 200);
   assert.equal(
     ((await response.json()) as { offsetMinutes: number }).offsetMinutes,
     0,
   );
-  assert.equal(t.app.get(ClockService).offsetMinutes(), 0);
 });
 
 test('corpo inválido responde 400 e não mexe no relógio', async () => {
@@ -83,25 +82,46 @@ test('corpo inválido responde 400 e não mexe no relógio', async () => {
     { advanceMinutes: -10 },
     { minutes: 10 },
   ]) {
-    const response = await advance(clinic, body);
-    assert.equal(response.status, 400, JSON.stringify(body));
+    assert.equal(
+      (await call(t, 'POST', body)).status,
+      400,
+      JSON.stringify(body),
+    );
   }
   assert.equal(await t.app.get(ClockService).refresh(), 0);
 });
 
-test('sem sessão responde 401; paciente responde 403', async () => {
-  assert.equal((await jsonRequest(t, 'GET', '/api/demo/clock')).status, 401);
-  assert.equal((await advance(patient, { advanceMinutes: 10 })).status, 403);
+test('HACK-46: clínica logada sem token recebe 401 e o relógio não anda', async () => {
+  await t.app.get(ClockService).reset();
+  const clinic = await signUpWithCookie(t, 'clinica');
+  const response = await call(
+    t,
+    'POST',
+    { advanceMinutes: 43200 },
+    { cookie: clinic.cookie },
+  );
+  assert.equal(response.status, 401);
+  assert.equal(await t.app.get(ClockService).refresh(), 0);
 });
 
-test('com a flag desligada a rota responde 404, até para clínica logada', async () => {
-  const cookie = (await signUpWithCookie(off, 'clinica')).cookie;
+test('HACK-46: token errado recebe 403 em todos os métodos e o relógio não anda', async () => {
+  await t.app.get(ClockService).reset();
+  for (const wrong of [`${TOKEN}x`, TOKEN.slice(0, -1), 'x'.repeat(40)]) {
+    for (const method of ['GET', 'POST', 'DELETE']) {
+      const body = method === 'POST' ? { advanceMinutes: 43200 } : undefined;
+      const response = await call(t, method, body, {
+        [DEMO_CLOCK_TOKEN_HEADER]: wrong,
+      });
+      assert.equal(response.status, 403, `${method} ${wrong}`);
+    }
+  }
+  assert.equal(await t.app.get(ClockService).refresh(), 0);
+});
+
+test('com a flag desligada a rota responde 404, até com um token', async () => {
   for (const method of ['GET', 'POST', 'DELETE']) {
     const body = method === 'POST' ? { advanceMinutes: 10 } : undefined;
-    const response = await jsonRequest(off, method, '/api/demo/clock', body, {
-      cookie,
-    });
-    assert.equal(response.status, 404, method);
+    assert.equal((await call(off, method, body)).status, 404, method);
   }
-  assert.equal((await jsonRequest(off, 'GET', '/api/demo/clock')).status, 404);
+  assert.equal((await call(off, 'GET', undefined, {})).status, 404);
 });

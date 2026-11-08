@@ -4,6 +4,7 @@ import {
   CHANNEL_ADAPTERS,
   type AlertContext,
   type ChannelAdapter,
+  type DeliveryInfo,
   type NotificationChannel,
   type NotificationMessage,
   type NotificationRecipient,
@@ -127,7 +128,9 @@ export class NotificationsService {
     const alertId = await this.claimAlert(channel, context);
     if (!alertId) return { channel, result: 'duplicado' };
 
-    const sent = await this.callAdapter(adapter, recipient, notification);
+    const sent = await this.callAdapter(adapter, recipient, notification, {
+      alertId,
+    });
     try {
       await this.prisma.alert.update({
         where: { id: alertId },
@@ -197,12 +200,13 @@ export class NotificationsService {
     adapter: ChannelAdapter,
     recipient: NotificationRecipient,
     notification: OutgoingNotification,
+    delivery: DeliveryInfo,
   ): Promise<boolean> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), CHANNEL_TIMEOUT_MS);
     try {
       await Promise.race([
-        adapter.send(recipient, notification, controller.signal),
+        adapter.send(recipient, notification, controller.signal, delivery),
         new Promise<never>((_, reject) =>
           controller.signal.addEventListener('abort', () =>
             reject(
