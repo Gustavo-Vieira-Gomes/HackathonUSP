@@ -3,12 +3,20 @@ import Link from "next/link";
 import { getDemoNow, getPatient, listOpenVacancies, listPatientReservations, listWaitlist, type VacancyLive } from "@/lib/data";
 import { currentPatientId } from "@/lib/session";
 import { PatientHeader } from "@/components/paciente/PatientHeader";
-import { brl, relDay, spTime } from "@/lib/format";
+import { brl, relDay, spDay, spTime, TZ } from "@/lib/format";
+import { IconBell, IconCalendar } from "@/components/icons";
 import { TabBar } from "@/components/TabBar";
 import { Screen, ScreenLoading } from "@/components/paciente/Screen";
 import { ExamPicker } from "@/components/paciente/ExamPicker";
 import { discountPct, vagaHref } from "@/components/paciente/helpers";
 import "./inicio.css";
+
+function monthShort(iso: string) {
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, month: "short" }).format(new Date(iso)).replace(".", "");
+}
+function dayNum(iso: string) {
+  return String(Number(spDay(iso).slice(8, 10)));
+}
 
 export default function InicioPage() {
   return (
@@ -41,7 +49,7 @@ async function Inicio() {
   return (
     <Screen
       className="scr-inicio"
-      style={{ padding: "20px 20px 12px", gap: 18 }}
+      style={{ padding: "20px 20px 28px", gap: 28 }}
       header={<PatientHeader patient={patient ? { name: patient.name, email: patient.email, phone: patient.phone } : null} />}
       footer={<TabBar />}
     >
@@ -80,57 +88,81 @@ async function Inicio() {
 
       <ExamPicker />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <h2 style={{ fontSize: 20 }}>Próxima reserva</h2>
+      <section className="home-sec" aria-labelledby="h-prox">
+        <div className="home-sec-h">
+          <h2 id="h-prox">Próxima reserva</h2>
+          {next ? <Link href="/paciente/reservas">Ver todas</Link> : null}
+        </div>
         {next ? (
-          <Link href={`/paciente/reservas/${next.id}`} className="panel" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-              <strong>{next.clinic_exam.display_name}</strong>
-              <span className="chip st-reservada">Reservada</span>
-            </div>
-            <div className="small muted">
-              {relDay(next.starts_at, now)}, {spTime(next.starts_at)} · {next.clinic_exam.clinic.name}
-            </div>
+          <Link href={`/paciente/reservas/${next.id}`} className="panel home-card">
+            <span className="home-when" aria-hidden="true">
+              <span className="m">{monthShort(next.starts_at)}</span>
+              <span className="d">{dayNum(next.starts_at)}</span>
+            </span>
+            <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+              <strong style={{ fontSize: 16, lineHeight: 1.25 }}>{next.clinic_exam.display_name}</strong>
+              <span className="small" style={{ color: "var(--ink-2)" }}>
+                {relDay(next.starts_at, now)}, {spTime(next.starts_at)}
+              </span>
+              <span className="small muted">{next.clinic_exam.clinic.name}</span>
+            </span>
+            <span className="chip st-reservada" style={{ flex: "none", alignSelf: "flex-start" }}>
+              Reservada
+            </span>
           </Link>
         ) : (
-          <div className="panel" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 4 }}>
-            <strong>Nenhuma reserva marcada</strong>
-            <div className="small muted">Escolha um exame acima para ver horários e preços.</div>
+          <div className="panel home-card">
+            <span className="home-ico" aria-hidden="true">
+              <IconCalendar />
+            </span>
+            <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <strong>Nenhuma reserva marcada</strong>
+              <span className="small muted">Escolha um exame acima para ver horários e preços.</span>
+            </span>
           </div>
         )}
-      </div>
+      </section>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <h2 style={{ fontSize: 20 }}>Seus avisos de vaga</h2>
+      <section className="home-sec" aria-labelledby="h-avisos">
+        <div className="home-sec-h">
+          <h2 id="h-avisos">Seus avisos de vaga</h2>
+        </div>
         {activeWaitlist.length === 0 ? (
-          <div className="panel" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 2 }}>
-            <strong>Nenhum aviso ativo</strong>
-            <div className="small muted">Crie um aviso e mandamos mensagem quando abrir vaga com desconto.</div>
+          <div className="panel home-card">
+            <span className="home-ico" aria-hidden="true">
+              <IconBell />
+            </span>
+            <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <strong>Nenhum aviso ativo</strong>
+              <span className="small muted">Crie um aviso e mandamos mensagem quando abrir vaga com desconto.</span>
+            </span>
           </div>
         ) : (
           activeWaitlist.map((w) => {
             const days = Math.max(1, Math.ceil((Date.parse(w.expires_at) - now.getTime()) / 86400000));
             return (
-              <div key={w.id} className="panel" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 2 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <strong>{w.exam_label}</strong>
-                  <span className="chip st-publicada">Ativo</span>
-                </div>
-                <div className="small muted">
-                  Até {w.radius_km} km · até {brl(w.max_price_cents)} · vale por mais {days} {days === 1 ? "dia" : "dias"}
-                </div>
+              <div key={w.id} className="panel home-card">
+                <span className="home-ico" aria-hidden="true">
+                  <IconBell />
+                </span>
+                <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                  <strong style={{ lineHeight: 1.25 }}>{w.exam_label}</strong>
+                  <span className="small muted">
+                    Até {w.radius_km} km · até {brl(w.max_price_cents)} · vale por mais {days} {days === 1 ? "dia" : "dias"}
+                  </span>
+                </span>
+                <span className="chip st-publicada" style={{ flex: "none", alignSelf: "flex-start" }}>
+                  Ativo
+                </span>
               </div>
             );
           })
         )}
         <Link className="btn btn-ghost btn-block" href="/paciente/aviso">
-          <svg className="ico" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7z" />
-            <path d="M10 20h4" />
-          </svg>
+          <IconBell />
           Criar aviso de vaga
         </Link>
-      </div>
+      </section>
     </Screen>
   );
 }

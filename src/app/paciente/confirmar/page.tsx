@@ -65,9 +65,8 @@ async function Confirmar({ searchParams }: { searchParams: SearchParams }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div>
             <strong style={{ fontSize: 18 }}>{exam.display_name}</strong>
-            <div className="muted">
-              {exam.clinic.name} · {exam.clinic.address}
-            </div>
+            <div className="muted">{exam.clinic.name}</div>
+            <div className="small muted">{exam.clinic.address}</div>
           </div>
           <span className="chip st-expirada">Horário normal</span>
         </div>

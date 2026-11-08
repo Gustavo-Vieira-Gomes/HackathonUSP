@@ -76,7 +76,16 @@ export function AgendaPicker({
           <BackLink href={backHref} label="Voltar aos preços" />
           <div style={{ minWidth: 0 }}>
             <h1 style={{ fontSize: 24 }}>Agenda da clínica</h1>
-            <p className="small muted">{title}</p>
+            <p className="small muted" style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {title.split(" · ").length > 2 ? (
+                <>
+                  <span>{title.split(" · ").slice(0, 2).join(" · ")}</span>
+                  <span style={{ color: "var(--teal-d)", fontWeight: 600 }}>{title.split(" · ").slice(2).join(" · ")}</span>
+                </>
+              ) : (
+                title
+              )}
+            </p>
           </div>
         </div>
 
