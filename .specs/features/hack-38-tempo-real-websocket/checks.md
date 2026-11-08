@@ -45,7 +45,7 @@ Proof: `cd apps/api && node --env-file-if-exists=.env --test --test-name-pattern
 **C8** - Com `AuthSessionService.verifyOneTimeToken` e `AuthSessionService.getSession` substituídos por funções que lançam `Error('db down')`, o handshake com token e o handshake só com cookie recebem `connect_error` `unavailable`; o `Logger` do gateway registra 1 erro por handshake e o texto registrado não contém o token, o valor do cookie nem o e-mail da conta (S1, AC 9)
 Proof: `cd apps/api && node --env-file-if-exists=.env --test --test-name-pattern="^C8 " .test-dist/modules/realtime/realtime-handshake.test.js` (2 caminhos: token, cookie)
 
-**C9** - Com token válido e cookie válido, o handshake com `Origin: http://evil.example` e o handshake sem `Origin` recebem HTTP `403`, tanto no `GET /socket.io/?EIO=4&transport=polling` quanto no upgrade `transport=websocket`; com `Origin` igual a `WEB_ORIGIN` o mesmo handshake conecta (S1, AC 10)
+**C9** - Com token válido e cookie válido, o handshake com `Origin: http://evil.example` e o handshake sem `Origin` recebem HTTP `403` no `GET /socket.io/?EIO=4&transport=polling` e HTTP `400` no upgrade `transport=websocket`, sem abrir conexão (desvio M1 do plano); com `Origin` igual a `WEB_ORIGIN` o mesmo handshake conecta (S1, AC 10)
 Proof: `cd apps/api && node --env-file-if-exists=.env --test --test-name-pattern="^C9 " .test-dist/modules/realtime/realtime-handshake.test.js` (2 origens recusadas × 2 transportes, mais o controle aceito)
 
 **C10** - Um paciente que conecta com `auth: { token, userId: '<id de outro paciente>', role: 'clinica', room: 'clinica:<id de uma clínica>' }` e query `?userId=<id de outro>&room=clinica:x` fica exatamente em `{<socket.id>, paciente:<seu próprio id>}` (S1, AC 11)
@@ -131,7 +131,7 @@ Proof: `cd apps/web && npx tsx --conditions=react-server --test --test-name-patt
 | Set (size) | Member -> proof | Unproven |
 | --- | --- | --- |
 | `GET /api/auth/one-time-token/generate` statuses (4) | `200` C1 · `401` C1 · `502` C32 · `504` C32 | - |
-| `WS /realtime` handshake statuses (4) | `101` C2 · `403` C9 · `connect_error unauthorized` C4 · `connect_error unavailable` C8 | - |
+| `WS /realtime` handshake statuses (5) | `101` C2 · `403` C9 · `400` C9 · `connect_error unauthorized` C4 · `connect_error unavailable` C8 | - |
 | causas de `401` na geração (2) | sem cookie C1 · sessão encerrada C1 | - |
 | causas de `unauthorized` no handshake (7) | token adulterado C4 · token expirado C4 · token ruim com cookie bom C4 · token reutilizado C5 · sem token nem cookie C7 · cookie adulterado C7 · cookie de sessão encerrada C7 | - |
 | caminhos de autenticação do handshake (2) | token C2 · cookie C6 | - |
@@ -177,3 +177,4 @@ Proof: `cd apps/web && npx tsx --conditions=react-server --test --test-name-patt
 - S1-S5 somam ~55k, sob o orçamento de 150k - um construtor, sem handoff.
 - Mecanismo: um construtor (estimativa sob o orçamento). Base do build: `origin/main` em `0779304` (merge do HACK-12, fast-forward); pressupostos «12» reconferidos contra `0779304`: só voltaram arquivos do HACK-41 que a branch do 12 não tinha.
 - **Settled mid-build:** C31 - a prova gravava o log em `.test-logs/` sem criar a pasta; a prova ganhou `mkdir -p .test-logs &&` antes. A afirmação não mudou.
+- **Settled mid-build:** C9 - o upgrade websocket recusado por origem responde 400 (o `abortUpgrade` do engine.io 6 escreve 400 fixo), não 403; o Maestro decidiu em 08/11/2026 (opção A, desvio M1 no plano) e o C9 e o AC 10 passaram a dizer 403 no polling e 400 no upgrade, sem conexão aberta.

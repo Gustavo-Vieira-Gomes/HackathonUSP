@@ -76,7 +76,7 @@ Nenhum - este card não muda o shape de dado persistido. O token do socket fica 
 | Route | In | Out | Status |
 | --- | --- | --- | --- |
 | `GET /api/auth/one-time-token/generate` (Better Auth no Nest, via repasse do Next do HACK-12) | cookie de sessão | `token` | `200`, `401`, `502`, `504` |
-| `WS /realtime` handshake (Nest) | `auth.token` (ou cookie de sessão, em dev), header `Origin` | conexão nas salas `paciente:<user.id>` ou `clinica:<user.id>` | `101` (upgrade), `403` (origem recusada), `connect_error unauthorized`, `connect_error unavailable` |
+| `WS /realtime` handshake (Nest) | `auth.token` (ou cookie de sessão, em dev), header `Origin` | conexão nas salas `paciente:<user.id>` ou `clinica:<user.id>` | `101` (upgrade), `403` (origem recusada no polling), `400` (origem recusada no upgrade websocket), `connect_error unauthorized`, `connect_error unavailable` |
 
 Eventos no mesmo namespace. Não são HTTP, então não têm status code; o resultado de cada um está no ack ou na sala que recebe. Forma literal na porta 2.
 
@@ -118,7 +118,7 @@ Só quem tem sessão válida conecta, e cai apenas na sala do seu papel.
 7. QUANDO o handshake chega sem `auth.token` e com cookie de sessão válido do Better Auth (dev, Next e Nest no mesmo host) ENTÃO o sistema DEVE aceitar a conexão e colocá-la só na sala do papel da sessão, como nos AC 3 e 4
 8. SE o handshake chega sem `auth.token` e sem cookie de sessão válido ENTÃO o sistema DEVE recusar a conexão com `connect_error` `unauthorized`
 9. SE a verificação do token ou do cookie falha por erro inesperado (banco fora) ENTÃO o sistema DEVE recusar a conexão com `connect_error` de mensagem `unavailable` e registrar o erro sem token, cookie ou dado pessoal no log
-10. SE o header `Origin` do handshake é diferente de `WEB_ORIGIN` ENTÃO o sistema DEVE recusar o handshake com HTTP 403, mesmo com token ou cookie válido
+10. SE o header `Origin` do handshake é diferente de `WEB_ORIGIN` ENTÃO o sistema DEVE recusar o handshake polling com HTTP 403 e o upgrade websocket com HTTP 400, sem abrir conexão, mesmo com token ou cookie válido (desvio decidido pelo Maestro em 08/11/2026: o `abortUpgrade` do engine.io 6 escreve 400 fixo)
 11. O sistema DEVE derivar as salas de paciente e de clínica só da sessão devolvida pelo Better Auth, ignorando qualquer id enviado pelo cliente em `auth`, query ou evento
 
 **Independent test:** contra o Nest de teste com o Postgres do worktree: cadastra um paciente pelo Better Auth, gera o token com o cookie, conecta com `socket.io-client` e entra; um cliente sem token e sem cookie recebe `unauthorized`; o mesmo token na segunda vez também; um cliente só com o cookie entra.
@@ -215,6 +215,7 @@ Decididas pelo Gustavo em 07/11/2026, trazidas pelo Maestro Tempo real.
 | --- | --- | --- | --- |
 | D1 | Autenticação do socket em produção (T4, T9, HACK-14): o cookie fica no domínio do Next e o handshake direto ao Nest não o leva | (A) token de uso único do Better Auth, emitido pela rota de auth que o servidor do Next repassa, enviado em `auth.token`; cookie continua aceito em dev (porta 1) | Funciona em dev, produção e preview, sem domínio próprio e sem criptografia própria; HACK-14 só precisa de 1 réplica e WebSocket ligado no host. Muda a letra do T4 (o cookie origina o token, mas não viaja no handshake em produção). Rejeitadas: (B) domínio pai comum, por custo e risco de domínio/DNS/TLS no HACK-14 e por não cobrir preview; (C) long-polling pela mesma origem, por limite de tempo do rewrite da Vercel e funcionamento não confirmado |
 | D2 | `vaga.reservada` na lista do paciente | (A) só na sala `vaga:<id>` | Custo zero; a lista 2.2 mostra a vaga até recarregar ou abrir, e a página da vaga diz "vaga preenchida" (F9). Rejeitada: (B) mandar também às salas dos pacientes alertados, que exigiria do card 3.4 a lista de alertados na reserva |
+| M1 | Status do upgrade websocket recusado por origem (AC 10), decidido pelo Maestro Tempo real em 08/11/2026 no build | (A) manter o `allowRequest` do engine.io: 403 no handshake polling, 400 no upgrade websocket, nenhuma conexão aberta | O `abortUpgrade` do engine.io 6 escreve `HTTP/1.1 400 Bad Request` fixo; a garantia de segurança é a mesma. Rejeitada: (B) listener `upgrade` próprio antes do engine.io para responder 403, código próprio no caminho do protocolo |
 
 ## Observable
 
