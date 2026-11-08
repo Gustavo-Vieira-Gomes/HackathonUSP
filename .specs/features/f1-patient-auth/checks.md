@@ -5,7 +5,7 @@ Run api: `npm run test -w @hackathon/api`
 Run contracts: `npm run test -w @hackathon/contracts`
 Plan: `.specs/features/f1-patient-auth/plan.md`
 
-41 checks in 4 slices · 6 one-way doors · 0 open
+44 checks in 4 slices · 6 one-way doors · 0 open
 
 Os testes da API sobem a aplicação Nest real numa porta efêmera contra o Postgres local
 (`compose.yaml`, banco `hackathon_test` recriado antes da suíte). As telas não têm captura nem
@@ -61,7 +61,7 @@ Proof: walk - cadastrar de novo com o e-mail usado em C12
 Proof: walk - enviar senha de 7 caracteres e e-mail sem arroba, desligando a validação do navegador
 
 **C16** - Com a API fora do ar ou sem responder em 5 s, `/cadastro` e `/entrar` mostram "Não foi possível concluir agora. Tente novamente em instantes." sem redirecionar nem gravar cookie (AC 12)
-Proof: walk - enviar os dois formulários com `API_BASE_URL` apontando para uma porta fechada e para um servidor que nunca responde
+Proof: walk - enviar os dois formulários com `API_BASE_URL` apontando para uma porta fechada, para um servidor que nunca responde e para a API com o banco fora (503)
 
 ### S2 - Login, sessão e saída
 
@@ -74,7 +74,7 @@ Proof: run api | ✔ C18 login errado responde 401 igual para e-mail inexistente
 **C19** - `POST /api/sessions` com e-mail sem arroba ou senha vazia responde `400 validation_failed` com `fields` (Surface)
 Proof: run api | ✔ C19 login com formato inválido responde 400
 
-**C20** - Para o mesmo e-mail, a 5ª tentativa errada em 60 s responde `401`, a 6ª com senha correta responde `429 rate_limited` com `Retry-After`, outro e-mail na mesma janela responde `200`, e a mesma conta depois de 60 s responde `200` (AC 15)
+**C20** - Para o mesmo e-mail, a 5ª tentativa errada em 60 s responde `401`, a 6ª com senha correta responde `429 rate_limited` com `Retry-After`, outro e-mail na mesma janela responde `200`, 30 s depois ainda `429`, e 60 s depois da 6ª responde `200` (AC 15; bloqueio de 60 s a partir da 6ª)
 Proof: run api | ✔ C20 sexta tentativa em 60 s por e-mail responde 429
 
 **C21** - `GET /api/patients/me` com cookie válido responde `200` com `{ id, name, email, phone }` iguais aos do cadastro (AC 16)
@@ -138,11 +138,20 @@ Proof: run api | ✔ C38 logs não contêm senha nem token
 **C39** - Toda resposta de erro das rotas da Surface é válida em `apiErrorSchema` (Landing door 5)
 Proof: run api | ✔ C39 erros das rotas seguem o contrato de erro
 
-**C40** - O build de produção sobe com Postgres, cadastra, entra e lê `/me` pelo Next e pela API, e mostra a página inicial com e sem API (smoke, prova a porta 2 compilada em CommonJS)
+**C40** - O build de produção sobe com Postgres, cadastra e entra pela API, lê `/me` pela API e `/minha-conta` pelo Next com o cookie, confere o 307 sem sessão e mostra a página inicial com e sem API (smoke, prova a porta 2 compilada em CommonJS; cadastro e login pelas Server Actions são C12 e C24)
 Proof: `npm run smoke`
 
 **C41** - O schema Zod de cadastro do pacote de contratos aceita os exemplos válidos de C2 e recusa os inválidos de C6 com os mesmos campos (AC 4)
 Proof: run contracts | ✔ C41 schema de cadastro aceita e recusa os exemplos do plano
+
+**C42** - `DELETE /api/sessions/current` com cookie válido e banco inacessível responde `503 service_unavailable`, e a sessão continua no banco para ser revogada depois (Verifier, achado 1)
+Proof: run api | ✔ C42 saída com banco inacessível responde 503 e não finge sucesso
+
+**C43** - `GET /api/patients/me` não renova a sessão: `expiresAt` fica igual e não há `Set-Cookie` (Verifier, achado 2)
+Proof: run api | ✔ C43 sessão não é renovada por uso: vence 7 dias após o login
+
+**C44** - Com cookie e a API fora do ar, `/minha-conta` responde 200 com "Não foi possível carregar sua conta agora. Tente novamente em instantes." (Verifier, achado 7)
+Proof: walk - abrir `/minha-conta` com cookie e `API_BASE_URL` em porta fechada
 
 ## Coverage
 
@@ -185,7 +194,7 @@ Proof: run contracts | ✔ C41 schema de cadastro aceita e recusa os exemplos do
 ## Handoff
 
 - **Settled mid-build:** 2026-11-08 - usuário: "Adote a recomendação: a F1 entrega SessionGuard e a convenção 404, e o cenário Maria/João vira critério da F4"; "Para o termo LGPD use texto placeholder claramente marcado, sem inventar texto jurídico, e deixe isso registrado como pendência"; "Prove o risco ESM x CommonJS no primeiro commit"; "commits e PRs autorizados. Trabalhe numa branch feat/f1-patient-auth (não na main), faça commits pequenos e convencionais após npm run check e build verdes, sem tocar em graphify-out/, sem force push e sem merge. Não abra o PR você mesmo"
-- **Dispatched:** none
+- **Dispatched:** Verifier (sub-agente independente) em 2026-11-08 sobre `HEAD` `b8a2065`, diff `55ead55..b8a2065` - returned (7 achados)
 - **Boundary:** C1-C41 closed at `073a9a6` (API e contratos em `0cfd15d`, web e smoke em `adea3ae`, docs em `073a9a6`)
 - **Abandoned:** `prisma migrate reset --force` antes da suíte - o Prisma recusa o comando quando chamado por agente sem consentimento explícito do usuário; trocado por `prisma migrate deploy` + `TRUNCATE` por teste (nota em `## Landing` do plano). Prova ESM x CommonJS: `require('better-auth')` e `tsc` em CommonJS passaram antes de qualquer código; o commit `0cfd15d` a mantém pela suíte HTTP compilada em CommonJS e pelo smoke do `dist`
-- **Walked:** 2026-11-08, `npm run dev` (Next 3000, Nest 3001, Postgres de dev) no Chromium do Playwright. C30: `/` mostra "Entrar" (`/entrar`) e "Criar conta" (`/cadastro`) e "API conectada"; o link "Criar conta" abre `/cadastro`. C11: `/cadastro` mostra Nome, E-mail, Telefone, Senha, o termo "TEXTO PROVISÓRIO - termo jurídico pendente · versão saude-v1" e a caixa desmarcada com o rótulo do plano. C13: enviado sem marcar o termo - fica em `/cadastro`, mensagem "O consentimento para dados de saúde é obrigatório.", nome/e-mail/telefone mantidos, senha vazia, foco na caixa, e `select count(*)` do e-mail no banco = 0. C12: marcado o termo e "Criar conta" - `/minha-conta` com "Olá, Ana Walk". C31: `document.cookie` vazio; cookie `better-auth.session_token` HttpOnly, SameSite Lax, Path /, 7 dias (Secure só em produção); o token não aparece no HTML nem no payload RSC de `/minha-conta`. C29: logada, `/entrar` e `/cadastro` levam a `/minha-conta`. C28: "Sair" leva a `/entrar`, cookie removido, 0 sessões da conta no banco, e reabrir `/minha-conta` leva a `/entrar`. C27: sem cookie, `/minha-conta` responde 307 para `/entrar`. C25: senha errada - "E-mail ou senha incorretos.", e-mail mantido, senha vazia. C24: senha certa - `/minha-conta` com nome, e-mail e "(11) 98765-4321". C14: cadastro com "ANA.walk@exemplo.com" - "Este e-mail já está cadastrado." com link "Entrar" para `/entrar`. C15: com `noValidate`, senha de 7 e e-mail sem arroba - "Informe um e-mail válido." e "A senha deve ter de 8 a 128 caracteres." junto aos campos, foco no e-mail. C26: seis tentativas erradas seguidas - a partir da 6ª do e-mail na janela de 60 s (duas vieram de C24/C25) aparece "Muitas tentativas. Aguarde um minuto e tente novamente.". C16 (build de produção do Next): `API_BASE_URL` em porta fechada - mensagem em 0,2 s; servidor que aceita e não responde - mensagem em 5,4 s; API real com banco fora respondendo 503 - mesma mensagem; nos três, `/cadastro` e `/entrar` sem redirect e 0 cookies. Largura 375 px: `/`, `/cadastro` e `/entrar` sem rolagem horizontal. O usuário chega a cada estado pela home: "Criar conta" → `/cadastro`, "Entrar" → `/entrar`, cadastro ou login → `/minha-conta`, "Sair" → `/entrar`
+- **Walked:** 2026-11-08, C44 após o Verifier: `next start` com `API_BASE_URL` em porta fechada e cookie de sessão - `/minha-conta` 200 com "Não foi possível carregar sua conta agora. Tente novamente em instantes.". Antes, `npm run dev` (Next 3000, Nest 3001, Postgres de dev) no Chromium do Playwright. C30: `/` mostra "Entrar" (`/entrar`) e "Criar conta" (`/cadastro`) e "API conectada"; o link "Criar conta" abre `/cadastro`. C11: `/cadastro` mostra Nome, E-mail, Telefone, Senha, o termo "TEXTO PROVISÓRIO - termo jurídico pendente · versão saude-v1" e a caixa desmarcada com o rótulo do plano. C13: enviado sem marcar o termo - fica em `/cadastro`, mensagem "O consentimento para dados de saúde é obrigatório.", nome/e-mail/telefone mantidos, senha vazia, foco na caixa, e `select count(*)` do e-mail no banco = 0. C12: marcado o termo e "Criar conta" - `/minha-conta` com "Olá, Ana Walk". C31: `document.cookie` vazio; cookie `better-auth.session_token` HttpOnly, SameSite Lax, Path /, 7 dias (Secure só em produção); o token não aparece no HTML nem no payload RSC de `/minha-conta`. C29: logada, `/entrar` e `/cadastro` levam a `/minha-conta`. C28: "Sair" leva a `/entrar`, cookie removido, 0 sessões da conta no banco, e reabrir `/minha-conta` leva a `/entrar`. C27: sem cookie, `/minha-conta` responde 307 para `/entrar`. C25: senha errada - "E-mail ou senha incorretos.", e-mail mantido, senha vazia. C24: senha certa - `/minha-conta` com nome, e-mail e "(11) 98765-4321". C14: cadastro com "ANA.walk@exemplo.com" - "Este e-mail já está cadastrado." com link "Entrar" para `/entrar`. C15: com `noValidate`, senha de 7 e e-mail sem arroba - "Informe um e-mail válido." e "A senha deve ter de 8 a 128 caracteres." junto aos campos, foco no e-mail. C26: seis tentativas erradas seguidas - a partir da 6ª do e-mail na janela de 60 s (duas vieram de C24/C25) aparece "Muitas tentativas. Aguarde um minuto e tente novamente.". C16 (build de produção do Next): `API_BASE_URL` em porta fechada - mensagem em 0,2 s; servidor que aceita e não responde - mensagem em 5,4 s; API real com banco fora respondendo 503 - mesma mensagem; nos três, `/cadastro` e `/entrar` sem redirect e 0 cookies. Largura 375 px: `/`, `/cadastro` e `/entrar` sem rolagem horizontal. O usuário chega a cada estado pela home: "Criar conta" → `/cadastro`, "Entrar" → `/entrar`, cadastro ou login → `/minha-conta`, "Sair" → `/entrar`

@@ -25,8 +25,7 @@ resultado (consentimento obrigatório, e-mail único, identidade derivada só da
 tentativas) rodam em serviços e guards do Nest, cobertos pelos testes HTTP `node --test` da API
 contra um Postgres real; o Next só valida formato para UX e repassa o cookie.
 
-1. formulário `/cadastro` -> Server Action do Next (new) - valida formato com o schema do contrato
-   para UX, envia `POST API_BASE_URL/api/patients` com timeout de 5 s
+1. formulário `/cadastro` -> Server Action do Next (new) - repassa os campos sem validar formato (o Nest valida), envia `POST API_BASE_URL/api/patients` com timeout de 5 s
 2. `PatientsController` (new) - valida o body com `patientSignUpInputSchema` (contracts, new) via
    pipe Nest; `PatientsService` (new) decide o consentimento (RN-11) e normaliza e-mail e telefone
 3. `AuthService` (door 2) - cria usuário, credencial e sessão; persiste `user`, `account`,
@@ -118,6 +117,7 @@ via `API_BASE_URL`.
 | 6. Limite de tentativas de login                           | Nova dependência `@nestjs/throttler` só em `POST /api/sessions`: 5 requisições por 60 s por e-mail normalizado (`getTracker` pelo e-mail do body), armazenamento em memória do processo; a 6ª recebe `429 rate_limited` com `Retry-After`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | **Limite embutido da biblioteca** - só vale no handler `/api/auth/*`, que não é montado. **Por IP** - atrás do Next todas as chamadas chegam com o IP do servidor do Next, e o limite viraria global. Limitação aceita: contador em memória vale por instância e zera no restart                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 - Nothing else in this change is hard to reverse
+- Ajustes após o Verifier (2026-11-08): porta 2 sem renovação de sessão (`disableSessionRefresh`): a sessão vale 7 dias desde o login, porque o cookie do Next não é regravado em leituras; porta 6 com semântica de bloqueio: a 6ª tentativa em 60 s bloqueia o e-mail por 60 s a partir dela; telefone só aceita dígitos e máscara `()+.- ` e DDD `[1-9]{2}`; `DELETE /api/sessions/current` responde `503` quando o banco está fora (C42)
 - Ajuste no build da porta 1 (2026-11-08): os testes aplicam as migrations com `prisma migrate deploy` e esvaziam as tabelas com `TRUNCATE` antes de cada teste, em vez de `prisma migrate reset --force`. O Prisma recusa `migrate reset` quando chamado por um agente sem consentimento explícito do usuário, e o reset não é necessário: `deploy` não apaga dados e serve igual à CI
 - Ao aprovar, as portas 1, 2, 3 e 5 e a convenção de RN-12 (questão 1) entram como `AD-001` a
   `AD-005` em `.specs/project/STATE.md`, seção `## Decisions` (o log de decisões do repositório),

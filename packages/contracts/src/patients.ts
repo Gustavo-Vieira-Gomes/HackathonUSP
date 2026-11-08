@@ -11,8 +11,9 @@ const emailSchema = z.string().trim().toLowerCase().max(254).pipe(z.email());
 const phoneSchema = z
   .string()
   .max(40)
+  .regex(/^[\d\s()+.-]+$/)
   .transform((value) => value.replace(/\D/g, ''))
-  .pipe(z.string().regex(/^\d{10,11}$/))
+  .pipe(z.string().regex(/^[1-9]{2}(9\d{8}|[2-8]\d{7})$/))
   .transform((digits) => `+55${digits}`);
 
 const passwordSchema = z.string().min(8).max(128);

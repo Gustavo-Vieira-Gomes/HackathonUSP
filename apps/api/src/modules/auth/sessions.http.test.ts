@@ -11,6 +11,7 @@ import {
   sessionSetCookie,
   signUp,
   startApi,
+  testConfig,
 } from '../../test-support/api';
 
 let api: RunningApi;
@@ -126,7 +127,15 @@ test('C20 sexta tentativa em 60 s por e-mail responde 429', async () => {
     );
     assert.equal(otherEmail.status, 200);
 
-    mock.timers.tick(60_001);
+    // Bloqueio de 60 s a partir da 6ª (t=0): em t=30 s ainda 429; em t=60 s libera.
+    mock.timers.tick(30_000);
+    const midWindow = await login(
+      limited.url,
+      'maria@exemplo.com',
+      'senha-da-maria-123',
+    );
+    assert.equal(midWindow.status, 429);
+    mock.timers.tick(30_001);
     const afterWindow = await login(
       limited.url,
       'maria@exemplo.com',
@@ -164,4 +173,42 @@ test('C23 saída revoga a sessão e expira o cookie', async () => {
   });
   assert.equal(again.status, 204);
   assert.ok(cookieHeader(withoutCookie.setCookies).endsWith('='));
+});
+
+test('C42 saída com banco inacessível responde 503 e não finge sucesso', async () => {
+  const { cookie } = await signUp(api.url);
+  const { createServer } = await import('node:net');
+  const server = createServer().listen(0, '127.0.0.1');
+  await new Promise((resolve) => server.once('listening', resolve));
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+  await new Promise((resolve) => server.close(resolve));
+  const down = await startApi({
+    config: testConfig({ databaseUrl: `postgresql://x:x@127.0.0.1:${port}/x` }),
+  });
+  try {
+    const result = await call(down.url, 'DELETE', '/api/sessions/current', {
+      cookie,
+    });
+    assert.equal(result.status, 503);
+    assert.equal(apiErrorSchema.parse(result.body).code, 'service_unavailable');
+  } finally {
+    await down.close();
+  }
+  assert.equal((await query('SELECT id FROM "session"')).length, 1);
+});
+
+test('C43 sessão não é renovada por uso: vence 7 dias após o login', async () => {
+  const { cookie } = await signUp(api.url);
+  await query(`UPDATE "session" SET "expiresAt" = now() + interval '5 days'`);
+  const [before] = await query<{ expiresAt: Date }>(
+    'SELECT "expiresAt" FROM "session"',
+  );
+  const me = await call(api.url, 'GET', '/api/patients/me', { cookie });
+  assert.equal(me.status, 200);
+  assert.deepEqual(me.setCookies, []);
+  const [after] = await query<{ expiresAt: Date }>(
+    'SELECT "expiresAt" FROM "session"',
+  );
+  assert.equal(after?.expiresAt.getTime(), before?.expiresAt.getTime());
 });

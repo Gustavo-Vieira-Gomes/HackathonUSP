@@ -28,6 +28,9 @@ export function createAuth(config: AppConfig, prisma: PrismaService) {
     session: {
       expiresIn: SEVEN_DAYS_IN_SECONDS,
       updateAge: ONE_DAY_IN_SECONDS,
+      // O cookie do Next não é regravado em leituras: a sessão vale 7 dias
+      // desde o login, sem renovação (achado 2 do Verifier).
+      disableSessionRefresh: true,
     },
     user: {
       additionalFields: {

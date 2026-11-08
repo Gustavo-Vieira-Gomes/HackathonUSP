@@ -135,6 +135,11 @@ export class AuthService {
       } catch (error) {
         if (!isAPIError(error)) await this.prisma.rethrowUnavailable(error);
       }
+      // A biblioteca engole a falha ao apagar a sessão: sem o banco, a saída
+      // não pode responder sucesso com a sessão ainda válida.
+      if (!(await this.prisma.isReachable())) {
+        await this.prisma.rethrowUnavailable(new Error('Banco inacessível.'));
+      }
     }
     const context = await this.auth.$context;
     const { name, attributes } = context.authCookies.sessionToken;

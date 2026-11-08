@@ -37,6 +37,11 @@ test('C41 schema de cadastro aceita e recusa os exemplos do plano', () => {
   assert.deepEqual(invalidFields({ name: 'M' }), ['name']);
   assert.deepEqual(invalidFields({ email: 'maria.exemplo.com' }), ['email']);
   assert.deepEqual(invalidFields({ phone: '119876543' }), ['phone']);
+  assert.deepEqual(invalidFields({ phone: '(011) 3333-4444' }), ['phone']);
+  assert.deepEqual(invalidFields({ phone: '(00) 00000-0000' }), ['phone']);
+  assert.deepEqual(invalidFields({ phone: 'tel 11 abc 98765-4321' }), [
+    'phone',
+  ]);
   assert.deepEqual(invalidFields({ name: '', email: 'maria.exemplo.com' }), [
     'name',
     'email',

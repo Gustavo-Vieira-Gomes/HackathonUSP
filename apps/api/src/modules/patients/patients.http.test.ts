@@ -146,6 +146,8 @@ test('C6 cadastro com formato inválido responde 400 com os campos', async () =>
     [{ name: 'M' }, ['name']],
     [{ email: 'maria.exemplo.com' }, ['email']],
     [{ phone: '119876543' }, ['phone']],
+    [{ phone: '(011) 3333-4444' }, ['phone']],
+    [{ phone: 'tel 11 abc 98765-4321' }, ['phone']],
     [{ name: '', email: 'maria.exemplo.com' }, ['name', 'email']],
   ];
 
