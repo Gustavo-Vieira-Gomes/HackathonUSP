@@ -21,6 +21,6 @@ import { GeocodingService } from './geocoding.service';
     GeocodingService,
     ClinicsService,
   ],
-  exports: [ClinicGuard],
+  exports: [ClinicGuard, GeocodingService],
 })
 export class ClinicsModule {}

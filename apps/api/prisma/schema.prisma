@@ -200,6 +200,7 @@ model Subscription {
   currentLatitude  Float?
   currentLongitude Float?
   expiresAt        DateTime
+  expirationEmailSentAt DateTime?
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   windows          SubscriptionWindow[]

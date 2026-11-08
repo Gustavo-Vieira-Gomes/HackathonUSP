@@ -13,6 +13,7 @@ import { PhoneVerificationModule } from './modules/phone-verification/phone-veri
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { VacanciesModule } from './modules/vacancies/vacancies.module';
 import { PatientsModule } from './modules/patients/patients.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({})
@@ -25,6 +26,7 @@ export class AppModule {
         PrismaModule,
         AuthModule,
         PatientsModule,
+        SubscriptionsModule,
         ScheduleModule.forRoot(),
         ClockModule,
         RealtimeModule,
