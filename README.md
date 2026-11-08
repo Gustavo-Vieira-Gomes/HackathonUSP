@@ -54,3 +54,11 @@ Checks, builds e smoke HTTP verificados com Node 24. Veja [evidências e limites
 ## Referências
 
 [Next: instalação](https://nextjs.org/docs/app/getting-started/installation), [Next: backend](https://nextjs.org/docs/app/guides/backend-for-frontend), [Nest: primeiros passos](https://docs.nestjs.com/first-steps), [Claude: memória e instruções](https://code.claude.com/docs/en/memory).
+
+## Pacientes (HACK-23)
+
+Cadastro em `/paciente/cadastro`, login em `/paciente/login` e área autenticada em `/paciente`. O cadastro usa Better Auth pela rota existente `POST /api/sign-up/paciente`, agora com `name`, `email`, `password`, `phone` (dígitos e `+` opcional) e `healthDataConsent: true`. Sem aceite: 422 `consentimento obrigatório`, sem criar conta. O perfil registra o instante do aceite no servidor.
+
+`GET /api/patient/reservations/:id` e `GET /api/patient/subscriptions/:id` resolvem o paciente pela sessão e respondem 404 para recurso alheio ou inexistente. Novas operações de paciente devem usar `@PatientOnly()` e filtrar por `@CurrentPatientId()`. O job de retenção roda a cada minuto usando `ClockService.now()`: remove reservas a partir de 30 dias após o fim do exame e inscrições a partir de 30 dias após expiração, junto dos dependentes identificáveis. A conta e o registro do consentimento permanecem.
+
+HACK-23: cadastro e login do paciente em `/paciente/cadastro` e `/paciente/login`, com telefone e consentimento obrigatório para dados de saúde. A conta autenticada acessa seus registros por `/paciente/reservas/<id>` e `/paciente/inscricoes/<id>`; registros inexistentes ou de outro paciente respondem não encontrado sem exibir dados.
