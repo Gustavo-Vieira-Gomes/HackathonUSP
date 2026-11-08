@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { createServer as createHttpServer } from 'node:http';
 import { createServer } from 'node:net';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -76,6 +77,17 @@ async function postJson(url, body, origin) {
     body: JSON.stringify(body),
   });
 }
+// HACK-16: geocodificador falso (forma do Nominatim); o smoke nunca chama o real.
+async function startFakeGeocoder() {
+  const server = createHttpServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify([{ lat: '-23.5617', lon: '-46.6560' }]));
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  return server;
+}
+const geocoder = await startFakeGeocoder();
 try {
   const apiPort = await freePort();
   const apiUrl = `http://127.0.0.1:${apiPort}`;
@@ -87,6 +99,8 @@ try {
     HOST: '127.0.0.1',
     BETTER_AUTH_URL: apiUrl,
     WEB_ORIGIN: webUrl,
+    GEOCODER_URL: `http://127.0.0.1:${geocoder.address().port}`,
+    GEOCODER_MIN_INTERVAL_MS: '0',
   });
   const apiResponse = await ready(`${apiUrl}/api/health`, api);
   assert.deepEqual(await apiResponse.json(), { status: 'ok', service: 'api' });
@@ -160,6 +174,64 @@ try {
     `C5: a conta hostil existe (login ${hostileSignIn.status})`,
   );
 
+  // HACK-16: cadastro de clínica pelo Next e painel /clinica (SSR).
+  const clinicEmail = `smoke-clinica-${Date.now()}-${process.pid}@teste.local`;
+  const clinicBody = {
+    name: 'Clínica Smoke',
+    email: clinicEmail,
+    password: 'smoke-senha-1',
+    address: 'Av. Paulista, 1000, São Paulo',
+    cnes: String(Date.now() % 10_000_000).padStart(7, '0'),
+    technicalManager: 'Dra. Smoke, CRM 123456',
+    openingHours: [{ weekday: 1, startMinute: 480, endMinute: 1080 }],
+  };
+  const clinicSignUp = await postJson(
+    `${webUrl}/api/sign-up/clinica`,
+    clinicBody,
+    webUrl,
+  );
+  assert.equal(
+    clinicSignUp.status,
+    200,
+    `H16-C31: cadastro de clínica pelo Next ${clinicSignUp.status}`,
+  );
+  const clinicCookie = sessionCookie(clinicSignUp, 'H16-C31 cadastro');
+  const panel = await fetch(`${webUrl}/clinica`, {
+    headers: { cookie: clinicCookie },
+  });
+  assert.equal(panel.status, 200, `H16-C31: painel ${panel.status}`);
+  const panelHtml = await panel.text();
+  for (const expected of [
+    clinicBody.name,
+    clinicBody.address,
+    clinicBody.cnes,
+    clinicBody.technicalManager,
+    'Fechado',
+  ]) {
+    assert.ok(panelHtml.includes(expected), `H16-C31: painel sem ${expected}`);
+  }
+  const anonymousPanel = await fetch(`${webUrl}/clinica`, {
+    redirect: 'manual',
+  });
+  assert.ok(
+    [303, 307, 308].includes(anonymousPanel.status),
+    `H16-C31: /clinica sem cookie ${anonymousPanel.status}`,
+  );
+  assert.match(
+    anonymousPanel.headers.get('location') ?? '',
+    /\/clinica\/login$/,
+    'H16-C31: /clinica sem cookie não vai ao login',
+  );
+  const patientPanel = await fetch(`${webUrl}/clinica`, {
+    headers: { cookie },
+  });
+  const patientHtml = await patientPanel.text();
+  assert.ok(
+    patientHtml.includes('Esta conta não é de clínica') &&
+      patientHtml.includes('Sair'),
+    'H16-C31: paciente em /clinica sem o aviso e o Sair',
+  );
+
   // HACK-38: token de uso único do socket pelo repasse /api/auth/* do Next.
   const generateUrl = `${webUrl}/api/auth/one-time-token/generate`;
   const generated = await fetch(generateUrl, { headers: { cookie } });
@@ -204,8 +276,9 @@ try {
   );
   assert.equal(offlineSignIn.status, 502, 'C32: repasse com a API desligada');
   console.log(
-    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e sessão pelo Next, token do socket, fallback e 502 com API desligada.',
+    'Smoke HTTP passou: saúde Next/Nest, cadastro, login e sessão pelo Next, cadastro e painel da clínica, token do socket, fallback e 502 com API desligada.',
   );
 } finally {
   await Promise.all(processes.map(stop));
+  geocoder.close();
 }
