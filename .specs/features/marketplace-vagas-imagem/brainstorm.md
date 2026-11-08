@@ -144,3 +144,20 @@ P2, P4, P5, P6 acima. Mais: tamanho do time, prazo exato e critérios da banca n
 ## Próximo passo
 
 Escrever a spec BDD (`docs/templates/feature.md`) a partir deste mapa, começando pelo fluxo da demo: U2a → P3 → P5.
+
+## Stack e decisões técnicas (08/11/2026)
+
+| ID | Decisão | Porquê |
+| --- | --- | --- |
+| T1 | Prisma + Postgres (Neon na demo, Docker local); MongoDB descartado | Domínio relacional e transacional: trava da vaga (RN-41), máquina de estados (RN-24), log (RN-50) e métricas (RN-51). Geo por haversine basta para ~10 clínicas |
+| T2 | Better Auth montada no Nest, adaptador Prisma, cookie httpOnly; papel `paciente`/`clinica` em `additionalFields` | Regra do projeto: não implementar sessão própria. Nest continua dono; Next repassa o cookie e um guard valida |
+| T3 | Motor: `@nestjs/schedule`, cron a cada minuto; sem fila | Suficiente para preço, ondas e expiração |
+| T4 | Tempo real: socket.io (`@nestjs/websockets`), sala por paciente e por clínica, auth pelo cookie no handshake | Pedido do time; polling descartado |
+| T5 | Push: `web-push` com VAPID no Nest; service worker no Next | Exige HTTPS |
+| T6 | E-mail: Resend | Plano gratuito |
+| T7 | WhatsApp real via Meta Cloud API com número de teste (até 5 telefones verificados); fallback: tela que imita a conversa; Twilio sandbox como alternativa | Mensagem iniciada pela plataforma exige template aprovado; risco aceito |
+| T8 | IA da foto (RN-18) desacoplada: provider com contrato `foto → {exame, confiança}`, OpenAI primeiro, chave só no servidor | Assinatura do ChatGPT não dá acesso à API; precisa de chave da plataforma |
+| T9 | Hospedagem desde o dia 1: Next na Vercel, Nest no Railway/Render (precisa de WebSocket), Postgres no Neon | Push, OAuth Google e banca no celular exigem URL pública; aceito provisoriamente pelo time |
+| T10 | Pagamento simulado: tela de Pix falsa cujo "confirmar" dispara o mesmo fluxo de um webhook real | RN-41, RN-42 |
+| T11 | Um app Next: rotas `/clinica/...` em layout desktop, restante mobile first | Um deploy só |
+| T12 | Google Calendar: `googleapis` com OAuth no Nest, tokens no banco, polling a cada minuto; sem webhook do Google | Canal de webhook exige renovação; polling já atende RN-05 |
