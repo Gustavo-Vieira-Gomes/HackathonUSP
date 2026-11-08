@@ -145,6 +145,8 @@ model Exam {
   slots                Slot[]
 
   @@unique([clinicId, tussCode])
+  // Alvo da FK composta Slot(examId, clinicId): o horário só aponta exame da própria clínica.
+  @@unique([id, clinicId])
 }
 
 // Degrau de preço: desconto aplicado quando faltam leadMinutes para o horário (RN-26).
@@ -281,13 +283,14 @@ enum TransitionOrigin {
   motor
 }
 
-// Horário da agenda de um exame. O banco garante fim > início (CHECK).
+// Horário da agenda de um exame. O banco garante fim > início (CHECK) e, pela FK
+// composta (examId, clinicId) → Exam(id, clinicId), que o exame é da mesma clínica.
 model Slot {
   id            String        @id @default(uuid()) @db.Uuid
   clinicId      String        @db.Uuid
   clinic        Clinic        @relation(fields: [clinicId], references: [id], onDelete: Restrict)
   examId        String        @db.Uuid
-  exam          Exam          @relation(fields: [examId], references: [id], onDelete: Restrict)
+  exam          Exam          @relation(fields: [examId, clinicId], references: [id, clinicId], onDelete: Restrict)
   startsAt      DateTime
   endsAt        DateTime
   origin        SlotOrigin
@@ -319,18 +322,23 @@ model Vacancy {
   alerts            Alert[]
   transitions       Transition[]
 
+  // Alvo da FK composta Reservation(vacancyId, slotId): a reserva da vaga fica no horário dela.
+  @@unique([id, slotId])
   @@unique([slotId], map: "Vacancy_active_slot_key", where: raw("state = ANY (ARRAY['publicada'::\"VacancyState\", 'alertando'::\"VacancyState\", 'reservada'::\"VacancyState\"])"))
 }
 
 // Reserva de um horário. Comum: só slotId; encaixe e no-show: slotId e vacancyId (CHECK).
 // A trava da RN-41 são os dois índices parciais: a confirmação que chega depois
-// recebe P2002 e o HACK-27 responde "vaga acabou de ser preenchida".
+// recebe P2002 e o HACK-27 responde "vaga acabou de ser preenchida". A FK composta
+// (vacancyId, slotId) → Vacancy(id, slotId) amarra o slotId do encaixe ao horário da
+// vaga (MATCH SIMPLE: a comum, com vacancyId nulo, não é checada); sem ela, um encaixe
+// gravado noutro horário furava o índice de horário.
 model Reservation {
   id                String           @id @default(uuid()) @db.Uuid
   slotId            String           @db.Uuid
   slot              Slot             @relation(fields: [slotId], references: [id], onDelete: Restrict)
   vacancyId         String?          @db.Uuid
-  vacancy           Vacancy?         @relation(fields: [vacancyId], references: [id], onDelete: Restrict)
+  vacancy           Vacancy?         @relation(fields: [vacancyId, slotId], references: [id, slotId], onDelete: Restrict)
   patientId         String           @db.Uuid
   patient           Patient          @relation(fields: [patientId], references: [id], onDelete: Restrict)
   type              ReservationType
@@ -365,6 +373,7 @@ model Alert {
   sentAt         DateTime?
   result         AlertResult  @default(pendente)
   createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@unique([vacancyId, subscriptionId, channel])
   @@index([subscriptionId])
