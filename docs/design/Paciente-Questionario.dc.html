@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Questionário de preparo</title>
+<script src="./support.js"></script>
+<style>/* Vaga Certa — tokens e componentes compartilhados */
+:root{
+  --ink:#17363a; --ink-2:#35565a; --mute:#4a6568; --line:#cfe4df;
+  --ground:#f7fbfa; --card:#FFFFFF;
+  --teal:#2a7f75; --teal-d:#1f6a61; --mint:#ddf3ee; --mint-2:#c9ebe1;
+  --amber:#5cc8b0; --amber-d:#1f6a61; --amber-s:#ddf3ee;
+  --red:#B03024; --red-s:#FBE3E0;
+  --r-s:8px; --r-m:14px; --r-l:22px;
+  --shadow:0 1px 0 rgba(23,54,58,.06), 0 8px 24px -12px rgba(23,54,58,.18);
+}
+*{box-sizing:border-box}
+.vc{font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);background:var(--ground);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.vc h1,.vc h2,.vc h3,.vc h4,.vc .disp{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;letter-spacing:-0.02em;margin:0;font-weight:700;line-height:1.08}
+.vc p{margin:0}
+.num{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;font-weight:700}
+.vc :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.muted{color:var(--mute)}
+.small{font-size:13px;line-height:1.4}
+
+/* botões */
+.btn{min-height:48px;padding:0 22px;border-radius:var(--r-m);border:0;font:600 16px 'Instrument Sans',system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:background .15s,transform .1s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-amber{background:var(--amber);color:var(--ink)}
+.btn-amber:hover{background:#4db89f}
+.btn-ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn-ghost:hover{background:rgba(23,54,58,.06)}
+.btn-danger{background:var(--red-s);color:var(--red)}
+.btn[disabled],.btn-off{background:#e4f1ee;color:#5b7a78;cursor:not-allowed;box-shadow:none}
+.btn-block{width:100%}
+.btn-sm{min-height:44px;padding:0 16px;font-size:14px}
+
+/* cartão */
+.card{background:var(--card);border-radius:var(--r-l);box-shadow:var(--shadow)}
+.panel{background:var(--card);border-radius:var(--r-m);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* campos */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.lbl{font-weight:600;font-size:14px;color:var(--ink)}
+.input{min-height:48px;border-radius:var(--r-m);border:1.5px solid #6f9993;background:#fff;padding:0 14px;font:500 16px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);width:100%}
+.input:focus{border-color:var(--teal);outline:3px solid var(--mint-2);outline-offset:0}
+.input.err{border-color:var(--red);background:#FFF8F7}
+.help{font-size:13px;color:var(--mute)}
+.help.err{color:var(--red);font-weight:600}
+
+/* chips / estados da vaga */
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;font-weight:600;font-size:13px;white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.st-publicada{background:var(--mint);color:var(--teal-d);box-shadow:inset 0 0 0 1.5px var(--mint-2)}
+.st-alertando{background:var(--amber);color:var(--ink)}
+.st-alertando::before{background:var(--ink);animation:vc-pulse 1.4s ease-out infinite}
+.st-reservada{background:var(--teal);color:#fff}
+.st-realizada{background:var(--ink);color:#fff}
+.st-expirada{background:#e4f1ee;color:#35565a}
+.st-cancelada{background:var(--red-s);color:var(--red)}
+
+/* escada de preço (assinatura) */
+.stairs{display:flex;align-items:flex-end;gap:6px;height:92px}
+.stairs .bar{flex:1;border-radius:8px 8px 3px 3px;background:var(--mint-2);transition:background .3s;position:relative}
+.stairs .bar.past{background:#EAF5F2}
+.stairs .bar.on{background:var(--amber)}
+.stairs .bar span{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;font-weight:700;color:var(--ink)}
+
+/* mover */
+@keyframes vc-pulse{0%{box-shadow:0 0 0 0 rgba(31,106,97,.55)}100%{box-shadow:0 0 0 9px rgba(31,106,97,0)}}
+@keyframes vc-drop-a{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+@keyframes vc-drop-b{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+.drop-a{animation:vc-drop-a .55s cubic-bezier(.2,.8,.3,1)}
+.drop-b{animation:vc-drop-b .55s cubic-bezier(.2,.8,.3,1)}
+@keyframes vc-draw{to{stroke-dashoffset:0}}
+@keyframes vc-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes vc-in{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.pop{animation:vc-pop .6s cubic-bezier(.2,.8,.3,1) both}
+.check-path{stroke-dasharray:48;stroke-dashoffset:48;animation:vc-draw .6s .35s ease-out forwards}
+.rise{animation:vc-in .5s ease-out both}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--amber-d);animation:vc-pulse 1.4s ease-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .drop-a,.drop-b,.pop,.rise,.live-dot,.st-alertando::before{animation:none}
+  .check-path{animation:none;stroke-dashoffset:0}
+}
+
+/* ícones */
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* linhas de dados */
+.row{display:flex;gap:12px;align-items:flex-start}
+.row .k{flex:none;width:92px;color:var(--mute);font-size:13px;padding-top:2px}
+.row .v{flex:1;font-weight:500}
+.hr{height:1px;background:var(--line);border:0;margin:0}
+
+/* navegação inferior do paciente */
+.tabbar{display:flex;border-top:1px solid var(--line);background:#fff}
+.tabbar a{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--mute);text-decoration:none}
+.tabbar a.on{color:var(--teal)}
+</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.avisos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.aviso{display:flex;gap:12px;align-items:flex-start;padding:11px 14px;border-top:1px solid var(--line)}
+.aviso:first-child{border-top:0}
+.aviso .ico{color:var(--red);margin-top:1px}
+.aviso strong{display:block;font-size:15px;line-height:1.3}
+.lembretes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.lembretes li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink-2)}
+.lembretes .ico{width:18px;height:18px;color:var(--teal-d)}
+.ciente{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px #b3d1ca;cursor:pointer;font-weight:500;line-height:1.35}
+.ciente.on{background:var(--mint);box-shadow:inset 0 0 0 2px var(--teal)}
+.ciente input{width:22px;height:22px;accent-color:#2a7f75;flex:none;margin:0}
+</style>
+</helmet>
+<div class="vc" style="width: 390px; height: 844px; display: flex; flex-direction: column; padding: 20px 20px 24px; gap: 14px; overflow: hidden">
+
+  <div style="display: flex; align-items: center; gap: 12px">
+    <a href="Paciente-Alerta.dc.html" aria-label="Voltar para a vaga" class="btn btn-ghost btn-sm" style="width: 44px; padding: 0">
+      <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+    </a>
+    <div style="flex: 1">
+      <div class="small muted">Passo 1 de 2</div>
+      <div style="height: 6px; border-radius: 3px; background: #e4f1ee; margin-top: 4px"><div style="width: 50%; height: 100%; border-radius: 3px; background: var(--teal)"></div></div>
+    </div>
+  </div>
+
+  <div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; margin: 0 -4px; padding: 0 4px">
+    <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px">
+      <h1 style="font-size: 26px">Antes de reservar</h1>
+      <p class="muted">Leia os avisos da ressonância de joelho. Se algum se aplicar a você, o exame pode não ser indicado.</p>
+    </div>
+
+    <section aria-labelledby="t-avisos" class="panel" style="overflow: hidden">
+      <h2 id="t-avisos" class="lbl" style="font-family: 'Instrument Sans', system-ui, sans-serif; letter-spacing: 0; padding: 12px 14px 4px; font-size: 14px">Não é recomendado para quem tem</h2>
+      <ul class="avisos">
+        <sc-for list="{{avisos}}" as="a" hint-placeholder-count="6">
+          <li class="aviso">
+            <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"></path><path d="M12 10v5M12 18v.5"></path></svg>
+            <div>
+              <strong>{{a.titulo}}</strong>
+              <span class="small muted">{{a.detalhe}}</span>
+            </div>
+          </li>
+        </sc-for>
+      </ul>
+    </section>
+
+    <section aria-labelledby="t-lembretes" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 id="t-lembretes" class="lbl" style="font-family: 'Instrument Sans', system-ui, sans-serif; letter-spacing: 0; font-size: 14px">No dia do exame</h2>
+      <ul class="lembretes">
+        <li><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>Leve o pedido médico e um documento com foto.</li>
+        <li><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>Tire relógio, brincos e outros objetos de metal antes de entrar.</li>
+      </ul>
+    </section>
+
+    <p class="small muted">Com dúvida? Fale com a clínica ou com o seu médico antes de pagar.</p>
+  </div>
+
+  <label class="{{cienteCls}}">
+    <input type="checkbox" checked="{{ciente}}" sc-camel-on-change="{{toggleCiente}}">
+    <span>Li os avisos e quero seguir com a reserva mesmo assim.</span>
+  </label>
+
+  <sc-if value="{{bloqueado}}" hint-placeholder-val="{{ true }}">
+    <button class="btn btn-block" disabled="">Continuar para o pagamento</button>
+  </sc-if>
+  <sc-if value="{{ciente}}" hint-placeholder-val="{{ false }}">
+    <a class="btn btn-primary btn-block" href="Paciente-Pagamento.dc.html">Continuar para o pagamento</a>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { ciente: false };
+  }
+  renderVals() {
+    // avisos de exemplo para ressonância; cada exame terá a própria lista
+    var avisos = [
+      { titulo: 'Marca-passo ou desfibrilador', detalhe: 'O ímã do aparelho pode desregular o dispositivo.' },
+      { titulo: 'Gravidez', detalhe: 'Principalmente nos três primeiros meses. Avise a clínica antes.' },
+      { titulo: 'Clipe de aneurisma no cérebro', detalhe: 'Alguns modelos de clipe são de metal.' },
+      { titulo: 'Implante coclear ou neuroestimulador', detalhe: 'O exame pode danificar o implante.' },
+      { titulo: 'Metal no corpo', detalhe: 'Estilhaço, projétil ou lasca de solda, principalmente nos olhos.' },
+      { titulo: 'Medo de lugar fechado', detalhe: 'Pode ser preciso sedação. Combine com a clínica.' }
+    ];
+    var ciente = !!this.state.ciente;
+    return {
+      avisos: avisos,
+      ciente: ciente,
+      bloqueado: !ciente,
+      cienteCls: ciente ? 'ciente on' : 'ciente',
+      toggleCiente: () => this.setState({ ciente: !this.state.ciente })
+    };
+  }
+}
+</script>
+
+
+</body></html>

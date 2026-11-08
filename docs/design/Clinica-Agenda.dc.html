@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Agenda da clínica</title>
+<script src="./support.js"></script>
+<style>/* Vaga Certa — tokens e componentes compartilhados */
+:root{
+  --ink:#17363a; --ink-2:#35565a; --mute:#4a6568; --line:#cfe4df;
+  --ground:#f7fbfa; --card:#FFFFFF;
+  --teal:#2a7f75; --teal-d:#1f6a61; --mint:#ddf3ee; --mint-2:#c9ebe1;
+  --amber:#5cc8b0; --amber-d:#1f6a61; --amber-s:#ddf3ee;
+  --red:#B03024; --red-s:#FBE3E0;
+  --r-s:8px; --r-m:14px; --r-l:22px;
+  --shadow:0 1px 0 rgba(23,54,58,.06), 0 8px 24px -12px rgba(23,54,58,.18);
+}
+*{box-sizing:border-box}
+.vc{font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);background:var(--ground);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.vc h1,.vc h2,.vc h3,.vc h4,.vc .disp{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;letter-spacing:-0.02em;margin:0;font-weight:700;line-height:1.08}
+.vc p{margin:0}
+.num{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;font-weight:700}
+.vc :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.muted{color:var(--mute)}
+.small{font-size:13px;line-height:1.4}
+
+/* botões */
+.btn{min-height:48px;padding:0 22px;border-radius:var(--r-m);border:0;font:600 16px 'Instrument Sans',system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:background .15s,transform .1s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-amber{background:var(--amber);color:var(--ink)}
+.btn-amber:hover{background:#4db89f}
+.btn-ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn-ghost:hover{background:rgba(23,54,58,.06)}
+.btn-danger{background:var(--red-s);color:var(--red)}
+.btn[disabled],.btn-off{background:#e4f1ee;color:#5b7a78;cursor:not-allowed;box-shadow:none}
+.btn-block{width:100%}
+.btn-sm{min-height:44px;padding:0 16px;font-size:14px}
+
+/* cartão */
+.card{background:var(--card);border-radius:var(--r-l);box-shadow:var(--shadow)}
+.panel{background:var(--card);border-radius:var(--r-m);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* campos */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.lbl{font-weight:600;font-size:14px;color:var(--ink)}
+.input{min-height:48px;border-radius:var(--r-m);border:1.5px solid #6f9993;background:#fff;padding:0 14px;font:500 16px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);width:100%}
+.input:focus{border-color:var(--teal);outline:3px solid var(--mint-2);outline-offset:0}
+.input.err{border-color:var(--red);background:#FFF8F7}
+.help{font-size:13px;color:var(--mute)}
+.help.err{color:var(--red);font-weight:600}
+
+/* chips / estados da vaga */
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;font-weight:600;font-size:13px;white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.st-publicada{background:var(--mint);color:var(--teal-d);box-shadow:inset 0 0 0 1.5px var(--mint-2)}
+.st-alertando{background:var(--amber);color:var(--ink)}
+.st-alertando::before{background:var(--ink);animation:vc-pulse 1.4s ease-out infinite}
+.st-reservada{background:var(--teal);color:#fff}
+.st-realizada{background:var(--ink);color:#fff}
+.st-expirada{background:#e4f1ee;color:#35565a}
+.st-cancelada{background:var(--red-s);color:var(--red)}
+
+/* escada de preço (assinatura) */
+.stairs{display:flex;align-items:flex-end;gap:6px;height:92px}
+.stairs .bar{flex:1;border-radius:8px 8px 3px 3px;background:var(--mint-2);transition:background .3s;position:relative}
+.stairs .bar.past{background:#EAF5F2}
+.stairs .bar.on{background:var(--amber)}
+.stairs .bar span{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;font-weight:700;color:var(--ink)}
+
+/* mover */
+@keyframes vc-pulse{0%{box-shadow:0 0 0 0 rgba(31,106,97,.55)}100%{box-shadow:0 0 0 9px rgba(31,106,97,0)}}
+@keyframes vc-drop-a{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+@keyframes vc-drop-b{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+.drop-a{animation:vc-drop-a .55s cubic-bezier(.2,.8,.3,1)}
+.drop-b{animation:vc-drop-b .55s cubic-bezier(.2,.8,.3,1)}
+@keyframes vc-draw{to{stroke-dashoffset:0}}
+@keyframes vc-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes vc-in{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.pop{animation:vc-pop .6s cubic-bezier(.2,.8,.3,1) both}
+.check-path{stroke-dasharray:48;stroke-dashoffset:48;animation:vc-draw .6s .35s ease-out forwards}
+.rise{animation:vc-in .5s ease-out both}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--amber-d);animation:vc-pulse 1.4s ease-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .drop-a,.drop-b,.pop,.rise,.live-dot,.st-alertando::before{animation:none}
+  .check-path{animation:none;stroke-dashoffset:0}
+}
+
+/* ícones */
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* linhas de dados */
+.row{display:flex;gap:12px;align-items:flex-start}
+.row .k{flex:none;width:92px;color:var(--mute);font-size:13px;padding-top:2px}
+.row .v{flex:1;font-weight:500}
+.hr{height:1px;background:var(--line);border:0;margin:0}
+
+/* navegação inferior do paciente */
+.tabbar{display:flex;border-top:1px solid var(--line);background:#fff}
+.tabbar a{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--mute);text-decoration:none}
+.tabbar a.on{color:var(--teal)}
+</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.nav a{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border-radius:12px;color:#c9e6e0;text-decoration:none;font-weight:600}
+.nav a.on{background:rgba(255,255,255,.12);color:#fff}
+.nav a:hover{background:rgba(255,255,255,.08)}
+.src{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);font-size:14px;font-weight:600}
+.src .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.src .sub{font-weight:500;color:var(--mute);font-size:13px}
+.src-add{background:transparent;border:1.5px dashed #6f9993;box-shadow:none;color:var(--teal-d);cursor:pointer;font:600 14px 'Instrument Sans',system-ui,sans-serif}
+.seg{display:inline-flex;gap:4px;padding:4px;border-radius:14px;background:#e4f1ee}
+.seg span{min-height:36px;padding:0 14px;border-radius:10px;display:inline-flex;align-items:center;font-weight:600;font-size:14px;color:var(--ink-2)}
+.seg span.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(23,54,58,.12)}
+.seg button{background:transparent;color:var(--ink-2)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(23,54,58,.12)}
+.cal{display:grid;grid-template-columns:56px repeat(4,minmax(0,1fr));background:#fff;border-radius:18px;box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.cal-h{padding:12px 12px 10px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.cal-h strong{font-size:15px}
+.col{position:relative;border-left:1px solid var(--line);height:720px;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 47px,#e6f1ee 47px,#e6f1ee 48px)}
+.hours{position:relative;height:720px}
+.hours span{position:absolute;right:8px;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums;transform:translateY(-50%)}
+.ev{position:absolute;left:6px;right:6px;border-radius:10px;padding:4px 8px;overflow:hidden;font-size:12px;line-height:1.25;display:flex;flex-direction:column;gap:1px}
+.ev b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev .t{display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.ev-paciente{background:#f1f8f6;box-shadow:inset 0 0 0 1px #b3d1ca;color:var(--ink)}
+.ev-vaga{background:var(--amber-s);border:1.5px dashed var(--teal-d);color:var(--ink)}
+.ev-reservada{background:var(--teal);color:#fff}
+.ev-bloqueio{background:repeating-linear-gradient(135deg,#eef3f2 0,#eef3f2 6px,#e2ebe9 6px,#e2ebe9 12px);color:var(--ink-2)}
+.now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:2}
+.now::before{content:"";position:absolute;left:-4px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--red)}
+.leg{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--ink-2)}
+.leg span{display:inline-flex;align-items:center;gap:8px}
+.leg i{width:18px;height:12px;border-radius:4px;display:inline-block}
+.prov{display:flex;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--line)}
+.prov:first-child{border-top:0}
+.prov .logo{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font:700 16px 'Bricolage Grotesque',sans-serif;color:#fff;flex:none}
+.ok{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:14px;color:var(--teal-d)}
+</style>
+</helmet>
+<div class="vc" style="min-height: 1080px; display: flex; flex-direction: column; position: relative">
+
+  <aside style="background: var(--ink); color: #fff; padding: 10px 36px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 32px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+      <svg width="30" height="30" sc-camel-view-box="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#5cc8b0"></rect><path d="M8 11h6M8 16h11M8 21h16" stroke="#17363a" stroke-width="3" stroke-linecap="round"></path></svg>
+      <span class="disp" style="font-size: 20px">Vaga Certa</span>
+    </div>
+    <nav class="nav" aria-label="Clínica" style="display: flex; flex-wrap: wrap; gap: 4px">
+      <a href="Clinica-Painel.dc.html"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>Painel</a>
+      <a href="Clinica-Agenda.dc.html" class="on" aria-current="page"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h7"></path></svg>Agenda</a>
+      <a href="Clinica-Exames.dc.html"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M9 3h6v6l4 10a2 2 0 0 1-2 3H7a2 2 0 0 1-2-3l4-10z"></path></svg>Exames</a>
+    </nav>
+    <div style="flex: 1"></div>
+    <div style="padding: 8px 14px; border-radius: 12px; background: rgba(255,255,255,.08)" class="small">
+      <strong>Imagem Vila Nova</strong>
+      <span style="color: #c9e6e0"> · {{nConectadas}} agendas conectadas</span>
+    </div>
+  </aside>
+
+  <main style="flex: 1; width: 100%; max-width: 1280px; margin: 0 auto; min-width: 0; padding: 28px 36px 36px; display: flex; flex-direction: column; gap: 18px">
+
+    <header style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h1 style="font-size: 36px">Agenda</h1>
+        <span class="small muted">Cadastre os horários direto aqui ou sincronize com as agendas que a clínica já usa. Sincronizada há 38 segundos.</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+        <div style="display: inline-flex; align-items: center; gap: 4px">
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Dia anterior" style="width: 44px; padding: 0"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></button>
+          <button type="button" class="btn btn-ghost btn-sm">Hoje</button>
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Próximo dia" style="width: 44px; padding: 0"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg></button>
+        </div>
+        <strong style="font-size: 17px; min-width: 190px">Sexta, 6 de novembro</strong>
+        <div class="seg" aria-label="Visualização"><span class="on">Dia</span><span>Semana</span><span>Mês</span></div>
+        <button type="button" class="btn btn-ghost btn-sm" sc-camel-on-click="{{abrir}}">
+          <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg>
+          Conectar agenda
+        </button>
+        <button type="button" class="btn btn-primary btn-sm" sc-camel-on-click="{{abrirNovo}}">
+          <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+          Novo horário
+        </button>
+      </div>
+    </header>
+
+    <section aria-label="Agendas conectadas" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+      <sc-for list="{{conectadas}}" as="s" hint-placeholder-count="2">
+        <span class="src"><span class="dot" style="background: {{s.cor}}"></span>{{s.nome}} <span class="sub">{{s.escopo}}</span></span>
+      </sc-for>
+      <span class="src"><span class="dot" style="background: #2a7f75"></span>Agenda Vaga Certa <span class="sub">cadastros manuais, encaixes e reservas</span></span>
+      <button type="button" class="src src-add" sc-camel-on-click="{{abrir}}">
+        <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px"><path d="M12 5v14M5 12h14"></path></svg>
+        Adicionar outra
+      </button>
+    </section>
+
+    <div class="cal">
+      <div style="border-bottom: 1px solid var(--line)"></div>
+      <sc-for list="{{salas}}" as="c" hint-placeholder-count="4">
+        <div class="cal-h"><strong>{{c.nome}}</strong><span class="small muted">{{c.resumo}}</span></div>
+      </sc-for>
+
+      <div class="hours">
+        <sc-for list="{{horas}}" as="h" hint-placeholder-count="15">
+          <span style="top: {{h.top}}px">{{h.label}}</span>
+        </sc-for>
+      </div>
+      <sc-for list="{{salas}}" as="c" hint-placeholder-count="4">
+        <div class="col">
+          <div class="now" style="top: {{agoraTop}}px"></div>
+          <sc-for list="{{c.eventos}}" as="e" hint-placeholder-count="3">
+            <div class="{{e.cls}}" style="top: {{e.top}}px; height: {{e.h}}px" title="{{e.titulo}}">
+              <span class="t"><span class="dot" style="background: {{e.cor}}"></span>{{e.hora}} · <b>{{e.nome}}</b></span>
+              <sc-if value="{{e.alto}}" hint-placeholder-val="{{ true }}"><span style="opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{e.detalhe}}</span></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+
+    <div class="leg" aria-label="Legenda">
+      <span><i style="background: #f1f8f6; box-shadow: inset 0 0 0 1px #b3d1ca"></i>Paciente marcado</span>
+      <span><i style="background: var(--amber-s); border: 1.5px dashed var(--teal-d)"></i>Vaga de encaixe publicada</span>
+      <span><i style="background: var(--teal)"></i>Reservado pelo Vaga Certa</span>
+      <span><i style="background: repeating-linear-gradient(135deg,#eef3f2 0,#eef3f2 4px,#e2ebe9 4px,#e2ebe9 8px)"></i>Bloqueio</span>
+      <span style="color: var(--mute)">O ponto colorido mostra de qual agenda veio cada horário; verde é cadastro feito aqui. Nomes e horários de exemplo.</span>
+    </div>
+  </main>
+
+  <sc-if value="{{modal}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; background: rgba(23,54,58,.55); display: flex; align-items: flex-start; justify-content: center; padding-top: 110px; z-index: 5">
+      <div role="dialog" aria-modal="true" aria-labelledby="t-con" class="card" style="width: 560px; max-width: calc(100% - 32px); padding: 24px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <h2 id="t-con" style="font-size: 24px">Conectar agenda</h2>
+            <p class="small muted">Os horários das agendas conectadas aparecem juntos aqui. Quando um paciente desmarca em qualquer uma delas, o horário vira vaga de encaixe.</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Fechar" style="width: 44px; padding: 0; flex: none" sc-camel-on-click="{{fechar}}"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+        <div>
+          <sc-for list="{{provedores}}" as="p" hint-placeholder-count="5">
+            <div class="prov">
+              <span class="logo" style="background: {{p.cor}}" aria-hidden="true">{{p.letra}}</span>
+              <div style="flex: 1; min-width: 0">
+                <strong>{{p.nome}}</strong>
+                <div class="small muted">{{p.desc}}</div>
+              </div>
+              <sc-if value="{{p.on}}" hint-placeholder-val="{{ false }}">
+                <span class="ok"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M5 12l5 5 9-10"></path></svg>Conectada</span>
+                <button type="button" class="btn btn-ghost btn-sm" sc-camel-on-click="{{p.toggle}}" aria-label="{{p.ariaOff}}">Desconectar</button>
+              </sc-if>
+              <sc-if value="{{p.off}}" hint-placeholder-val="{{ true }}">
+                <button type="button" class="btn btn-primary btn-sm" sc-camel-on-click="{{p.toggle}}" aria-label="{{p.ariaOn}}">Conectar</button>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <p class="small muted">Conexão simulada nesta versão. Nada é enviado aos serviços.</p>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{novo}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; background: rgba(23,54,58,.55); display: flex; align-items: flex-start; justify-content: center; padding-top: 90px; z-index: 5">
+      <form role="dialog" aria-modal="true" aria-labelledby="t-novo" class="card" sc-camel-on-submit="{{salvar}}" style="width: 560px; max-width: calc(100% - 32px); padding: 24px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <h2 id="t-novo" style="font-size: 24px">Novo horário</h2>
+            <p class="small muted">Fica salvo na agenda do Vaga Certa, mesmo sem nenhuma agenda conectada.</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Fechar" style="width: 44px; padding: 0; flex: none" sc-camel-on-click="{{fecharNovo}}"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+
+        <div role="group" aria-label="Tipo de horário" class="seg" style="display: flex">
+          <sc-for list="{{tipos}}" as="t" hint-placeholder-count="2">
+            <button type="button" class="{{t.cls}}" aria-pressed="{{t.pressed}}" sc-camel-on-click="{{t.pick}}" style="flex: 1; min-height: 40px; border: 0; border-radius: 10px; font: 600 14px 'Instrument Sans', system-ui, sans-serif; cursor: pointer">{{t.label}}</button>
+          </sc-for>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+          <div class="field" style="grid-column: 1 / -1">
+            <label for="f-nome">{{nomeLabel}}</label>
+            <input id="f-nome" class="{{nomeCls}}" value="{{form.nome}}" sc-camel-on-change="{{setNome}}" placeholder="{{nomePh}}">
+          </div>
+          <div class="field">
+            <label for="f-sala">Sala</label>
+            <select id="f-sala" class="input" value="{{form.sala}}" sc-camel-on-change="{{setSala}}">
+              <sc-for list="{{salaOpts}}" as="o" hint-placeholder-count="4"><option value="{{o}}">{{o}}</option></sc-for>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-det">{{detLabel}}</label>
+            <input id="f-det" class="input" value="{{form.det}}" sc-camel-on-change="{{setDet}}" placeholder="{{detPh}}">
+          </div>
+          <div class="field">
+            <label for="f-data">Dia</label>
+            <input id="f-data" class="input" type="date" value="2026-11-06" readonly="">
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+            <div class="field">
+              <label for="f-ini">Início</label>
+              <input id="f-ini" class="{{horaCls}}" type="time" step="600" value="{{form.ini}}" sc-camel-on-change="{{setIni}}">
+            </div>
+            <div class="field">
+              <label for="f-fim">Fim</label>
+              <input id="f-fim" class="{{horaCls}}" type="time" step="600" value="{{form.fim}}" sc-camel-on-change="{{setFim}}">
+            </div>
+          </div>
+        </div>
+
+        <sc-if value="{{erro}}" hint-placeholder-val="{{ false }}">
+          <p role="alert" class="help err">{{erroMsg}}</p>
+        </sc-if>
+
+        <div class="panel" style="padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start; background: var(--mint); box-shadow: none">
+          <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true" style="color: var(--teal-d)"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"></path><path d="M18 3v4h-4M6 21v-4h4"></path></svg>
+          <span class="small">{{syncMsg}}</span>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px">
+          <button type="button" class="btn btn-ghost btn-sm" sc-camel-on-click="{{fecharNovo}}">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-sm">Salvar horário</button>
+        </div>
+      </form>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:1080}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      modal: false, novo: false, erro: '', extras: [],
+      form: { tipo: 'paciente', nome: '', det: '', sala: 'Ressonância', ini: '16:20', fim: '17:00' },
+      on: { google: true, calendly: true, outlook: false, icloud: false, ical: false }
+    };
+  }
+  setForm(k, v) {
+    var f = Object.assign({}, this.state.form);
+    f[k] = v;
+    this.setState({ form: f, erro: '' });
+  }
+  renderVals() {
+    var self = this;
+    var on = this.state.on;
+    var HORA = 48, INICIO = 7, FIM = 22;
+    var fontes = {
+      google: { nome: 'Google Agenda', escopo: 'ressonância e tomografia', cor: '#3b6fd8', letra: 'G', desc: 'Sincroniza as agendas da sua conta Google.' },
+      calendly: { nome: 'Calendly', escopo: 'ultrassom', cor: '#7b4fd6', letra: 'C', desc: 'Traz os horários marcados pelo seu link de agendamento.' },
+      outlook: { nome: 'Outlook', escopo: 'mamografia', cor: '#c2560e', letra: 'O', desc: 'Agendas do Microsoft 365 ou Outlook.com.' },
+      icloud: { nome: 'Apple iCloud', escopo: 'calendário', cor: '#5b6b70', letra: 'A', desc: 'Calendários do iCloud por CalDAV.' },
+      ical: { nome: 'Link iCal', escopo: 'outro sistema', cor: '#1f6a61', letra: 'i', desc: 'Cole o link .ics de qualquer sistema de agenda.' }
+    };
+    var VC = '#2a7f75';
+    function min(t) { var p = t.split(':'); return (+p[0]) * 60 + (+p[1]); }
+    // tipo: paciente | vaga | reservada | bloqueio
+    var salas = [
+      { nome: 'Ressonância', ev: [
+        { ini: '07:40', fim: '08:20', tipo: 'paciente', nome: 'Ana Paula S.', det: 'Joelho esquerdo', src: 'google' },
+        { ini: '09:00', fim: '09:40', tipo: 'paciente', nome: 'Carlos M.', det: 'Coluna lombar', src: 'google' },
+        { ini: '10:20', fim: '11:00', tipo: 'vaga', nome: 'Encaixe R$ 384', det: 'Cancelado ontem · alertando', src: 'vc' },
+        { ini: '12:00', fim: '13:00', tipo: 'bloqueio', nome: 'Manutenção', det: 'Equipamento', src: 'google' },
+        { ini: '14:00', fim: '14:40', tipo: 'reservada', nome: 'Júlia R.', det: 'Sinal pago', src: 'vc' },
+        { ini: '15:20', fim: '16:00', tipo: 'paciente', nome: 'Pedro H.', det: 'Ombro direito', src: 'google' },
+        { ini: '21:00', fim: '21:40', tipo: 'vaga', nome: 'Encaixe R$ 336', det: 'Horário noturno', src: 'vc' }
+      ]},
+      { nome: 'Tomografia', ev: [
+        { ini: '08:00', fim: '08:30', tipo: 'paciente', nome: 'Roberto S.', det: 'Crânio', src: 'google' },
+        { ini: '11:00', fim: '11:30', tipo: 'paciente', nome: 'Marina L.', det: 'Tórax', src: 'google' },
+        { ini: '13:30', fim: '14:00', tipo: 'paciente', nome: 'Luís F.', det: 'Seios da face', src: 'google' },
+        { ini: '18:00', fim: '18:30', tipo: 'vaga', nome: 'Encaixe R$ 315', det: 'Horário vazio', src: 'vc' }
+      ]},
+      { nome: 'Ultrassom', ev: [
+        { ini: '07:30', fim: '08:00', tipo: 'paciente', nome: 'Beatriz C.', det: 'Abdômen total', src: 'calendly' },
+        { ini: '08:30', fim: '09:00', tipo: 'paciente', nome: 'Rafael T.', det: 'Tireoide', src: 'calendly' },
+        { ini: '10:00', fim: '10:30', tipo: 'paciente', nome: 'Sônia A.', det: 'Pélvico', src: 'calendly' },
+        { ini: '12:00', fim: '13:00', tipo: 'bloqueio', nome: 'Almoço', det: '', src: 'calendly' },
+        { ini: '15:00', fim: '15:30', tipo: 'vaga', nome: 'Encaixe R$ 144', det: 'Horário vazio', src: 'vc' },
+        { ini: '16:30', fim: '17:00', tipo: 'paciente', nome: 'Diego N.', det: 'Mamas', src: 'calendly' }
+      ]},
+      { nome: 'Mamografia', ev: [
+        { ini: '08:00', fim: '08:20', tipo: 'paciente', nome: 'Fernanda O.', det: 'Rastreamento', src: 'outlook' },
+        { ini: '09:20', fim: '09:40', tipo: 'paciente', nome: 'Helena G.', det: 'Rastreamento', src: 'outlook' },
+        { ini: '11:00', fim: '11:20', tipo: 'paciente', nome: 'Patrícia V.', det: 'Diagnóstica', src: 'outlook' },
+        { ini: '18:30', fim: '18:50', tipo: 'reservada', nome: 'Cláudia B.', det: 'Sinal pago', src: 'vc' }
+      ]}
+    ];
+    // horários cadastrados à mão nesta sessão (src 'vc': ficam na agenda do Vaga Certa)
+    this.state.extras.forEach(function (x) {
+      salas.forEach(function (s) { if (s.nome === x.sala) s.ev.push(x); });
+    });
+    var salasOut = salas.map(function (s) {
+      var vis = s.ev.filter(function (e) { return e.src === 'vc' || on[e.src]; });
+      var nPac = vis.filter(function (e) { return e.tipo === 'paciente' || e.tipo === 'reservada'; }).length;
+      var nVaga = vis.filter(function (e) { return e.tipo === 'vaga'; }).length;
+      var semFonte = s.ev.some(function (e) { return e.src !== 'vc' && !on[e.src]; });
+      return {
+        nome: s.nome,
+        resumo: semFonte ? 'Agenda não conectada' : nPac + ' exames · ' + nVaga + (nVaga === 1 ? ' vaga' : ' vagas'),
+        eventos: vis.map(function (e) {
+          var a = min(e.ini), b = min(e.fim);
+          var h = Math.max(20, (b - a) / 60 * HORA - 2);
+          return {
+            cls: 'ev ev-' + e.tipo,
+            top: (a - INICIO * 60) / 60 * HORA + 1,
+            h: h,
+            alto: h >= 34 && !!e.det,
+            hora: e.ini,
+            nome: e.nome,
+            detalhe: e.det,
+            cor: e.src === 'vc' ? (e.tipo === 'reservada' ? '#ffffff' : VC) : fontes[e.src].cor,
+            titulo: e.ini + '–' + e.fim + ' ' + e.nome + (e.det ? ' · ' + e.det : '') + ' · ' + (e.src === 'vc' ? (e.manual ? 'cadastrado aqui' : 'Vaga Certa') : fontes[e.src].nome)
+          };
+        })
+      };
+    });
+    var horas = [];
+    for (var i = INICIO + 1; i < FIM; i++) horas.push({ top: (i - INICIO) * HORA, label: (i < 10 ? '0' : '') + i + ':00' });
+    var chaves = ['google', 'calendly', 'outlook', 'icloud', 'ical'];
+    var conectadas = chaves.filter(function (k) { return on[k]; }).map(function (k) { return fontes[k]; });
+    var provedores = chaves.map(function (k) {
+      var f = fontes[k];
+      return {
+        nome: f.nome, desc: f.desc, cor: f.cor, letra: f.letra,
+        on: !!on[k], off: !on[k],
+        ariaOn: 'Conectar ' + f.nome, ariaOff: 'Desconectar ' + f.nome,
+        toggle: function () {
+          var next = Object.assign({}, self.state.on);
+          next[k] = !next[k];
+          self.setState({ on: next });
+        }
+      };
+    });
+    var form = this.state.form;
+    var isPac = form.tipo === 'paciente';
+    var erroMsg = this.state.erro;
+    var nomesConect = conectadas.map(function (f) { return f.nome; });
+    var syncMsg = nomesConect.length
+      ? 'Também vai para ' + nomesConect.join(' e ') + ', e quem marcar por lá vê o horário ocupado.'
+      : 'Nenhuma agenda conectada. O horário fica só no Vaga Certa.';
+    var tipos = [
+      { id: 'paciente', label: 'Paciente marcado' },
+      { id: 'bloqueio', label: 'Bloqueio' }
+    ].map(function (t) {
+      var sel = form.tipo === t.id;
+      return {
+        label: t.label,
+        cls: sel ? 'on' : '',
+        pressed: sel ? 'true' : 'false',
+        pick: function () { self.setForm('tipo', t.id); }
+      };
+    });
+    function val(fn) { return function (e) { fn(e.target.value); }; }
+    return {
+      novo: !!this.state.novo,
+      abrirNovo: function () { self.setState({ novo: true, erro: '' }); },
+      fecharNovo: function () { self.setState({ novo: false, erro: '' }); },
+      form: form,
+      tipos: tipos,
+      salaOpts: salas.map(function (s) { return s.nome; }),
+      nomeLabel: isPac ? 'Paciente' : 'Motivo do bloqueio',
+      nomePh: isPac ? 'Nome do paciente' : 'Ex.: manutenção, reunião, folga',
+      detLabel: isPac ? 'Exame' : 'Observação',
+      detPh: isPac ? 'Ex.: joelho esquerdo' : 'Opcional',
+      nomeCls: erroMsg.indexOf('nome') >= 0 || erroMsg.indexOf('motivo') >= 0 ? 'input err' : 'input',
+      horaCls: erroMsg.indexOf('fim') >= 0 ? 'input err' : 'input',
+      erro: !!erroMsg,
+      erroMsg: erroMsg,
+      syncMsg: syncMsg,
+      setNome: val(function (v) { self.setForm('nome', v); }),
+      setDet: val(function (v) { self.setForm('det', v); }),
+      setSala: val(function (v) { self.setForm('sala', v); }),
+      setIni: val(function (v) { self.setForm('ini', v); }),
+      setFim: val(function (v) { self.setForm('fim', v); }),
+      salvar: function (e) {
+        if (e && e.preventDefault) e.preventDefault();
+        var f = self.state.form;
+        if (!f.nome.trim()) {
+          self.setState({ erro: f.tipo === 'paciente' ? 'Informe o nome do paciente.' : 'Informe o motivo do bloqueio.' });
+          return;
+        }
+        if (!f.ini || !f.fim || min(f.fim) <= min(f.ini)) {
+          self.setState({ erro: 'O horário de fim precisa ser depois do início.' });
+          return;
+        }
+        if (min(f.ini) < INICIO * 60 || min(f.fim) > FIM * 60) {
+          self.setState({ erro: 'A agenda vai das 07:00 às 22:00. Ajuste o início ou o fim.' });
+          return;
+        }
+        var novoEv = { ini: f.ini, fim: f.fim, tipo: f.tipo, nome: f.nome.trim(), det: f.det.trim(), src: 'vc', manual: true, sala: f.sala };
+        self.setState({
+          extras: self.state.extras.concat([novoEv]),
+          novo: false, erro: '',
+          form: { tipo: f.tipo, nome: '', det: '', sala: f.sala, ini: f.fim, fim: f.fim }
+        });
+      },
+      salas: salasOut,
+      horas: horas,
+      agoraTop: (min('10:12') - INICIO * 60) / 60 * HORA,
+      conectadas: conectadas,
+      nConectadas: conectadas.length,
+      provedores: provedores,
+      modal: !!this.state.modal,
+      abrir: function () { self.setState({ modal: true }); },
+      fechar: function () { self.setState({ modal: false }); }
+    };
+  }
+}
+</script>
+
+
+</body></html>

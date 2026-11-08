@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Agenda da clínica</title>
+<script src="./support.js"></script>
+<style>/* Vaga Certa — tokens e componentes compartilhados */
+:root{
+  --ink:#17363a; --ink-2:#35565a; --mute:#4a6568; --line:#cfe4df;
+  --ground:#f7fbfa; --card:#FFFFFF;
+  --teal:#2a7f75; --teal-d:#1f6a61; --mint:#ddf3ee; --mint-2:#c9ebe1;
+  --amber:#5cc8b0; --amber-d:#1f6a61; --amber-s:#ddf3ee;
+  --red:#B03024; --red-s:#FBE3E0;
+  --r-s:8px; --r-m:14px; --r-l:22px;
+  --shadow:0 1px 0 rgba(23,54,58,.06), 0 8px 24px -12px rgba(23,54,58,.18);
+}
+*{box-sizing:border-box}
+.vc{font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);background:var(--ground);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.vc h1,.vc h2,.vc h3,.vc h4,.vc .disp{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;letter-spacing:-0.02em;margin:0;font-weight:700;line-height:1.08}
+.vc p{margin:0}
+.num{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;font-weight:700}
+.vc :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.muted{color:var(--mute)}
+.small{font-size:13px;line-height:1.4}
+
+/* botões */
+.btn{min-height:48px;padding:0 22px;border-radius:var(--r-m);border:0;font:600 16px 'Instrument Sans',system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:background .15s,transform .1s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-amber{background:var(--amber);color:var(--ink)}
+.btn-amber:hover{background:#4db89f}
+.btn-ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn-ghost:hover{background:rgba(23,54,58,.06)}
+.btn-danger{background:var(--red-s);color:var(--red)}
+.btn[disabled],.btn-off{background:#e4f1ee;color:#5b7a78;cursor:not-allowed;box-shadow:none}
+.btn-block{width:100%}
+.btn-sm{min-height:44px;padding:0 16px;font-size:14px}
+
+/* cartão */
+.card{background:var(--card);border-radius:var(--r-l);box-shadow:var(--shadow)}
+.panel{background:var(--card);border-radius:var(--r-m);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* campos */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.lbl{font-weight:600;font-size:14px;color:var(--ink)}
+.input{min-height:48px;border-radius:var(--r-m);border:1.5px solid #6f9993;background:#fff;padding:0 14px;font:500 16px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);width:100%}
+.input:focus{border-color:var(--teal);outline:3px solid var(--mint-2);outline-offset:0}
+.input.err{border-color:var(--red);background:#FFF8F7}
+.help{font-size:13px;color:var(--mute)}
+.help.err{color:var(--red);font-weight:600}
+
+/* chips / estados da vaga */
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;font-weight:600;font-size:13px;white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.st-publicada{background:var(--mint);color:var(--teal-d);box-shadow:inset 0 0 0 1.5px var(--mint-2)}
+.st-alertando{background:var(--amber);color:var(--ink)}
+.st-alertando::before{background:var(--ink);animation:vc-pulse 1.4s ease-out infinite}
+.st-reservada{background:var(--teal);color:#fff}
+.st-realizada{background:var(--ink);color:#fff}
+.st-expirada{background:#e4f1ee;color:#35565a}
+.st-cancelada{background:var(--red-s);color:var(--red)}
+
+/* escada de preço (assinatura) */
+.stairs{display:flex;align-items:flex-end;gap:6px;height:92px}
+.stairs .bar{flex:1;border-radius:8px 8px 3px 3px;background:var(--mint-2);transition:background .3s;position:relative}
+.stairs .bar.past{background:#EAF5F2}
+.stairs .bar.on{background:var(--amber)}
+.stairs .bar span{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;font-weight:700;color:var(--ink)}
+
+/* mover */
+@keyframes vc-pulse{0%{box-shadow:0 0 0 0 rgba(31,106,97,.55)}100%{box-shadow:0 0 0 9px rgba(31,106,97,0)}}
+@keyframes vc-drop-a{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+@keyframes vc-drop-b{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+.drop-a{animation:vc-drop-a .55s cubic-bezier(.2,.8,.3,1)}
+.drop-b{animation:vc-drop-b .55s cubic-bezier(.2,.8,.3,1)}
+@keyframes vc-draw{to{stroke-dashoffset:0}}
+@keyframes vc-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes vc-in{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.pop{animation:vc-pop .6s cubic-bezier(.2,.8,.3,1) both}
+.check-path{stroke-dasharray:48;stroke-dashoffset:48;animation:vc-draw .6s .35s ease-out forwards}
+.rise{animation:vc-in .5s ease-out both}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--amber-d);animation:vc-pulse 1.4s ease-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .drop-a,.drop-b,.pop,.rise,.live-dot,.st-alertando::before{animation:none}
+  .check-path{animation:none;stroke-dashoffset:0}
+}
+
+/* ícones */
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* linhas de dados */
+.row{display:flex;gap:12px;align-items:flex-start}
+.row .k{flex:none;width:92px;color:var(--mute);font-size:13px;padding-top:2px}
+.row .v{flex:1;font-weight:500}
+.hr{height:1px;background:var(--line);border:0;margin:0}
+
+/* navegação inferior do paciente */
+.tabbar{display:flex;border-top:1px solid var(--line);background:#fff}
+.tabbar a{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--mute);text-decoration:none}
+.tabbar a.on{color:var(--teal)}
+</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.day{min-height:46px;border:0;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);font:600 15px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;padding:0}
+.day.sel{background:var(--ink);color:#fff;box-shadow:none}
+.day.off{background:transparent;color:#6b8a88;box-shadow:none;cursor:default}
+.day.today{box-shadow:inset 0 0 0 2px var(--teal)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+.day.sel .dot{background:var(--amber)}
+.day.off .dot{background:transparent}
+.slot{min-height:46px;border:0;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1.5px #6f9993;font:600 15px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);cursor:pointer}
+.slot.sel{background:var(--teal);color:#fff;box-shadow:none}
+.slot.taken{background:#e4f1ee;color:#5b7a78;box-shadow:none;text-decoration:line-through;cursor:not-allowed}
+.day:focus-visible,.slot:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+</style>
+</helmet>
+<div class="vc" style="width: 390px; height: 844px; display: flex; flex-direction: column; padding: 20px 20px 24px; gap: 14px; overflow: hidden">
+
+  <div style="display: flex; align-items: center; gap: 12px">
+    <a href="Paciente-Exames.dc.html" aria-label="Voltar aos preços" class="btn btn-ghost btn-sm" style="width: 44px; padding: 0">
+      <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+    </a>
+    <div>
+      <h1 style="font-size: 24px">Agenda da clínica</h1>
+      <p class="small muted">Imagem Vila Nova · Ressonância de joelho</p>
+    </div>
+  </div>
+
+  <section aria-label="Escolha o dia" style="display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <h2 style="font-size: 18px">Novembro de 2026</h2>
+      <span class="small muted" style="display: inline-flex; align-items: center; gap: 6px"><span class="dot"></span>Tem horário livre</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 4px; text-align: center" class="small muted">
+      <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 4px">
+      <sc-for list="{{cells}}" as="c" hint-placeholder-count="30">
+        <button class="{{c.cls}}" disabled="{{c.off}}" aria-label="{{c.aria}}" aria-pressed="{{c.sel}}" sc-camel-on-click="{{c.pick}}">
+          <span>{{c.n}}</span>
+          <span class="dot"></span>
+        </button>
+      </sc-for>
+    </div>
+    <p class="small muted">Dias sem ponto estão lotados, fechados ou já passaram.</p>
+  </section>
+
+  <section aria-label="Escolha a hora" style="display: flex; flex-direction: column; gap: 8px">
+    <h2 style="font-size: 18px">{{dayTitle}}</h2>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px">
+      <sc-for list="{{slots}}" as="s" hint-placeholder-count="9">
+        <button class="{{s.cls}}" disabled="{{s.taken}}" aria-pressed="{{s.sel}}" sc-camel-on-click="{{s.pick}}">{{s.t}}</button>
+      </sc-for>
+    </div>
+  </section>
+
+  <div style="flex: 1"></div>
+
+  <div class="card" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 10px">
+      <div>
+        <div class="small muted">Você escolheu</div>
+        <strong>{{summary}}</strong>
+      </div>
+      <span class="num" style="font-size: 28px">R$ 480</span>
+    </div>
+    <a class="btn btn-primary btn-block" href="Paciente-ReservaComum.dc.html">Continuar</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { day: 10, time: '08:00' };
+  }
+  // exemplo: 1/nov/2026 é domingo; hoje é dia 8
+  isFree(d) {
+    var dow = (d - 1) % 7;
+    return d >= 9 && dow !== 0 && dow !== 6 && [12, 17, 24].indexOf(d) === -1;
+  }
+  times() { return ['08:00', '08:40', '09:20', '10:00', '10:40', '11:20', '14:00', '14:40', '15:20']; }
+  isTaken(d, i) { return (d * 5 + i * 3) % 4 === 0; }
+  renderVals() {
+    var self = this;
+    var sel = this.state.day;
+    var names = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+    var cells = [];
+    for (var d = 1; d <= 30; d++) {
+      (function (d) {
+        var free = self.isFree(d);
+        cells.push({
+          n: d, off: !free, sel: d === sel,
+          cls: 'day' + (free ? '' : ' off') + (d === 8 ? ' today' : '') + (d === sel ? ' sel' : ''),
+          aria: d + ' de novembro' + (free ? ', com horário livre' : ', sem horário'),
+          pick: function () {
+            var first = '';
+            self.times().forEach(function (t, i) { if (!first && !self.isTaken(d, i)) first = t; });
+            self.setState({ day: d, time: first });
+          }
+        });
+      })(d);
+    }
+    var time = this.state.time;
+    var slots = this.times().map(function (t, i) {
+      var taken = self.isTaken(sel, i);
+      var on = t === time && !taken;
+      return {
+        t: t, taken: taken, sel: on,
+        cls: 'slot' + (taken ? ' taken' : '') + (on ? ' sel' : ''),
+        pick: function () { self.setState({ time: t }); }
+      };
+    });
+    var wd = names[(sel - 1) % 7];
+    var label = wd.charAt(0).toUpperCase() + wd.slice(1) + ', ' + sel + ' de novembro';
+    return {
+      cells: cells, slots: slots, dayTitle: label,
+      summary: label + ' · ' + time
+    };
+  }
+}
+</script>
+
+
+</body></html>

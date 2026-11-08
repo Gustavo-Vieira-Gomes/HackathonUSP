@@ -1,0 +1,12 @@
+/* Paciente-Questionario.dc.html */
+.scr-avisos .avisos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.scr-avisos .aviso{display:flex;gap:12px;align-items:flex-start;padding:11px 14px;border-top:1px solid var(--line)}
+.scr-avisos .aviso:first-child{border-top:0}
+.scr-avisos .aviso .ico{color:var(--red);margin-top:1px}
+.scr-avisos .aviso strong{display:block;font-size:15px;line-height:1.3}
+.scr-avisos .lembretes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.scr-avisos .lembretes li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink-2)}
+.scr-avisos .lembretes .ico{width:18px;height:18px;color:var(--teal-d)}
+.scr-avisos .ciente{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px #b3d1ca;cursor:pointer;font-weight:500;line-height:1.35}
+.scr-avisos .ciente.on{background:var(--mint);box-shadow:inset 0 0 0 2px var(--teal)}
+.scr-avisos .ciente input{width:22px;height:22px;accent-color:#2a7f75;flex:none;margin:0}

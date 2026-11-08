@@ -1,0 +1,15 @@
+/* Paciente-Cadastro.dc.html */
+.scr-cadastro .step{display:flex;flex-direction:column;gap:16px;animation:vc-in .35s ease-out both}
+.scr-cadastro .input.big{min-height:56px;font-size:18px;border-radius:16px}
+.scr-cadastro .input.ok{border-color:var(--teal);background:#f3fbf8}
+.scr-cadastro .msg{display:flex;align-items:flex-start;gap:8px;font-size:14px;line-height:1.35}
+.scr-cadastro .msg.ok{color:var(--teal-d);font-weight:600}
+.scr-cadastro .msg.err{color:var(--red);font-weight:600}
+.scr-cadastro .why{display:flex;gap:10px;background:var(--mint);border-radius:14px;padding:12px 14px;font-size:14px;color:var(--ink-2)}
+.scr-cadastro .pw{position:relative}
+.scr-cadastro .pw .input{padding-right:92px}
+.scr-cadastro .pw button{position:absolute;right:6px;top:6px;min-height:44px;padding:0 14px;border:0;border-radius:12px;background:transparent;color:var(--teal-d);font:600 14px var(--f-body),system-ui,sans-serif;cursor:pointer}
+.scr-cadastro .bul{display:flex;gap:12px;align-items:flex-start}
+.scr-cadastro .bul svg{margin-top:2px;color:var(--teal)}
+.scr-cadastro .demo{align-self:center;min-height:44px;border:0;background:transparent;color:var(--teal-d);font:600 13px var(--f-body),system-ui,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:0 8px}
+@media (prefers-reduced-motion:reduce){.scr-cadastro .step{animation:none}}

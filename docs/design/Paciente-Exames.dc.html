@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Marcar exame</title>
+<script src="./support.js"></script>
+<style>/* Vaga Certa — tokens e componentes compartilhados */
+:root{
+  --ink:#17363a; --ink-2:#35565a; --mute:#4a6568; --line:#cfe4df;
+  --ground:#f7fbfa; --card:#FFFFFF;
+  --teal:#2a7f75; --teal-d:#1f6a61; --mint:#ddf3ee; --mint-2:#c9ebe1;
+  --amber:#5cc8b0; --amber-d:#1f6a61; --amber-s:#ddf3ee;
+  --red:#B03024; --red-s:#FBE3E0;
+  --r-s:8px; --r-m:14px; --r-l:22px;
+  --shadow:0 1px 0 rgba(23,54,58,.06), 0 8px 24px -12px rgba(23,54,58,.18);
+}
+*{box-sizing:border-box}
+.vc{font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);background:var(--ground);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.vc h1,.vc h2,.vc h3,.vc h4,.vc .disp{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;letter-spacing:-0.02em;margin:0;font-weight:700;line-height:1.08}
+.vc p{margin:0}
+.num{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;font-weight:700}
+.vc :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.muted{color:var(--mute)}
+.small{font-size:13px;line-height:1.4}
+
+/* botões */
+.btn{min-height:48px;padding:0 22px;border-radius:var(--r-m);border:0;font:600 16px 'Instrument Sans',system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:background .15s,transform .1s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-amber{background:var(--amber);color:var(--ink)}
+.btn-amber:hover{background:#4db89f}
+.btn-ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn-ghost:hover{background:rgba(23,54,58,.06)}
+.btn-danger{background:var(--red-s);color:var(--red)}
+.btn[disabled],.btn-off{background:#e4f1ee;color:#5b7a78;cursor:not-allowed;box-shadow:none}
+.btn-block{width:100%}
+.btn-sm{min-height:44px;padding:0 16px;font-size:14px}
+
+/* cartão */
+.card{background:var(--card);border-radius:var(--r-l);box-shadow:var(--shadow)}
+.panel{background:var(--card);border-radius:var(--r-m);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* campos */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.lbl{font-weight:600;font-size:14px;color:var(--ink)}
+.input{min-height:48px;border-radius:var(--r-m);border:1.5px solid #6f9993;background:#fff;padding:0 14px;font:500 16px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);width:100%}
+.input:focus{border-color:var(--teal);outline:3px solid var(--mint-2);outline-offset:0}
+.input.err{border-color:var(--red);background:#FFF8F7}
+.help{font-size:13px;color:var(--mute)}
+.help.err{color:var(--red);font-weight:600}
+
+/* chips / estados da vaga */
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;font-weight:600;font-size:13px;white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.st-publicada{background:var(--mint);color:var(--teal-d);box-shadow:inset 0 0 0 1.5px var(--mint-2)}
+.st-alertando{background:var(--amber);color:var(--ink)}
+.st-alertando::before{background:var(--ink);animation:vc-pulse 1.4s ease-out infinite}
+.st-reservada{background:var(--teal);color:#fff}
+.st-realizada{background:var(--ink);color:#fff}
+.st-expirada{background:#e4f1ee;color:#35565a}
+.st-cancelada{background:var(--red-s);color:var(--red)}
+
+/* escada de preço (assinatura) */
+.stairs{display:flex;align-items:flex-end;gap:6px;height:92px}
+.stairs .bar{flex:1;border-radius:8px 8px 3px 3px;background:var(--mint-2);transition:background .3s;position:relative}
+.stairs .bar.past{background:#EAF5F2}
+.stairs .bar.on{background:var(--amber)}
+.stairs .bar span{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;font-weight:700;color:var(--ink)}
+
+/* mover */
+@keyframes vc-pulse{0%{box-shadow:0 0 0 0 rgba(31,106,97,.55)}100%{box-shadow:0 0 0 9px rgba(31,106,97,0)}}
+@keyframes vc-drop-a{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+@keyframes vc-drop-b{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+.drop-a{animation:vc-drop-a .55s cubic-bezier(.2,.8,.3,1)}
+.drop-b{animation:vc-drop-b .55s cubic-bezier(.2,.8,.3,1)}
+@keyframes vc-draw{to{stroke-dashoffset:0}}
+@keyframes vc-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes vc-in{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.pop{animation:vc-pop .6s cubic-bezier(.2,.8,.3,1) both}
+.check-path{stroke-dasharray:48;stroke-dashoffset:48;animation:vc-draw .6s .35s ease-out forwards}
+.rise{animation:vc-in .5s ease-out both}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--amber-d);animation:vc-pulse 1.4s ease-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .drop-a,.drop-b,.pop,.rise,.live-dot,.st-alertando::before{animation:none}
+  .check-path{animation:none;stroke-dashoffset:0}
+}
+
+/* ícones */
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* linhas de dados */
+.row{display:flex;gap:12px;align-items:flex-start}
+.row .k{flex:none;width:92px;color:var(--mute);font-size:13px;padding-top:2px}
+.row .v{flex:1;font-weight:500}
+.hr{height:1px;background:var(--line);border:0;margin:0}
+
+/* navegação inferior do paciente */
+.tabbar{display:flex;border-top:1px solid var(--line);background:#fff}
+.tabbar a{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--mute);text-decoration:none}
+.tabbar a.on{color:var(--teal)}
+</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.enc{background:var(--mint);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.motivo{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:12px;font-weight:600;color:var(--ink-2);line-height:1.2}
+.motivo .ico{width:15px;height:15px;color:var(--teal-d)}
+.enc.nor{background:#fff;box-shadow:inset 0 0 0 1.5px var(--line)}
+.enc-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.enc-when{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.enc-price{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.enc-who{display:flex;flex-direction:column;min-width:0}
+.enc-who strong,.enc-who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.strike{text-decoration:line-through;color:var(--mute);font-size:13px}
+.seg{display:flex;gap:4px;padding:4px;border-radius:16px;background:#e4f1ee}
+.seg button{flex:1;min-height:44px;border:0;border-radius:12px;background:transparent;color:var(--ink-2);font:600 15px 'Instrument Sans',system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(23,54,58,.12)}
+.seg-n{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--teal);color:#fff;font-size:12px;display:inline-flex;align-items:center;justify-content:center}
+.wait{background:var(--mint);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.opt-nor{background:#fff;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 0 0 1.5px var(--line)}
+.pill{display:inline-flex;align-items:center;min-height:26px;padding:0 10px;border-radius:999px;font-weight:700;font-size:12px;white-space:nowrap}
+.pill.dark{background:var(--ink);color:#fff}
+.pill.light{background:#fff;color:var(--ink)}
+.pill.gray{background:#e4f1ee;color:var(--ink-2)}
+</style>
+</helmet>
+<div class="vc" style="width: 390px; height: 844px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div style="flex: 1; overflow-y: auto; padding: 22px 20px 20px; display: flex; flex-direction: column; gap: 18px">
+
+    <header style="display: flex; flex-direction: column; gap: 14px">
+      <div class="panel" style="display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 14px">
+        <span style="flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--mint); color: var(--teal-d); display: flex; align-items: center; justify-content: center">
+          <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3.5"></circle></svg>
+        </span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+          <span class="small muted" style="font-weight: 600">Seu exame</span>
+          <h1 style="font-size: 18px; line-height: 1.2">Ressonância de joelho esquerdo</h1>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="Paciente-Inicio.dc.html" style="flex: none">Trocar</a>
+      </div>
+
+      <div role="group" aria-label="Tipo de horário" class="seg">
+        <button type="button" class="{{tabEnc}}" aria-pressed="{{encOn}}" onClick="{{verEncaixe}}">Encaixe <span class="seg-n">{{nEnc}}</span></button>
+        <button type="button" class="{{tabNor}}" aria-pressed="{{norOn}}" onClick="{{verNormal}}">Horário normal <span class="seg-n">{{nNor}}</span></button>
+      </div>
+    </header>
+
+    <sc-if value="{{showEnc}}" hint-placeholder-val="{{ true }}">
+    <sc-if value="{{temVagas}}" hint-placeholder-val="{{ true }}">
+    <div style="background: var(--ink); color: #fff; border-radius: 22px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px">
+      <span>
+        <span class="small" style="display: block; color: #c9e6e0">Menor preço agora</span>
+        <span style="display: block; font-weight: 600">{{bestWhen}}</span>
+      </span>
+      <span class="num" style="font-size: 34px; color: var(--amber)">{{bestPrice}}</span>
+    </div>
+    </sc-if>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <p class="small muted">Vagas de última hora com desconto. Do mais barato para o mais caro.</p>
+
+      <sc-if value="{{temVagas}}" hint-placeholder-val="{{ true }}">
+      <sc-for list="{{enc}}" as="o" hint-placeholder-count="4">
+        <article class="enc">
+          <span class="motivo">
+            <sc-if value="{{o.isCancel}}" hint-placeholder-val="{{ true }}">
+              <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4M10 13l4 4M14 13l-4 4"></path></svg>
+            </sc-if>
+            <sc-if value="{{o.isNoite}}" hint-placeholder-val="{{ false }}">
+              <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg>
+            </sc-if>
+            {{o.motivo}}
+          </span>
+          <div class="enc-row">
+            <div class="enc-when">
+              <span class="small" style="font-weight: 700">{{o.dia}}</span>
+              <span class="num" style="font-size: 22px; line-height: 1">{{o.hora}}</span>
+            </div>
+            <div class="enc-price">
+              <span class="strike">{{o.cheio}}</span>
+              <span class="pill dark">{{o.off}}</span>
+              <span class="num" style="font-size: 24px; line-height: 1">{{o.price}}</span>
+            </div>
+          </div>
+          <div class="enc-row">
+            <div class="enc-who">
+              <strong style="font-size: 15px">{{o.clinica}}</strong>
+              <span class="small" style="color: var(--ink-2)">{{o.agencia}}</span>
+            </div>
+            <a class="btn btn-primary btn-sm" href="Paciente-Questionario.dc.html" aria-label="{{o.aria}}" style="flex: none">Confirmar</a>
+          </div>
+        </article>
+      </sc-for>
+      <a href="Paciente-Inscricao.dc.html" class="small" style="align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--teal-d)">
+        <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>
+        Nenhum serve? Avisar quando surgir outra vaga
+      </a>
+      </sc-if>
+
+      <sc-if value="{{semVagas}}" hint-placeholder-val="{{ false }}">
+      <article class="wait">
+        <div style="display: flex; gap: 12px; align-items: flex-start">
+          <span style="flex: none; width: 44px; height: 44px; border-radius: 14px; background: #fff; display: flex; align-items: center; justify-content: center; color: var(--teal-d)">
+            <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>
+          </span>
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <strong style="font-size: 17px">Nenhum encaixe agora</strong>
+            <p class="small" style="color: var(--ink-2)">Entre na fila e avisamos por mensagem quando abrir um horário com desconto perto de você. Quem pagar o sinal primeiro fica com a vaga.</p>
+          </div>
+        </div>
+        <a class="btn btn-primary btn-block" href="Paciente-Inscricao.dc.html">Avisar quando surgir vaga</a>
+      </article>
+      </sc-if>
+    </section>
+    </sc-if>
+
+    <sc-if value="{{showNor}}" hint-placeholder-val="{{ false }}">
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <p class="small muted">Preço cheio de cada clínica. Escolha uma para ver os dias e horários livres.</p>
+      <sc-for list="{{nor}}" as="c" hint-placeholder-count="3">
+        <article class="enc nor">
+          <div class="enc-row">
+            <div class="enc-when">
+              <span class="small muted" style="font-weight: 600">Próxima data</span>
+              <span style="font-weight: 700">{{c.proxima}}</span>
+            </div>
+            <span class="num" style="font-size: 24px; line-height: 1">{{c.price}}</span>
+          </div>
+          <div class="enc-row">
+            <div class="enc-who">
+              <strong style="font-size: 15px">{{c.clinica}}</strong>
+              <span class="small" style="color: var(--ink-2)">{{c.agencia}}</span>
+            </div>
+            <a class="btn btn-ghost btn-sm" href="Paciente-Agenda.dc.html" aria-label="{{c.aria}}" style="flex: none">
+              <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4"></path></svg>
+              Ver agenda
+            </a>
+          </div>
+        </article>
+      </sc-for>
+    </section>
+    </sc-if>
+  </div>
+
+  <nav class="tabbar" aria-label="Principal">
+    <a href="Paciente-Inicio.dc.html">
+      <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"></path></svg>Início
+    </a>
+    <a href="Paciente-Reserva.dc.html">
+      <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4"></path></svg>Reservas
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;estado&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Com vagas&quot;,&quot;Sem vagas&quot;],&quot;default&quot;:&quot;Com vagas&quot;},&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { aba: 'encaixe' };
+  }
+  renderVals() {
+    var self = this;
+    var enc0 = this.state.aba === 'encaixe';
+    var temVagas = (this.props.estado ?? 'Com vagas') !== 'Sem vagas';
+    // dados de exemplo
+    var raw = [
+      // motivo: 'cancelamento' (outro paciente desmarcou no dia ou na véspera) | 'noite' (horário pouco procurado)
+      { dia: 'Hoje', hora: '21:00', price: 336, clinica: 'Imagem Vila Nova', agencia: 'Agência Pulso', motivo: 'noite' },
+      { dia: 'Amanhã', hora: '07:40', price: 384, clinica: 'Diagnóstico Centro', agencia: 'Agência Vitta', motivo: 'cancelamento' },
+      { dia: 'Hoje', hora: '15:00', price: 432, clinica: 'Imagem Vila Nova', agencia: 'Agência Pulso', motivo: 'cancelamento' },
+      { dia: 'Ter, 10/11', hora: '21:30', price: 414, clinica: 'Clínica Lumen', agencia: 'Agência Vitta', motivo: 'noite' }
+    ];
+    var motivos = {
+      cancelamento: 'Outro paciente cancelou em cima da hora',
+      noite: 'Horário noturno, menos procurado'
+    };
+    // preço cheio de cada clínica (horário normal)
+    var clinicas = [
+      { clinica: 'Clínica Lumen', agencia: 'Agência Vitta', price: 460, proxima: 'Seg, 9/11' },
+      { clinica: 'Imagem Vila Nova', agencia: 'Agência Pulso', price: 480, proxima: 'Ter, 10/11' },
+      { clinica: 'Diagnóstico Centro', agencia: 'Agência Vitta', price: 520, proxima: 'Qua, 11/11' }
+    ];
+    var cheio = {};
+    clinicas.forEach(function (c) { cheio[c.clinica] = c.price; });
+    clinicas.sort(function (a, b) { return a.price - b.price; });
+    var nor = clinicas.map(function (c) {
+      return {
+        clinica: c.clinica, agencia: c.agencia, proxima: c.proxima,
+        price: 'R$ ' + c.price,
+        aria: 'Ver agenda da ' + c.clinica + ', R$ ' + c.price
+      };
+    });
+    raw.sort(function (a, b) { return a.price - b.price; });
+    var enc = raw.map(function (o) {
+      return {
+        dia: o.dia, hora: o.hora,
+        price: 'R$ ' + o.price,
+        cheio: 'R$ ' + cheio[o.clinica],
+        motivo: motivos[o.motivo],
+        isCancel: o.motivo === 'cancelamento',
+        isNoite: o.motivo === 'noite',
+        off: '−' + Math.round((1 - o.price / cheio[o.clinica]) * 100) + '%',
+        clinica: o.clinica, agencia: o.agencia,
+        aria: 'Confirmar encaixe ' + o.dia + ' às ' + o.hora + ' na ' + o.clinica + ' por R$ ' + o.price
+      };
+    });
+    return {
+      showEnc: enc0, showNor: !enc0,
+      tabEnc: enc0 ? 'on' : '', tabNor: enc0 ? '' : 'on',
+      encOn: enc0 ? 'true' : 'false', norOn: enc0 ? 'false' : 'true',
+      nEnc: temVagas ? enc.length : 0,
+      nNor: nor.length, nor: nor,
+      verEncaixe: function () { self.setState({ aba: 'encaixe' }); },
+      verNormal: function () { self.setState({ aba: 'normal' }); },
+      temVagas: temVagas, semVagas: !temVagas, enc: enc, bestPrice: enc[0].price, bestWhen: raw[0].dia + ', ' + raw[0].hora };
+  }
+}
+</script>
+
+
+</body></html>

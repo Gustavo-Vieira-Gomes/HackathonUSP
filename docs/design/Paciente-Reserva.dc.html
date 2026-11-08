@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Reserva confirmada</title>
+<script src="./support.js"></script>
+<style>/* Vaga Certa — tokens e componentes compartilhados */
+:root{
+  --ink:#17363a; --ink-2:#35565a; --mute:#4a6568; --line:#cfe4df;
+  --ground:#f7fbfa; --card:#FFFFFF;
+  --teal:#2a7f75; --teal-d:#1f6a61; --mint:#ddf3ee; --mint-2:#c9ebe1;
+  --amber:#5cc8b0; --amber-d:#1f6a61; --amber-s:#ddf3ee;
+  --red:#B03024; --red-s:#FBE3E0;
+  --r-s:8px; --r-m:14px; --r-l:22px;
+  --shadow:0 1px 0 rgba(23,54,58,.06), 0 8px 24px -12px rgba(23,54,58,.18);
+}
+*{box-sizing:border-box}
+.vc{font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);background:var(--ground);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.vc h1,.vc h2,.vc h3,.vc h4,.vc .disp{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;letter-spacing:-0.02em;margin:0;font-weight:700;line-height:1.08}
+.vc p{margin:0}
+.num{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;font-weight:700}
+.vc :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.muted{color:var(--mute)}
+.small{font-size:13px;line-height:1.4}
+
+/* botões */
+.btn{min-height:48px;padding:0 22px;border-radius:var(--r-m);border:0;font:600 16px 'Instrument Sans',system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:background .15s,transform .1s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-amber{background:var(--amber);color:var(--ink)}
+.btn-amber:hover{background:#4db89f}
+.btn-ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn-ghost:hover{background:rgba(23,54,58,.06)}
+.btn-danger{background:var(--red-s);color:var(--red)}
+.btn[disabled],.btn-off{background:#e4f1ee;color:#5b7a78;cursor:not-allowed;box-shadow:none}
+.btn-block{width:100%}
+.btn-sm{min-height:44px;padding:0 16px;font-size:14px}
+
+/* cartão */
+.card{background:var(--card);border-radius:var(--r-l);box-shadow:var(--shadow)}
+.panel{background:var(--card);border-radius:var(--r-m);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* campos */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.lbl{font-weight:600;font-size:14px;color:var(--ink)}
+.input{min-height:48px;border-radius:var(--r-m);border:1.5px solid #6f9993;background:#fff;padding:0 14px;font:500 16px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);width:100%}
+.input:focus{border-color:var(--teal);outline:3px solid var(--mint-2);outline-offset:0}
+.input.err{border-color:var(--red);background:#FFF8F7}
+.help{font-size:13px;color:var(--mute)}
+.help.err{color:var(--red);font-weight:600}
+
+/* chips / estados da vaga */
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;font-weight:600;font-size:13px;white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.st-publicada{background:var(--mint);color:var(--teal-d);box-shadow:inset 0 0 0 1.5px var(--mint-2)}
+.st-alertando{background:var(--amber);color:var(--ink)}
+.st-alertando::before{background:var(--ink);animation:vc-pulse 1.4s ease-out infinite}
+.st-reservada{background:var(--teal);color:#fff}
+.st-realizada{background:var(--ink);color:#fff}
+.st-expirada{background:#e4f1ee;color:#35565a}
+.st-cancelada{background:var(--red-s);color:var(--red)}
+
+/* escada de preço (assinatura) */
+.stairs{display:flex;align-items:flex-end;gap:6px;height:92px}
+.stairs .bar{flex:1;border-radius:8px 8px 3px 3px;background:var(--mint-2);transition:background .3s;position:relative}
+.stairs .bar.past{background:#EAF5F2}
+.stairs .bar.on{background:var(--amber)}
+.stairs .bar span{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;font-weight:700;color:var(--ink)}
+
+/* mover */
+@keyframes vc-pulse{0%{box-shadow:0 0 0 0 rgba(31,106,97,.55)}100%{box-shadow:0 0 0 9px rgba(31,106,97,0)}}
+@keyframes vc-drop-a{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+@keyframes vc-drop-b{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+.drop-a{animation:vc-drop-a .55s cubic-bezier(.2,.8,.3,1)}
+.drop-b{animation:vc-drop-b .55s cubic-bezier(.2,.8,.3,1)}
+@keyframes vc-draw{to{stroke-dashoffset:0}}
+@keyframes vc-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes vc-in{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.pop{animation:vc-pop .6s cubic-bezier(.2,.8,.3,1) both}
+.check-path{stroke-dasharray:48;stroke-dashoffset:48;animation:vc-draw .6s .35s ease-out forwards}
+.rise{animation:vc-in .5s ease-out both}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--amber-d);animation:vc-pulse 1.4s ease-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .drop-a,.drop-b,.pop,.rise,.live-dot,.st-alertando::before{animation:none}
+  .check-path{animation:none;stroke-dashoffset:0}
+}
+
+/* ícones */
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* linhas de dados */
+.row{display:flex;gap:12px;align-items:flex-start}
+.row .k{flex:none;width:92px;color:var(--mute);font-size:13px;padding-top:2px}
+.row .v{flex:1;font-weight:500}
+.hr{height:1px;background:var(--line);border:0;margin:0}
+
+/* navegação inferior do paciente */
+.tabbar{display:flex;border-top:1px solid var(--line);background:#fff}
+.tabbar a{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--mute);text-decoration:none}
+.tabbar a.on{color:var(--teal)}
+</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>body{margin:0}</style>
+</helmet>
+<div class="vc" style="width: 390px; height: 844px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div style="background: var(--teal); color: #fff; padding: 28px 24px 56px; display: flex; flex-direction: column; align-items: flex-start; gap: 14px">
+    <div class="pop" style="width: 64px; height: 64px; border-radius: 50%; background: var(--amber); display: flex; align-items: center; justify-content: center">
+      <svg width="34" height="34" sc-camel-view-box="0 0 24 24" fill="none" stroke="#17363a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="check-path" d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+    </div>
+    <h1 style="font-size: 34px">Vaga reservada</h1>
+    <p style="opacity: .92">Sinal de R$ 76,80 pago. Mandamos a confirmação para o seu e-mail.</p>
+  </div>
+
+  <div style="margin: -32px 16px 0; display: flex; flex-direction: column; gap: 12px; flex: 1">
+    <div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+        <div>
+          <strong style="font-size: 18px">Ressonância de joelho</strong>
+          <div class="muted">Imagem Vila Nova</div>
+        </div>
+        <span class="chip st-reservada">Reservada</span>
+      </div>
+      <hr class="hr">
+      <div class="row"><span class="k">Quando</span><span class="v"><strong>Amanhã, 07:40</strong></span></div>
+      <div class="row"><span class="k">Onde</span><span class="v">Rua das Acácias, 120</span></div>
+      <div class="row"><span class="k">Levar</span><span class="v">Pedido médico e documento com foto</span></div>
+      <div class="row"><span class="k">Preparo</span><span class="v">Sem jejum. Tire objetos de metal antes de entrar.</span></div>
+      <hr class="hr">
+      <div style="display: flex; justify-content: space-between"><span class="muted">Pago agora</span><span class="num" style="font-size: 18px">R$ 76,80</span></div>
+      <div style="display: flex; justify-content: space-between"><span class="muted">Pagar na clínica</span><span class="num" style="font-size: 18px">R$ 307,20</span></div>
+    </div>
+
+    <p class="small muted" style="padding: 0 6px">Se a clínica cancelar, o sinal volta inteiro. Se você cancelar ou faltar, a clínica fica com ele.</p>
+
+    <div style="flex: 1"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px">
+      <a class="btn btn-primary btn-block" href="Paciente-Inicio.dc.html">Ver minhas reservas</a>
+      <button class="btn btn-danger btn-block">Cancelar reserva</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

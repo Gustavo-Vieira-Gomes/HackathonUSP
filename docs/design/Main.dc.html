@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Sistema Vaga Certa</title>
+<script src="./support.js"></script>
+<style>/* Vaga Certa — tokens e componentes compartilhados */
+:root{
+  --ink:#17363a; --ink-2:#35565a; --mute:#4a6568; --line:#cfe4df;
+  --ground:#f7fbfa; --card:#FFFFFF;
+  --teal:#2a7f75; --teal-d:#1f6a61; --mint:#ddf3ee; --mint-2:#c9ebe1;
+  --amber:#5cc8b0; --amber-d:#1f6a61; --amber-s:#ddf3ee;
+  --red:#B03024; --red-s:#FBE3E0;
+  --r-s:8px; --r-m:14px; --r-l:22px;
+  --shadow:0 1px 0 rgba(23,54,58,.06), 0 8px 24px -12px rgba(23,54,58,.18);
+}
+*{box-sizing:border-box}
+.vc{font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);background:var(--ground);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.vc h1,.vc h2,.vc h3,.vc h4,.vc .disp{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;letter-spacing:-0.02em;margin:0;font-weight:700;line-height:1.08}
+.vc p{margin:0}
+.num{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;font-weight:700}
+.vc :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.muted{color:var(--mute)}
+.small{font-size:13px;line-height:1.4}
+
+/* botões */
+.btn{min-height:48px;padding:0 22px;border-radius:var(--r-m);border:0;font:600 16px 'Instrument Sans',system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:background .15s,transform .1s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-amber{background:var(--amber);color:var(--ink)}
+.btn-amber:hover{background:#4db89f}
+.btn-ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn-ghost:hover{background:rgba(23,54,58,.06)}
+.btn-danger{background:var(--red-s);color:var(--red)}
+.btn[disabled],.btn-off{background:#e4f1ee;color:#5b7a78;cursor:not-allowed;box-shadow:none}
+.btn-block{width:100%}
+.btn-sm{min-height:44px;padding:0 16px;font-size:14px}
+
+/* cartão */
+.card{background:var(--card);border-radius:var(--r-l);box-shadow:var(--shadow)}
+.panel{background:var(--card);border-radius:var(--r-m);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* campos */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.lbl{font-weight:600;font-size:14px;color:var(--ink)}
+.input{min-height:48px;border-radius:var(--r-m);border:1.5px solid #6f9993;background:#fff;padding:0 14px;font:500 16px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);width:100%}
+.input:focus{border-color:var(--teal);outline:3px solid var(--mint-2);outline-offset:0}
+.input.err{border-color:var(--red);background:#FFF8F7}
+.help{font-size:13px;color:var(--mute)}
+.help.err{color:var(--red);font-weight:600}
+
+/* chips / estados da vaga */
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;font-weight:600;font-size:13px;white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.st-publicada{background:var(--mint);color:var(--teal-d);box-shadow:inset 0 0 0 1.5px var(--mint-2)}
+.st-alertando{background:var(--amber);color:var(--ink)}
+.st-alertando::before{background:var(--ink);animation:vc-pulse 1.4s ease-out infinite}
+.st-reservada{background:var(--teal);color:#fff}
+.st-realizada{background:var(--ink);color:#fff}
+.st-expirada{background:#e4f1ee;color:#35565a}
+.st-cancelada{background:var(--red-s);color:var(--red)}
+
+/* escada de preço (assinatura) */
+.stairs{display:flex;align-items:flex-end;gap:6px;height:92px}
+.stairs .bar{flex:1;border-radius:8px 8px 3px 3px;background:var(--mint-2);transition:background .3s;position:relative}
+.stairs .bar.past{background:#EAF5F2}
+.stairs .bar.on{background:var(--amber)}
+.stairs .bar span{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;font-weight:700;color:var(--ink)}
+
+/* mover */
+@keyframes vc-pulse{0%{box-shadow:0 0 0 0 rgba(31,106,97,.55)}100%{box-shadow:0 0 0 9px rgba(31,106,97,0)}}
+@keyframes vc-drop-a{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+@keyframes vc-drop-b{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+.drop-a{animation:vc-drop-a .55s cubic-bezier(.2,.8,.3,1)}
+.drop-b{animation:vc-drop-b .55s cubic-bezier(.2,.8,.3,1)}
+@keyframes vc-draw{to{stroke-dashoffset:0}}
+@keyframes vc-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes vc-in{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.pop{animation:vc-pop .6s cubic-bezier(.2,.8,.3,1) both}
+.check-path{stroke-dasharray:48;stroke-dashoffset:48;animation:vc-draw .6s .35s ease-out forwards}
+.rise{animation:vc-in .5s ease-out both}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--amber-d);animation:vc-pulse 1.4s ease-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .drop-a,.drop-b,.pop,.rise,.live-dot,.st-alertando::before{animation:none}
+  .check-path{animation:none;stroke-dashoffset:0}
+}
+
+/* ícones */
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* linhas de dados */
+.row{display:flex;gap:12px;align-items:flex-start}
+.row .k{flex:none;width:92px;color:var(--mute);font-size:13px;padding-top:2px}
+.row .v{flex:1;font-weight:500}
+.hr{height:1px;background:var(--line);border:0;margin:0}
+
+/* navegação inferior do paciente */
+.tabbar{display:flex;border-top:1px solid var(--line);background:#fff}
+.tabbar a{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--mute);text-decoration:none}
+.tabbar a.on{color:var(--teal)}
+</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>body{margin:0}</style>
+</helmet>
+<div class="vc" style="width: 1360px; min-height: 1620px; padding: 72px 72px 80px; display: flex; flex-direction: column; gap: 72px">
+
+  <!-- Abertura -->
+  <section style="display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap: 72px; align-items: end">
+    <div style="display: flex; flex-direction: column; gap: 24px">
+      <h1 style="font-size: 88px; letter-spacing: -0.035em">Vaga Certa</h1>
+      <p style="font-size: 20px; max-width: 46ch; color: var(--ink-2)">O horário que ia ficar vazio vira exame mais barato para quem estava esperando. O sistema visual tem uma ideia só: o preço desce em degraus, e a tela mostra isso.</p>
+      <p class="small muted" style="max-width: 56ch">Nome de trabalho. Os textos e valores das telas são de exemplo, para o time trocar pelos dados reais.</p>
+    </div>
+    <div class="card" style="padding: 28px 28px 24px; display: flex; flex-direction: column; gap: 18px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <span class="small muted">Ressonância de joelho, preço agora</span>
+        <span class="chip st-alertando">Alertando</span>
+      </div>
+      <div class="num {{dropCls}}" style="font-size: 72px; line-height: 1">{{price}}</div>
+      <div class="stairs" style="height: 128px">
+        <sc-for list="{{bars}}" as="bar" hint-placeholder-count="4">
+          <div class="{{bar.cls}}" style="height: {{bar.h}}%"><span>{{bar.label}}</span></div>
+        </sc-for>
+      </div>
+      <p class="small muted">Faltam 48 h, 24 h, 6 h. O preço nunca sobe e é igual para todo mundo no mesmo instante.</p>
+    </div>
+  </section>
+
+  <!-- Cores -->
+  <section style="display: flex; flex-direction: column; gap: 24px">
+    <h2 style="font-size: 32px">Cores</h2>
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="height: 120px; border-radius: 14px; background: #17363a"></div>
+        <div><strong>Tinta</strong> <span class="small muted">#17363a</span><p class="small muted">Texto e títulos. 12:1 sobre o papel.</p></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="height: 120px; border-radius: 14px; background: #2a7f75"></div>
+        <div><strong>Verde-contraste</strong> <span class="small muted">#2a7f75</span><p class="small muted">Ação principal e confirmação. Texto branco 4,8:1.</p></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="height: 120px; border-radius: 14px; background: #ddf3ee"></div>
+        <div><strong>Névoa</strong> <span class="small muted">#ddf3ee</span><p class="small muted">Fundos de destaque e vaga publicada.</p></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="height: 120px; border-radius: 14px; background: #5cc8b0"></div>
+        <div><strong>Menta</strong> <span class="small muted">#5cc8b0</span><p class="small muted">Preço, tempo e encaixe. Texto tinta 6,3:1.</p></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="height: 120px; border-radius: 14px; background: #f7fbfa; box-shadow: inset 0 0 0 1px #cfe4df"></div>
+        <div><strong>Papel</strong> <span class="small muted">#f7fbfa</span><p class="small muted">Fundo das telas. Cartões em branco.</p></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="height: 120px; border-radius: 14px; background: #B03024"></div>
+        <div><strong>Bloqueio</strong> <span class="small muted">#B03024</span><p class="small muted">Contraindicação, erro e cancelamento.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tipografia -->
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 24px">
+    <div class="card" style="padding: 32px; display: flex; flex-direction: column; gap: 14px">
+      <span class="small muted">Bricolage Grotesque, títulos e preços</span>
+      <div class="num" style="font-size: 96px; line-height: 1">R$ 384</div>
+      <h3 style="font-size: 32px">Vaga para amanhã, 07:40</h3>
+      <h4 style="font-size: 22px">Antes de reservar</h4>
+      <p class="small muted">Números sempre tabulares, para o preço não pular quando muda.</p>
+    </div>
+    <div class="card" style="padding: 32px; display: flex; flex-direction: column; gap: 14px">
+      <span class="small muted">Instrument Sans, texto e formulários</span>
+      <p style="font-size: 18px; max-width: 52ch">Pague o sinal de 20% para travar a vaga. O restante você paga na clínica, no dia do exame.</p>
+      <p style="font-size: 15px; max-width: 56ch" class="muted">Se a clínica cancelar, o sinal volta inteiro. Se você faltar ou cancelar, a clínica fica com ele.</p>
+      <p class="small muted">Corpo 15 px no celular e no computador, rótulos 14 px, apoio 13 px. Botões 16 px.</p>
+    </div>
+  </section>
+
+  <!-- Estados e botões -->
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 20px">
+      <h2 style="font-size: 32px">Estados da vaga</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px">
+        <span class="chip st-publicada">Publicada</span>
+        <span class="chip st-alertando">Alertando</span>
+        <span class="chip st-reservada">Reservada</span>
+        <span class="chip st-realizada">Realizada</span>
+        <span class="chip st-expirada">Expirada</span>
+        <span class="chip st-cancelada">Cancelada</span>
+      </div>
+      <p class="small muted" style="max-width: 52ch">Seguem a ordem do ciclo da vaga. Cada estado tem texto e forma de luminosidade diferente, nunca só cor. O ponto pulsa só em Alertando.</p>
+      <h2 style="font-size: 32px; margin-top: 12px">Botões</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px">
+        <button class="btn btn-primary">Quero esta vaga</button>
+        <button class="btn btn-amber">Pagar sinal</button>
+        <button class="btn btn-ghost">Agora não</button>
+        <button class="btn btn-danger">Cancelar reserva</button>
+        <button class="btn" disabled="">Indisponível</button>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 20px">
+      <h2 style="font-size: 32px">Campos</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px">
+        <div class="field"><label for="f1">Preço máximo</label><input id="f1" class="input" value="R$ 400"><span class="help">Só avisamos vagas até este valor.</span></div>
+        <div class="field"><label for="f2">Preço piso</label><input id="f2" class="input err" value="R$ 520"><span class="help err">O piso não pode passar do preço cheio.</span></div>
+      </div>
+      <h2 style="font-size: 32px; margin-top: 12px">Cartão de vaga</h2>
+      <div class="card" style="padding: 20px; display: flex; gap: 20px; align-items: center">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+          <span class="chip st-publicada" style="align-self: flex-start">Publicada</span>
+          <strong style="font-size: 17px; margin-top: 6px">Ressonância de joelho</strong>
+          <span class="small muted">Amanhã, 07:40 · 2,4 km</span>
+        </div>
+        <div style="text-align: right">
+          <div class="small muted" style="text-decoration: line-through">R$ 480</div>
+          <div class="num" style="font-size: 34px">R$ 384</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Encaixe e horário normal -->
+  <section style="display: flex; flex-direction: column; gap: 20px">
+    <h2 style="font-size: 32px">Encaixe ou horário normal</h2>
+    <p class="muted" style="max-width: 64ch">O paciente precisa ver na hora o que é mais barato. Encaixe é menta e mostra o desconto. Horário normal é branco, com preço cheio. No calendário, um ponto menta marca o dia com encaixe e um ponto verde-escuro marca o dia com horário normal.</p>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 24px; align-items: start">
+      <div class="card" style="padding: 14px 16px; display: flex; align-items: center; gap: 12px; background: var(--amber-s); box-shadow: none">
+        <div style="flex: 1"><div class="num" style="font-size: 26px">07:40</div><span style="display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; font-weight: 700; font-size: 12px; background: var(--amber)">Cancelamento · −20%</span></div>
+        <div style="text-align: right"><div class="small muted" style="text-decoration: line-through">R$ 480</div><div class="num" style="font-size: 28px">R$ 384</div></div>
+      </div>
+      <div class="panel" style="padding: 14px 16px; display: flex; align-items: center; gap: 12px">
+        <div style="flex: 1"><div class="num" style="font-size: 26px">08:00</div><span style="display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; font-weight: 700; font-size: 12px; background: #e4f1ee; color: #35565a">Preço cheio</span></div>
+        <div class="num" style="font-size: 28px">R$ 480</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; gap: 8px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5cc8b0"></span>Dia com encaixe</div>
+        <div style="display: flex; align-items: center; gap: 8px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2a7f75"></span>Dia com horário normal</div>
+        <div class="small muted">O menor preço do mês sempre aparece no topo da tela.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Movimento -->
+  <section style="display: flex; flex-direction: column; gap: 20px">
+    <h2 style="font-size: 32px">Movimento</h2>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 24px">
+      <div class="panel" style="padding: 20px"><strong>O preço cai</strong><p class="small muted" style="margin-top: 6px">O número desce 14 px e assenta, o degrau ativo muda de lugar. É o movimento principal do produto.</p></div>
+      <div class="panel" style="padding: 20px"><strong>A reserva confirma</strong><p class="small muted" style="margin-top: 6px">O selo entra com um pulo curto e o traço do check se desenha. Acontece uma vez, na tela de reserva.</p></div>
+      <div class="panel" style="padding: 20px"><strong>Quem está ao vivo pulsa</strong><p class="small muted" style="margin-top: 6px">Um ponto menta indica vaga alertando ou tempo real. Com movimento reduzido ativado, tudo fica parado.</p></div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:1620}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tick: 2 };
+  }
+  componentDidMount() {
+    var reduce = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+    this._t = setInterval(() => this.setState({ tick: this.state.tick + 1 }), 2600);
+  }
+  componentWillUnmount() { clearInterval(this._t); }
+  renderVals() {
+    var step = this.state.tick % 4;
+    var prices = ['R$ 480', 'R$ 432', 'R$ 384', 'R$ 336'];
+    var labels = ['0%', '−10%', '−20%', '−30%'];
+    var heights = [100, 82, 64, 46];
+    var bars = [0, 1, 2, 3].map(function (i) {
+      return { cls: i === step ? 'bar on' : (i < step ? 'bar past' : 'bar'), h: heights[i], label: labels[i] };
+    });
+    return { bars: bars, price: prices[step], dropCls: this.state.tick % 2 ? 'drop-a' : 'drop-b' };
+  }
+}
+</script>
+
+
+</body></html>

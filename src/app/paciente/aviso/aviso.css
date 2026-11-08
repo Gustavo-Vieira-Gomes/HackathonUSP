@@ -1,0 +1,8 @@
+/* Paciente-Inscricao.dc.html */
+.scr-aviso .cell{min-height:44px;border:0;border-radius:10px;background:#e4f1ee;color:#4a6568;font:600 12px var(--f-body),system-ui,sans-serif;cursor:pointer}
+.scr-aviso .cell.on{background:#2a7f75;color:#fff}
+.scr-aviso .cell:focus-visible{outline:3px solid #17363a;outline-offset:2px}
+.scr-aviso input[type=range]{width:100%;accent-color:#2a7f75;min-height:32px}
+@keyframes sheet-up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.scr-aviso .sheet{animation:sheet-up .4s cubic-bezier(.2,.8,.3,1) both}
+@media (prefers-reduced-motion:reduce){.scr-aviso .sheet{animation:none}}

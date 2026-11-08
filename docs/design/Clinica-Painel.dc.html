@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Painel da clínica</title>
+<script src="./support.js"></script>
+<style>/* Vaga Certa — tokens e componentes compartilhados */
+:root{
+  --ink:#17363a; --ink-2:#35565a; --mute:#4a6568; --line:#cfe4df;
+  --ground:#f7fbfa; --card:#FFFFFF;
+  --teal:#2a7f75; --teal-d:#1f6a61; --mint:#ddf3ee; --mint-2:#c9ebe1;
+  --amber:#5cc8b0; --amber-d:#1f6a61; --amber-s:#ddf3ee;
+  --red:#B03024; --red-s:#FBE3E0;
+  --r-s:8px; --r-m:14px; --r-l:22px;
+  --shadow:0 1px 0 rgba(23,54,58,.06), 0 8px 24px -12px rgba(23,54,58,.18);
+}
+*{box-sizing:border-box}
+.vc{font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);background:var(--ground);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.vc h1,.vc h2,.vc h3,.vc h4,.vc .disp{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;letter-spacing:-0.02em;margin:0;font-weight:700;line-height:1.08}
+.vc p{margin:0}
+.num{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;font-weight:700}
+.vc :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.muted{color:var(--mute)}
+.small{font-size:13px;line-height:1.4}
+
+/* botões */
+.btn{min-height:48px;padding:0 22px;border-radius:var(--r-m);border:0;font:600 16px 'Instrument Sans',system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:background .15s,transform .1s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-amber{background:var(--amber);color:var(--ink)}
+.btn-amber:hover{background:#4db89f}
+.btn-ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn-ghost:hover{background:rgba(23,54,58,.06)}
+.btn-danger{background:var(--red-s);color:var(--red)}
+.btn[disabled],.btn-off{background:#e4f1ee;color:#5b7a78;cursor:not-allowed;box-shadow:none}
+.btn-block{width:100%}
+.btn-sm{min-height:44px;padding:0 16px;font-size:14px}
+
+/* cartão */
+.card{background:var(--card);border-radius:var(--r-l);box-shadow:var(--shadow)}
+.panel{background:var(--card);border-radius:var(--r-m);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* campos */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.lbl{font-weight:600;font-size:14px;color:var(--ink)}
+.input{min-height:48px;border-radius:var(--r-m);border:1.5px solid #6f9993;background:#fff;padding:0 14px;font:500 16px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);width:100%}
+.input:focus{border-color:var(--teal);outline:3px solid var(--mint-2);outline-offset:0}
+.input.err{border-color:var(--red);background:#FFF8F7}
+.help{font-size:13px;color:var(--mute)}
+.help.err{color:var(--red);font-weight:600}
+
+/* chips / estados da vaga */
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;font-weight:600;font-size:13px;white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.st-publicada{background:var(--mint);color:var(--teal-d);box-shadow:inset 0 0 0 1.5px var(--mint-2)}
+.st-alertando{background:var(--amber);color:var(--ink)}
+.st-alertando::before{background:var(--ink);animation:vc-pulse 1.4s ease-out infinite}
+.st-reservada{background:var(--teal);color:#fff}
+.st-realizada{background:var(--ink);color:#fff}
+.st-expirada{background:#e4f1ee;color:#35565a}
+.st-cancelada{background:var(--red-s);color:var(--red)}
+
+/* escada de preço (assinatura) */
+.stairs{display:flex;align-items:flex-end;gap:6px;height:92px}
+.stairs .bar{flex:1;border-radius:8px 8px 3px 3px;background:var(--mint-2);transition:background .3s;position:relative}
+.stairs .bar.past{background:#EAF5F2}
+.stairs .bar.on{background:var(--amber)}
+.stairs .bar span{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;font-weight:700;color:var(--ink)}
+
+/* mover */
+@keyframes vc-pulse{0%{box-shadow:0 0 0 0 rgba(31,106,97,.55)}100%{box-shadow:0 0 0 9px rgba(31,106,97,0)}}
+@keyframes vc-drop-a{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+@keyframes vc-drop-b{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+.drop-a{animation:vc-drop-a .55s cubic-bezier(.2,.8,.3,1)}
+.drop-b{animation:vc-drop-b .55s cubic-bezier(.2,.8,.3,1)}
+@keyframes vc-draw{to{stroke-dashoffset:0}}
+@keyframes vc-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes vc-in{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.pop{animation:vc-pop .6s cubic-bezier(.2,.8,.3,1) both}
+.check-path{stroke-dasharray:48;stroke-dashoffset:48;animation:vc-draw .6s .35s ease-out forwards}
+.rise{animation:vc-in .5s ease-out both}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--amber-d);animation:vc-pulse 1.4s ease-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .drop-a,.drop-b,.pop,.rise,.live-dot,.st-alertando::before{animation:none}
+  .check-path{animation:none;stroke-dashoffset:0}
+}
+
+/* ícones */
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* linhas de dados */
+.row{display:flex;gap:12px;align-items:flex-start}
+.row .k{flex:none;width:92px;color:var(--mute);font-size:13px;padding-top:2px}
+.row .v{flex:1;font-weight:500}
+.hr{height:1px;background:var(--line);border:0;margin:0}
+
+/* navegação inferior do paciente */
+.tabbar{display:flex;border-top:1px solid var(--line);background:#fff}
+.tabbar a{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--mute);text-decoration:none}
+.tabbar a.on{color:var(--teal)}
+</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.nav a{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border-radius:12px;color:#c9e6e0;text-decoration:none;font-weight:600}
+.nav a.on{background:rgba(255,255,255,.12);color:#fff}
+.nav a:hover{background:rgba(255,255,255,.08)}
+.ag{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 14px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--line);cursor:pointer}
+.ag.on{background:var(--mint);box-shadow:inset 0 0 0 2px var(--teal)}
+.ag input{width:20px;height:20px;accent-color:#2a7f75;flex:none;margin:0}
+.ag .hr-t{font-variant-numeric:tabular-nums;font-weight:700;min-width:96px}
+.toast{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:14px;padding:12px 18px;display:flex;gap:10px;align-items:center;font-weight:600;z-index:6;box-shadow:0 10px 30px -10px rgba(23,54,58,.5)}
+</style>
+</helmet>
+<div class="vc" style="min-height: 920px; display: flex; flex-direction: column; position: relative">
+
+  <aside style="background: var(--ink); color: #fff; padding: 10px 36px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 32px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+      <svg width="30" height="30" sc-camel-view-box="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#5cc8b0"></rect><path d="M8 11h6M8 16h11M8 21h16" stroke="#17363a" stroke-width="3" stroke-linecap="round"></path></svg>
+      <span class="disp" style="font-size: 20px">Vaga Certa</span>
+    </div>
+    <nav class="nav" aria-label="Clínica" style="display: flex; flex-wrap: wrap; gap: 4px">
+      <a href="Clinica-Painel.dc.html" class="on" aria-current="page"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>Painel</a>
+      <a href="Clinica-Agenda.dc.html"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h7"></path></svg>Agenda</a>
+      <a href="Clinica-Exames.dc.html"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M9 3h6v6l4 10a2 2 0 0 1-2 3H7a2 2 0 0 1-2-3l4-10z"></path></svg>Exames</a>
+    </nav>
+    <div style="flex: 1"></div>
+    <div style="padding: 8px 14px; border-radius: 12px; background: rgba(255,255,255,.08)" class="small">
+      <strong>Imagem Vila Nova</strong>
+      <span style="color: #c9e6e0"> · 2 agendas conectadas</span>
+    </div>
+  </aside>
+
+  <main style="flex: 1; width: 100%; max-width: 1280px; margin: 0 auto; min-width: 0; padding: 32px 36px 40px; display: flex; flex-direction: column; gap: 24px">
+
+    <header style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h1 style="font-size: 36px">Painel</h1>
+        <span class="small muted">Agenda sincronizada há 38 segundos</span>
+      </div>
+      <button type="button" class="btn btn-primary" sc-camel-on-click="{{abrir}}"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4M10 13l4 4M14 13l-4 4"></path></svg>Publicar cancelamento</button>
+    </header>
+
+    <section aria-label="Resumo do dia" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px">
+      <div class="card" style="padding: 18px"><div class="small muted">Vagas publicadas hoje</div><div class="num" style="font-size: 40px">6</div></div>
+      <div class="card" style="padding: 18px"><div class="small muted">Reservadas</div><div class="num" style="font-size: 40px">4</div></div>
+      <div class="card" style="padding: 18px"><div class="small muted">Receita recuperada</div><div class="num" style="font-size: 40px">R$ 1.640</div></div>
+      <div class="card" style="padding: 18px"><div class="small muted">Taxa de preenchimento</div><div class="num" style="font-size: 40px">67%</div></div>
+    </section>
+
+    <section class="panel" style="padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; background: var(--amber-s); box-shadow: none">
+      <div style="flex: 1 1 260px">
+        <strong>Relógio da demo</strong>
+        <div class="small" style="color: #17363a">Avance o tempo e veja o preço cair em degraus. Só a conta do operador mexe nisto.</div>
+      </div>
+      <span class="num" style="font-size: 26px">+{{adv}} h</span>
+      <button class="btn btn-primary btn-sm" sc-camel-on-click="{{advance}}">Avançar 6 h</button>
+      <button class="btn btn-ghost btn-sm" sc-camel-on-click="{{reset}}">Zerar</button>
+    </section>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+      <section style="flex: 2 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="font-size: 22px">Vagas de encaixe</h2>
+        <sc-for list="{{vagas}}" as="v" hint-placeholder-count="4">
+          <div class="card" style="padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center">
+            <div style="flex: 1 1 200px; min-width: 0">
+              <strong style="font-size: 17px">{{v.exame}}</strong>
+              <div class="small muted">{{v.quando}} · {{v.origem}}</div>
+            </div>
+            <span class="{{v.chipCls}}">{{v.estado}}</span>
+            <div style="min-width: 112px; text-align: right">
+              <div class="num" style="font-size: 26px">{{v.preco}}</div>
+              <div class="small muted">{{v.nota}}</div>
+            </div>
+          </div>
+        </sc-for>
+      </section>
+
+      <section style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="font-size: 22px">Linha do tempo</h2>
+        <div class="panel" style="padding: 18px; display: flex; flex-direction: column; gap: 0">
+          <p class="small muted" style="margin-bottom: 10px">Ressonância de joelho, amanhã 07:40</p>
+          <div style="display: flex; gap: 12px"><div style="display: flex; flex-direction: column; align-items: center"><span style="width: 10px; height: 10px; border-radius: 50%; background: var(--teal); margin-top: 6px"></span><span style="flex: 1; width: 2px; background: var(--line)"></span></div><div style="padding-bottom: 14px"><strong>10:02 Publicada</strong><div class="small muted">Evento apagado na Google Agenda</div></div></div>
+          <div style="display: flex; gap: 12px"><div style="display: flex; flex-direction: column; align-items: center"><span style="width: 10px; height: 10px; border-radius: 50%; background: var(--teal); margin-top: 6px"></span><span style="flex: 1; width: 2px; background: var(--line)"></span></div><div style="padding-bottom: 14px"><strong>10:02 Primeira onda</strong><div class="small muted">5 pacientes alertados</div></div></div>
+          <div style="display: flex; gap: 12px"><div style="display: flex; flex-direction: column; align-items: center"><span style="width: 10px; height: 10px; border-radius: 50%; background: var(--amber-d); margin-top: 6px"></span><span style="flex: 1; width: 2px; background: var(--line)"></span></div><div style="padding-bottom: 14px"><strong>10:12 Segunda onda</strong><div class="small muted">Ninguém pagou o sinal em 10 minutos</div></div></div>
+          <div style="display: flex; gap: 12px"><div style="display: flex; flex-direction: column; align-items: center"><span style="width: 10px; height: 10px; border-radius: 50%; background: var(--line); margin-top: 6px"></span></div><div><strong class="muted">Em andamento</strong><div class="small muted">Aguardando o sinal</div></div></div>
+        </div>
+      </section>
+    </div>
+
+    <p class="small muted">Valores e nomes de exemplo.</p>
+  </main>
+
+  <sc-if value="{{toast}}" hint-placeholder-val="{{ false }}">
+    <div class="toast rise" role="status">
+      <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true" style="color: var(--amber)"><path d="M5 12l5 5 9-10"></path></svg>
+      {{toastMsg}}
+    </div>
+  </sc-if>
+
+  <sc-if value="{{modal}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; background: rgba(23,54,58,.55); display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; z-index: 5">
+      <form role="dialog" aria-modal="true" aria-labelledby="t-cancel" class="card" sc-camel-on-submit="{{publicar}}" style="width: 600px; max-width: calc(100% - 32px); padding: 24px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <h2 id="t-cancel" style="font-size: 24px">Publicar cancelamento</h2>
+            <p class="small muted">Escolha o agendamento que foi cancelado. Ele sai da agenda e o horário vira vaga de encaixe no Vaga Certa, com aviso aos pacientes da fila.</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Fechar" style="width: 44px; padding: 0; flex: none" sc-camel-on-click="{{fechar}}"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+
+        <fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+          <legend class="lbl" style="padding: 0 0 8px">Próximos agendamentos</legend>
+          <sc-for list="{{agenda}}" as="a" hint-placeholder-count="4">
+            <label class="{{a.cls}}">
+              <input type="radio" name="ag" checked="{{a.on}}" sc-camel-on-change="{{a.pick}}">
+              <span class="hr-t">{{a.quando}}</span>
+              <span style="flex: 1; min-width: 0">
+                <strong style="display: block">{{a.paciente}}</strong>
+                <span class="small muted">{{a.exame}} · {{a.sala}}</span>
+              </span>
+              <span class="small muted">{{a.cheio}}</span>
+            </label>
+          </sc-for>
+          <sc-if value="{{semAgenda}}" hint-placeholder-val="{{ false }}">
+            <p class="small muted">Nenhum agendamento futuro na agenda.</p>
+          </sc-if>
+        </fieldset>
+
+        <sc-if value="{{temSel}}" hint-placeholder-val="{{ true }}">
+          <div class="panel" style="padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; background: var(--amber-s); box-shadow: none">
+            <div style="flex: 1 1 260px; min-width: 0">
+              <strong>Vai ao ar como encaixe</strong>
+              <div class="small" style="color: var(--ink-2)">{{prevQuando}} · {{prevNota}}</div>
+            </div>
+            <span class="num" style="font-size: 30px">{{prevPreco}}</span>
+          </div>
+          <p class="small muted">O preço desce em degraus até o piso conforme o horário se aproxima. O paciente cancelado deixa de ver o horário no app.</p>
+        </sc-if>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px">
+          <button type="button" class="btn btn-ghost btn-sm" sc-camel-on-click="{{fechar}}">Cancelar</button>
+          <sc-if value="{{temSel}}" hint-placeholder-val="{{ true }}">
+            <button type="submit" class="btn btn-primary btn-sm">Cancelar agendamento e publicar vaga</button>
+          </sc-if>
+          <sc-if value="{{semSel}}" hint-placeholder-val="{{ false }}">
+            <button type="button" class="btn btn-sm" disabled="">Escolha um agendamento</button>
+          </sc-if>
+        </div>
+      </form>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:920}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { adv: 0, modal: false, sel: null, feitos: [], toast: '' };
+  }
+  componentWillUnmount() { clearTimeout(this._t); }
+  renderVals() {
+    var self = this;
+    var adv = this.state.adv;
+    // agendamentos futuros da agenda (exemplo); h = horas até o exame
+    var agendaBase = [
+      { id: 'a1', quando: 'Hoje, 15:20', paciente: 'Pedro H.', exame: 'Ressonância de ombro', sala: 'Ressonância', h: 5, cheio: 480 },
+      { id: 'a2', quando: 'Hoje, 16:30', paciente: 'Diego N.', exame: 'Ultrassom de mamas', sala: 'Ultrassom', h: 6, cheio: 160 },
+      { id: 'a3', quando: 'Amanhã, 08:00', paciente: 'Roberto S.', exame: 'Tomografia de crânio', sala: 'Tomografia', h: 22, cheio: 350 },
+      { id: 'a4', quando: 'Amanhã, 09:00', paciente: 'Carlos M.', exame: 'Ressonância de coluna', sala: 'Ressonância', h: 23, cheio: 480 },
+      { id: 'a5', quando: 'Seg, 9/11, 11:00', paciente: 'Marina L.', exame: 'Tomografia de tórax', sala: 'Tomografia', h: 73, cheio: 350 }
+    ];
+    var feitos = this.state.feitos;
+    function degrau(left) { return left > 48 ? 0 : left > 24 ? 1 : left > 6 ? 2 : 3; }
+    var agendaLivre = agendaBase.filter(function (a) { return feitos.indexOf(a.id) < 0 && a.h - adv > 0; });
+    var sel = agendaLivre.filter(function (a) { return a.id === self.state.sel; })[0] || null;
+    var agenda = agendaLivre.map(function (a) {
+      var on = !!sel && sel.id === a.id;
+      return {
+        quando: a.quando, paciente: a.paciente, exame: a.exame, sala: a.sala,
+        cheio: 'R$ ' + a.cheio,
+        on: on, cls: on ? 'ag on' : 'ag',
+        pick: function () { self.setState({ sel: a.id }); }
+      };
+    });
+    var prev = {};
+    if (sel) {
+      var st = degrau(sel.h - adv);
+      prev = {
+        prevQuando: sel.quando + ', ' + sel.exame,
+        prevPreco: 'R$ ' + Math.round(sel.cheio * (1 - 0.1 * st)),
+        prevNota: st === 0 ? 'preço cheio por enquanto' : '−' + (st * 10) + '% agora, faltam ' + (sel.h - adv) + ' h'
+      };
+    }
+    var publicados = agendaBase.filter(function (a) { return feitos.indexOf(a.id) >= 0; }).map(function (a) {
+      return { exame: a.exame, quando: a.quando, origem: 'cancelamento publicado agora', h: a.h, cheio: a.cheio, estado: 'Alertando', cls: 'chip st-alertando' };
+    });
+    var base = publicados.concat([
+      { exame: 'Ressonância de joelho', quando: 'Amanhã, 07:40', origem: 'cancelamento na agenda', h: 52, cheio: 480, estado: 'Alertando', cls: 'chip st-alertando' },
+      { exame: 'Ultrassom de abdômen', quando: 'Amanhã, 15:00', origem: 'horário vazio', h: 40, cheio: 160, estado: 'Publicada', cls: 'chip st-publicada' },
+      { exame: 'Tomografia de crânio', quando: 'Hoje, 18:00', origem: 'horário vazio', h: 9, cheio: 350, estado: 'Publicada', cls: 'chip st-publicada' }
+    ]);
+    var vagas = base.map(function (b) {
+      var left = b.h - adv;
+      if (left <= 0) {
+        return { exame: b.exame, quando: b.quando, origem: b.origem, estado: 'Expirada', chipCls: 'chip st-expirada', preco: '—', nota: 'passou do horário' };
+      }
+      var step = degrau(left);
+      var price = Math.round(b.cheio * (1 - 0.1 * step));
+      return {
+        exame: b.exame, quando: b.quando, origem: b.origem,
+        estado: b.estado, chipCls: b.cls,
+        preco: 'R$ ' + price,
+        nota: step === 0 ? 'preço cheio' : '−' + (step * 10) + '% · faltam ' + left + ' h'
+      };
+    });
+    vagas.push({ exame: 'Mamografia', quando: 'Hoje, 18:30', origem: 'cancelamento na agenda', estado: 'Reservada', chipCls: 'chip st-reservada', preco: 'R$ 198', nota: 'sinal pago' });
+    return Object.assign({
+      modal: !!this.state.modal,
+      agenda: agenda,
+      semAgenda: agenda.length === 0,
+      temSel: !!sel, semSel: !sel,
+      toast: !!this.state.toast, toastMsg: this.state.toast,
+      abrir: function () { self.setState({ modal: true, sel: null }); },
+      fechar: function () { self.setState({ modal: false }); },
+      publicar: function (e) {
+        if (e && e.preventDefault) e.preventDefault();
+        if (!sel) return;
+        self.setState({
+          feitos: self.state.feitos.concat([sel.id]),
+          modal: false, sel: null,
+          toast: sel.quando + ' publicado como encaixe. Fila avisada.'
+        });
+        clearTimeout(self._t);
+        self._t = setTimeout(function () { self.setState({ toast: '' }); }, 4000);
+      },
+      adv: adv,
+      vagas: vagas,
+      advance: function () { self.setState({ adv: self.state.adv + 6 }); },
+      reset: function () { self.setState({ adv: 0 }); }
+    }, prev);
+  }
+}
+</script>
+
+
+</body></html>

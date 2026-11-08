@@ -1,0 +1,15 @@
+/* Lista de exames (Clinica-Exames.dc.html) */
+.seg{display:inline-flex;gap:4px;padding:4px;border-radius:14px;background:#e4f1ee;max-width:100%;flex-wrap:wrap}
+.seg button{min-height:36px;padding:0 14px;border:0;border-radius:10px;background:transparent;color:var(--ink-2);font:600 14px var(--f-body),system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(23,54,58,.12)}
+.seg .n{font-variant-numeric:tabular-nums;color:var(--mute);font-weight:500}
+.tbl-wrap{background:#fff;border-radius:18px;box-shadow:inset 0 0 0 1px var(--line);overflow-x:auto}
+.tbl-wrap table{width:100%;border-collapse:collapse;min-width:880px}
+.tbl-wrap th{text-align:left;font-size:13px;font-weight:600;color:var(--mute);padding:12px 16px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl-wrap td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl-wrap tr:last-child td{border-bottom:0}
+.tbl-wrap td.n,.tbl-wrap th.n{text-align:right;font-variant-numeric:tabular-nums}
+.ex-nome{font-weight:700;font-size:15px}
+.edit{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border-radius:12px;color:var(--teal-d);font-weight:600;text-decoration:none}
+.edit:hover{background:var(--mint)}
+.edit:focus-visible{outline:3px solid var(--ink);outline-offset:2px}

@@ -1,0 +1,5 @@
+/* Paciente-ReservaComum.dc.html */
+.scr-confirmar .pay{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 14px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px #b3d1ca;cursor:pointer;font-weight:600}
+.scr-confirmar .pay.on{box-shadow:inset 0 0 0 2.5px #2a7f75;background:#ddf3ee}
+.scr-confirmar .pay input{width:22px;height:22px;accent-color:#2a7f75;flex:none}
+.scr-confirmar .pay:focus-within{outline:3px solid var(--ink);outline-offset:2px}

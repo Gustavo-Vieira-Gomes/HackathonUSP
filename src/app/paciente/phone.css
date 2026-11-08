@@ -1,0 +1,39 @@
+.phone-stage {
+  min-height: 100dvh;
+  background: #e9f2ef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.phone {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  max-width: 100%;
+  background: var(--ground);
+  border-radius: 36px;
+  overflow: hidden;
+  box-shadow: 0 0 0 10px #17363a, 0 30px 60px -20px rgba(23, 54, 58, 0.45);
+  transform: translateZ(0); /* diálogos fixed ficam presos à moldura */
+}
+
+/* Cada tela ocupa a moldura inteira, como as pranchas de 390 × 844 */
+.phone > .vc {
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 480px) {
+  .phone-stage {
+    padding: 0;
+    align-items: stretch;
+  }
+  .phone {
+    width: 100%;
+    height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Editar exame</title>
+<script src="./support.js"></script>
+<style>/* Vaga Certa — tokens e componentes compartilhados */
+:root{
+  --ink:#17363a; --ink-2:#35565a; --mute:#4a6568; --line:#cfe4df;
+  --ground:#f7fbfa; --card:#FFFFFF;
+  --teal:#2a7f75; --teal-d:#1f6a61; --mint:#ddf3ee; --mint-2:#c9ebe1;
+  --amber:#5cc8b0; --amber-d:#1f6a61; --amber-s:#ddf3ee;
+  --red:#B03024; --red-s:#FBE3E0;
+  --r-s:8px; --r-m:14px; --r-l:22px;
+  --shadow:0 1px 0 rgba(23,54,58,.06), 0 8px 24px -12px rgba(23,54,58,.18);
+}
+*{box-sizing:border-box}
+.vc{font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);background:var(--ground);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.vc h1,.vc h2,.vc h3,.vc h4,.vc .disp{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;letter-spacing:-0.02em;margin:0;font-weight:700;line-height:1.08}
+.vc p{margin:0}
+.num{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;font-weight:700}
+.vc :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.muted{color:var(--mute)}
+.small{font-size:13px;line-height:1.4}
+
+/* botões */
+.btn{min-height:48px;padding:0 22px;border-radius:var(--r-m);border:0;font:600 16px 'Instrument Sans',system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:background .15s,transform .1s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-amber{background:var(--amber);color:var(--ink)}
+.btn-amber:hover{background:#4db89f}
+.btn-ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn-ghost:hover{background:rgba(23,54,58,.06)}
+.btn-danger{background:var(--red-s);color:var(--red)}
+.btn[disabled],.btn-off{background:#e4f1ee;color:#5b7a78;cursor:not-allowed;box-shadow:none}
+.btn-block{width:100%}
+.btn-sm{min-height:44px;padding:0 16px;font-size:14px}
+
+/* cartão */
+.card{background:var(--card);border-radius:var(--r-l);box-shadow:var(--shadow)}
+.panel{background:var(--card);border-radius:var(--r-m);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* campos */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.lbl{font-weight:600;font-size:14px;color:var(--ink)}
+.input{min-height:48px;border-radius:var(--r-m);border:1.5px solid #6f9993;background:#fff;padding:0 14px;font:500 16px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);width:100%}
+.input:focus{border-color:var(--teal);outline:3px solid var(--mint-2);outline-offset:0}
+.input.err{border-color:var(--red);background:#FFF8F7}
+.help{font-size:13px;color:var(--mute)}
+.help.err{color:var(--red);font-weight:600}
+
+/* chips / estados da vaga */
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;font-weight:600;font-size:13px;white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.st-publicada{background:var(--mint);color:var(--teal-d);box-shadow:inset 0 0 0 1.5px var(--mint-2)}
+.st-alertando{background:var(--amber);color:var(--ink)}
+.st-alertando::before{background:var(--ink);animation:vc-pulse 1.4s ease-out infinite}
+.st-reservada{background:var(--teal);color:#fff}
+.st-realizada{background:var(--ink);color:#fff}
+.st-expirada{background:#e4f1ee;color:#35565a}
+.st-cancelada{background:var(--red-s);color:var(--red)}
+
+/* escada de preço (assinatura) */
+.stairs{display:flex;align-items:flex-end;gap:6px;height:92px}
+.stairs .bar{flex:1;border-radius:8px 8px 3px 3px;background:var(--mint-2);transition:background .3s;position:relative}
+.stairs .bar.past{background:#EAF5F2}
+.stairs .bar.on{background:var(--amber)}
+.stairs .bar span{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;font-weight:700;color:var(--ink)}
+
+/* mover */
+@keyframes vc-pulse{0%{box-shadow:0 0 0 0 rgba(31,106,97,.55)}100%{box-shadow:0 0 0 9px rgba(31,106,97,0)}}
+@keyframes vc-drop-a{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+@keyframes vc-drop-b{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+.drop-a{animation:vc-drop-a .55s cubic-bezier(.2,.8,.3,1)}
+.drop-b{animation:vc-drop-b .55s cubic-bezier(.2,.8,.3,1)}
+@keyframes vc-draw{to{stroke-dashoffset:0}}
+@keyframes vc-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes vc-in{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.pop{animation:vc-pop .6s cubic-bezier(.2,.8,.3,1) both}
+.check-path{stroke-dasharray:48;stroke-dashoffset:48;animation:vc-draw .6s .35s ease-out forwards}
+.rise{animation:vc-in .5s ease-out both}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--amber-d);animation:vc-pulse 1.4s ease-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .drop-a,.drop-b,.pop,.rise,.live-dot,.st-alertando::before{animation:none}
+  .check-path{animation:none;stroke-dashoffset:0}
+}
+
+/* ícones */
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* linhas de dados */
+.row{display:flex;gap:12px;align-items:flex-start}
+.row .k{flex:none;width:92px;color:var(--mute);font-size:13px;padding-top:2px}
+.row .v{flex:1;font-weight:500}
+.hr{height:1px;background:var(--line);border:0;margin:0}
+
+/* navegação inferior do paciente */
+.tabbar{display:flex;border-top:1px solid var(--line);background:#fff}
+.tabbar a{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--mute);text-decoration:none}
+.tabbar a.on{color:var(--teal)}
+</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.nav a{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border-radius:12px;color:#c9e6e0;text-decoration:none;font-weight:600}
+.nav a.on{background:rgba(255,255,255,.12);color:#fff}
+.nav a:hover{background:rgba(255,255,255,.08)}
+.tag{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1.5px #6f9993;font-weight:600;font-size:14px}
+</style>
+</helmet>
+<div class="vc" style="min-height: 920px; display: flex; flex-direction: column">
+
+  <aside style="background: var(--ink); color: #fff; padding: 10px 36px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 32px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+      <svg width="30" height="30" sc-camel-view-box="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#5cc8b0"></rect><path d="M8 11h6M8 16h11M8 21h16" stroke="#17363a" stroke-width="3" stroke-linecap="round"></path></svg>
+      <span class="disp" style="font-size: 20px">Vaga Certa</span>
+    </div>
+    <nav class="nav" aria-label="Clínica" style="display: flex; flex-wrap: wrap; gap: 4px">
+      <a href="Clinica-Painel.dc.html"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>Painel</a>
+      <a href="Clinica-Agenda.dc.html"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h7"></path></svg>Agenda</a>
+      <a href="Clinica-Exames.dc.html" class="on"><svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M9 3h6v6l4 10a2 2 0 0 1-2 3H7a2 2 0 0 1-2-3l4-10z"></path></svg>Exames</a>
+    </nav>
+  </aside>
+
+  <main style="flex: 1; width: 100%; max-width: 1280px; margin: 0 auto; min-width: 0; padding: 32px 36px 40px; display: flex; flex-direction: column; gap: 24px">
+    <header style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: flex-end">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <a href="Clinica-Exames.dc.html" class="btn btn-ghost btn-sm" style="align-self: flex-start">Voltar aos exames</a>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+          <h1 style="font-size: 36px">Editar exame</h1>
+          <span class="{{statusCls}}">{{statusLabel}}</span>
+        </div>
+        <p class="muted">Ressonância de joelho · 14 vagas publicadas e 9 reservadas nos últimos 30 dias · editado há 2 dias</p>
+      </div>
+      <label style="display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 14px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--line); font-weight: 600; cursor: pointer">
+        <input type="checkbox" checked="{{ativo}}" sc-camel-on-change="{{toggleAtivo}}" style="width: 20px; height: 20px; accent-color: #2a7f75; margin: 0">
+        Aceita vagas de encaixe
+      </label>
+    </header>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+      <form class="card" style="flex: 2 1 460px; min-width: 0; padding: 24px; display: flex; flex-direction: column; gap: 18px">
+        <section aria-labelledby="s1" style="display: flex; flex-direction: column; gap: 10px">
+          <h2 id="s1" style="font-size: 17px">Exame</h2>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center">
+            <span class="tag" style="background: var(--mint); box-shadow: none; color: var(--teal-d)">Ressonância</span>
+            <span class="muted" aria-hidden="true">›</span>
+            <span class="tag" style="background: var(--mint); box-shadow: none; color: var(--teal-d)">Joelho</span>
+            <span class="muted" aria-hidden="true">›</span>
+            <span class="tag" style="background: var(--mint); box-shadow: none; color: var(--teal-d)">Os dois lados</span>
+          </div>
+          <p class="help">O tipo, a região e o lado não mudam depois de criado, porque os pacientes da fila buscaram por eles. Para oferecer outro exame, crie um novo.</p>
+        </section>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+          <div class="field" style="grid-column: 1 / -1"><label for="nm">Nome que o paciente vê</label><input id="nm" class="input" value="Ressonância de joelho"></div>
+          <div class="field"><label for="tuss">Código TUSS</label><input id="tuss" class="input" value="[código TUSS]"></div>
+          <div class="field"><label for="sala">Sala da agenda</label><input id="sala" class="input" value="Ressonância" readonly=""></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px">
+          <div class="field"><label for="pc">Preço cheio (R$)</label><input id="pc" class="input" inputmode="numeric" value="{{cheio}}" sc-camel-on-input="{{setCheio}}"></div>
+          <div class="field"><label for="pp">Preço piso (R$)</label>
+            <input id="pp" class="{{pisoCls}}" inputmode="numeric" value="{{piso}}" sc-camel-on-input="{{setPiso}}">
+            <span class="{{pisoHelpCls}}">{{pisoHelp}}</span>
+          </div>
+          <div class="field"><label for="an">Antecedência mínima</label><input id="an" class="input" value="3 h"><span class="help">Menos que isso, não vira vaga.</span></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px">
+          <div class="field"><label for="pr">Preparo</label><input id="pr" class="input" value="Nenhum"></div>
+          <div class="field"><label for="ph">Preparo começa</label><input id="ph" class="input" value="0 h antes"></div>
+          <div class="field"><label for="x">Tolerância de atraso</label><input id="x" class="input" value="15 min"><span class="help">Depois disso a clínica pode declarar falta.</span></div>
+        </div>
+
+        <fieldset style="border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px">
+          <legend class="lbl" style="padding-bottom: 8px">Avisos ao paciente antes de reservar</legend>
+          <p class="help" style="margin-top: -4px">O paciente lê a lista e confirma que quer seguir. Os avisos não bloqueiam a reserva.</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px">
+            <span class="tag">Marca-passo ou desfibrilador</span><span class="tag">Gravidez</span><span class="tag">Clipe de aneurisma</span><span class="tag">Implante coclear</span><span class="tag">Metal no corpo</span><span class="tag">Medo de lugar fechado</span>
+            <button type="button" class="btn btn-ghost btn-sm">Adicionar</button>
+          </div>
+        </fieldset>
+
+        <p class="small muted">Mudança de preço vale para as próximas vagas. Vagas já publicadas mantêm a escada de preço com que foram ao ar.</p>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+          <sc-if value="{{confirmar}}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="flex: 1 1 100%; background: var(--red-s); color: #7A1D14; border-radius: 14px; padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center">
+              <span style="flex: 1 1 280px"><strong>Excluir este exame?</strong> Ele sai do marketplace e não recebe novas vagas. Reservas já pagas continuam valendo.</span>
+              <button type="button" class="btn btn-ghost btn-sm" sc-camel-on-click="{{naoExcluir}}">Manter exame</button>
+              <a class="btn btn-danger btn-sm" href="Clinica-Exames.dc.html">Excluir exame</a>
+            </div>
+          </sc-if>
+          <sc-if value="{{semConfirmar}}" hint-placeholder-val="{{ true }}">
+            <button type="button" class="btn btn-danger" sc-camel-on-click="{{pedirExcluir}}">Excluir exame</button>
+          </sc-if>
+          <div style="flex: 1"></div>
+          <a class="btn btn-ghost" href="Clinica-Exames.dc.html">Cancelar</a>
+          <sc-if value="{{ok}}" hint-placeholder-val="{{ true }}"><a class="btn btn-primary" href="Clinica-Exames.dc.html">Salvar alterações</a></sc-if>
+          <sc-if value="{{bad}}" hint-placeholder-val="{{ false }}"><button type="button" class="btn" disabled="">Corrija o preço piso</button></sc-if>
+        </div>
+      </form>
+
+      <aside style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="font-size: 22px">Como o preço desce</h2>
+        <div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 14px">
+          <sc-for list="{{degraus}}" as="g" hint-placeholder-count="4">
+            <div style="display: flex; justify-content: space-between; align-items: baseline">
+              <span class="muted">{{g.when}}</span>
+              <span class="num" style="font-size: 24px">{{g.price}}</span>
+            </div>
+          </sc-for>
+          <hr class="hr">
+          <p class="small muted">Nenhum degrau passa abaixo do piso. O preço nunca sobe.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:1000}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { cheio: '480', piso: '336', ativo: true, confirmar: false };
+  }
+  renderVals() {
+    var self = this;
+    var ativo = !!this.state.ativo;
+    var extra = {
+      ativo: ativo,
+      statusLabel: ativo ? 'Ativo' : 'Pausado',
+      statusCls: ativo ? 'chip st-publicada' : 'chip st-expirada',
+      toggleAtivo: function () { self.setState({ ativo: !self.state.ativo }); },
+      confirmar: !!this.state.confirmar,
+      semConfirmar: !this.state.confirmar,
+      pedirExcluir: function () { self.setState({ confirmar: true }); },
+      naoExcluir: function () { self.setState({ confirmar: false }); }
+    };
+    var cheio = Number(String(this.state.cheio).replace(/\D/g, '')) || 0;
+    var piso = Number(String(this.state.piso).replace(/\D/g, '')) || 0;
+    var bad = piso > cheio || piso <= 0;
+    var fmt = function (n) { return 'R$ ' + Math.round(n); };
+    var steps = [['Preço cheio', 0], ['Faltando 48 h', 0.1], ['Faltando 24 h', 0.2], ['Faltando 6 h', 0.3]];
+    return Object.assign(extra, {
+      cheio: this.state.cheio,
+      piso: this.state.piso,
+      bad: bad,
+      ok: !bad,
+      pisoCls: bad ? 'input err' : 'input',
+      pisoHelpCls: bad ? 'help err' : 'help',
+      pisoHelp: bad ? 'O piso não pode passar do preço cheio.' : 'Menor valor que a vaga pode ter.',
+      degraus: steps.map(function (s) {
+        return { when: s[0], price: fmt(Math.max(piso, cheio * (1 - s[1]))) };
+      }),
+      setCheio: function (e) { self.setState({ cheio: e.target.value }); },
+      setPiso: function (e) { self.setState({ piso: e.target.value }); }
+    });
+  }
+}
+</script>
+
+
+</body></html>

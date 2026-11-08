@@ -1,0 +1,9 @@
+/* Painel da clínica (Clinica-Painel.dc.html) */
+.ag{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 14px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--line);cursor:pointer}
+.ag.on{background:var(--mint);box-shadow:inset 0 0 0 2px var(--teal)}
+.ag input{width:20px;height:20px;accent-color:#2a7f75;flex:none;margin:0}
+.ag .hr-t{font-variant-numeric:tabular-nums;font-weight:700;min-width:96px}
+
+@media (max-width:480px){
+  .ag{flex-wrap:wrap}
+}

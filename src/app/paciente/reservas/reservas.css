@@ -1,0 +1,21 @@
+/* Prancha Paciente-Reservas («Minhas reservas»), escopada pela classe da tela */
+.scr-reservas .seg{display:flex;gap:4px;padding:4px;border-radius:16px;background:#e4f1ee}
+.scr-reservas .seg button{flex:1;min-height:44px;border:0;border-radius:12px;background:transparent;color:var(--ink-2);font:600 15px var(--f-body),system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.scr-reservas .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(23,54,58,.12)}
+.scr-reservas .seg button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.scr-reservas .seg-n{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--teal);color:#fff;font-size:12px;display:inline-flex;align-items:center;justify-content:center}
+.scr-reservas .seg button:not(.on) .seg-n{background:#c9dcd8;color:var(--ink)}
+.scr-reservas .when{flex:none;width:58px;border-radius:14px;background:var(--mint);color:var(--teal-d);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0;line-height:1.1}
+.scr-reservas .when .d{font:700 22px var(--f-display),var(--f-body),sans-serif;letter-spacing:-.02em}
+.scr-reservas .when .m{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.scr-reservas .when.past{background:#eef3f2;color:var(--mute)}
+.scr-reservas .res-link{display:flex;gap:12px;align-items:center;padding:12px 14px;text-decoration:none;color:inherit}
+.scr-reservas .res-link + .res-link{border-top:1px solid var(--line)}
+.scr-reservas .res-link:hover{background:#fbfdfc}
+.scr-reservas .res-link:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+.scr-reservas .tag-enc{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--teal-d)}
+.scr-reservas .tag-nor{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--ink-2)}
+.scr-reservas .tag-enc .ico,.scr-reservas .tag-nor .ico{width:14px;height:14px}
+.scr-reservas .money{display:flex;justify-content:space-between;align-items:baseline;font-size:14px}
+.scr-reservas .eyebrow{font-family:var(--f-body),system-ui,sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.scr-reservas .ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

@@ -1,0 +1,16 @@
+/* Paciente-Agenda.dc.html */
+.scr-agenda .day{min-height:46px;border:0;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);font:600 15px var(--f-body),system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;padding:0}
+.scr-agenda .day.sel{background:var(--ink);color:#fff;box-shadow:none}
+.scr-agenda .day.off{background:transparent;color:#6b8a88;box-shadow:none;cursor:default}
+.scr-agenda .day.today{box-shadow:inset 0 0 0 2px var(--teal)}
+.scr-agenda .dot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+.scr-agenda .day.sel .dot{background:var(--amber)}
+.scr-agenda .day.off .dot{background:transparent}
+.scr-agenda .slot{min-height:46px;border:0;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1.5px #6f9993;font:600 15px var(--f-body),system-ui,sans-serif;color:var(--ink);cursor:pointer}
+.scr-agenda .slot.sel{background:var(--teal);color:#fff;box-shadow:none}
+.scr-agenda .slot.taken{background:#e4f1ee;color:#5b7a78;box-shadow:none;text-decoration:line-through;cursor:not-allowed}
+.scr-agenda .day:focus-visible,.scr-agenda .slot:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.scr-agenda .mnav{width:40px;height:40px;border:0;border-radius:10px;background:transparent;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.scr-agenda .mnav:hover{background:rgba(23,54,58,.06)}
+.scr-agenda .mnav[disabled]{color:#b3d1ca;cursor:default;background:transparent}
+.scr-agenda .mnav:focus-visible{outline:3px solid var(--ink);outline-offset:2px}

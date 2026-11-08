@@ -1,0 +1,4 @@
+/* Paciente-Pagamento.dc.html */
+.scr-pagamento .seg{flex:1;min-height:48px;border:0;border-radius:11px;background:transparent;font:600 15px var(--f-body),system-ui,sans-serif;color:#4a6568;cursor:pointer}
+.scr-pagamento .seg.on{background:#fff;color:#17363a;box-shadow:0 1px 4px rgba(23,54,58,.18)}
+.scr-pagamento .seg:focus-visible{outline:3px solid var(--ink);outline-offset:2px}

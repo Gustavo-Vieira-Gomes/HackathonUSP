@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Início do paciente</title>
+<script src="./support.js"></script>
+<style>/* Vaga Certa — tokens e componentes compartilhados */
+:root{
+  --ink:#17363a; --ink-2:#35565a; --mute:#4a6568; --line:#cfe4df;
+  --ground:#f7fbfa; --card:#FFFFFF;
+  --teal:#2a7f75; --teal-d:#1f6a61; --mint:#ddf3ee; --mint-2:#c9ebe1;
+  --amber:#5cc8b0; --amber-d:#1f6a61; --amber-s:#ddf3ee;
+  --red:#B03024; --red-s:#FBE3E0;
+  --r-s:8px; --r-m:14px; --r-l:22px;
+  --shadow:0 1px 0 rgba(23,54,58,.06), 0 8px 24px -12px rgba(23,54,58,.18);
+}
+*{box-sizing:border-box}
+.vc{font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);background:var(--ground);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.vc h1,.vc h2,.vc h3,.vc h4,.vc .disp{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;letter-spacing:-0.02em;margin:0;font-weight:700;line-height:1.08}
+.vc p{margin:0}
+.num{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;font-weight:700}
+.vc :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.muted{color:var(--mute)}
+.small{font-size:13px;line-height:1.4}
+
+/* botões */
+.btn{min-height:48px;padding:0 22px;border-radius:var(--r-m);border:0;font:600 16px 'Instrument Sans',system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:background .15s,transform .1s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-amber{background:var(--amber);color:var(--ink)}
+.btn-amber:hover{background:#4db89f}
+.btn-ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn-ghost:hover{background:rgba(23,54,58,.06)}
+.btn-danger{background:var(--red-s);color:var(--red)}
+.btn[disabled],.btn-off{background:#e4f1ee;color:#5b7a78;cursor:not-allowed;box-shadow:none}
+.btn-block{width:100%}
+.btn-sm{min-height:44px;padding:0 16px;font-size:14px}
+
+/* cartão */
+.card{background:var(--card);border-radius:var(--r-l);box-shadow:var(--shadow)}
+.panel{background:var(--card);border-radius:var(--r-m);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* campos */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.lbl{font-weight:600;font-size:14px;color:var(--ink)}
+.input{min-height:48px;border-radius:var(--r-m);border:1.5px solid #6f9993;background:#fff;padding:0 14px;font:500 16px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);width:100%}
+.input:focus{border-color:var(--teal);outline:3px solid var(--mint-2);outline-offset:0}
+.input.err{border-color:var(--red);background:#FFF8F7}
+.help{font-size:13px;color:var(--mute)}
+.help.err{color:var(--red);font-weight:600}
+
+/* chips / estados da vaga */
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;font-weight:600;font-size:13px;white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.st-publicada{background:var(--mint);color:var(--teal-d);box-shadow:inset 0 0 0 1.5px var(--mint-2)}
+.st-alertando{background:var(--amber);color:var(--ink)}
+.st-alertando::before{background:var(--ink);animation:vc-pulse 1.4s ease-out infinite}
+.st-reservada{background:var(--teal);color:#fff}
+.st-realizada{background:var(--ink);color:#fff}
+.st-expirada{background:#e4f1ee;color:#35565a}
+.st-cancelada{background:var(--red-s);color:var(--red)}
+
+/* escada de preço (assinatura) */
+.stairs{display:flex;align-items:flex-end;gap:6px;height:92px}
+.stairs .bar{flex:1;border-radius:8px 8px 3px 3px;background:var(--mint-2);transition:background .3s;position:relative}
+.stairs .bar.past{background:#EAF5F2}
+.stairs .bar.on{background:var(--amber)}
+.stairs .bar span{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;font-weight:700;color:var(--ink)}
+
+/* mover */
+@keyframes vc-pulse{0%{box-shadow:0 0 0 0 rgba(31,106,97,.55)}100%{box-shadow:0 0 0 9px rgba(31,106,97,0)}}
+@keyframes vc-drop-a{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+@keyframes vc-drop-b{0%{transform:translateY(-14px);opacity:.2}60%{transform:translateY(3px);opacity:1}100%{transform:translateY(0)}}
+.drop-a{animation:vc-drop-a .55s cubic-bezier(.2,.8,.3,1)}
+.drop-b{animation:vc-drop-b .55s cubic-bezier(.2,.8,.3,1)}
+@keyframes vc-draw{to{stroke-dashoffset:0}}
+@keyframes vc-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes vc-in{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.pop{animation:vc-pop .6s cubic-bezier(.2,.8,.3,1) both}
+.check-path{stroke-dasharray:48;stroke-dashoffset:48;animation:vc-draw .6s .35s ease-out forwards}
+.rise{animation:vc-in .5s ease-out both}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--amber-d);animation:vc-pulse 1.4s ease-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .drop-a,.drop-b,.pop,.rise,.live-dot,.st-alertando::before{animation:none}
+  .check-path{animation:none;stroke-dashoffset:0}
+}
+
+/* ícones */
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* linhas de dados */
+.row{display:flex;gap:12px;align-items:flex-start}
+.row .k{flex:none;width:92px;color:var(--mute);font-size:13px;padding-top:2px}
+.row .v{flex:1;font-weight:500}
+.hr{height:1px;background:var(--line);border:0;margin:0}
+
+/* navegação inferior do paciente */
+.tabbar{display:flex;border-top:1px solid var(--line);background:#fff}
+.tabbar a{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--mute);text-decoration:none}
+.tabbar a.on{color:var(--teal)}
+</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.choice{min-height:56px;border:0;border-radius:16px;background:#fff;box-shadow:inset 0 0 0 1.5px #6f9993;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 14px;font:600 16px 'Instrument Sans',system-ui,sans-serif;color:var(--ink);cursor:pointer;text-align:left}
+.choice:hover{background:var(--mint)}
+.choice:focus-visible,.crumb:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.crumb{min-height:44px;border:0;border-radius:999px;background:var(--mint);color:var(--teal-d);padding:0 14px;font:600 14px 'Instrument Sans',system-ui,sans-serif;cursor:pointer}
+.crumb:hover{background:var(--mint-2)}
+.opts{animation:vc-in .3s ease-out both}
+@media (prefers-reduced-motion:reduce){.opts{animation:none}}
+</style>
+</helmet>
+<div class="vc" style="width: 390px; height: 844px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div style="flex: 1; padding: 24px 20px 12px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto">
+    <h1 style="font-size: 28px">Olá, Marina</h1>
+
+    <section class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 14px" aria-label="Escolher exame">
+      <h2 style="font-size: 22px">Qual exame você precisa?</h2>
+
+      <sc-if value="{{hasCrumbs}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center">
+          <sc-for list="{{crumbs}}" as="c" hint-placeholder-count="2">
+            <span style="display: inline-flex; align-items: center; gap: 6px">
+              <button class="crumb" aria-label="{{c.aria}}" sc-camel-on-click="{{c.pick}}">{{c.label}}</button>
+              <sc-if value="{{c.sep}}" hint-placeholder-val="{{ false }}"><span class="muted" aria-hidden="true">›</span></sc-if>
+            </span>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{asking}}" hint-placeholder-val="{{ true }}">
+        <div class="opts" style="display: flex; flex-direction: column; gap: 10px">
+          <p class="lbl">{{question}}</p>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px">
+            <sc-for list="{{options}}" as="o" hint-placeholder-count="5">
+              <button class="choice" sc-camel-on-click="{{o.pick}}">
+                <span>{{o.label}}</span>
+                <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{done}}" hint-placeholder-val="{{ false }}">
+        <div class="opts" style="display: flex; flex-direction: column; gap: 12px">
+          <div style="background: var(--mint); border-radius: 16px; padding: 14px 16px">
+            <span class="small muted">Você vai buscar</span>
+            <div class="disp" style="font-size: 22px; margin-top: 2px">{{examName}}</div>
+          </div>
+          <a class="btn btn-primary btn-block" href="Paciente-Exames.dc.html">Ver horários e preços</a>
+          <button class="btn btn-ghost btn-block" sc-camel-on-click="{{restart}}">Escolher outro exame</button>
+        </div>
+      </sc-if>
+    </section>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="font-size: 20px">Próxima reserva</h2>
+      <div class="panel" style="padding: 14px; display: flex; flex-direction: column; gap: 4px">
+        <div style="display: flex; justify-content: space-between"><strong>Mamografia</strong><span class="chip st-reservada">Reservada</span></div>
+        <div class="small muted">Sexta, 14:20 · Imagem Vila Nova</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="font-size: 20px">Seus avisos de vaga</h2>
+      <div class="panel" style="padding: 14px; display: flex; flex-direction: column; gap: 2px">
+        <div style="display: flex; justify-content: space-between"><strong>Ressonância de joelho</strong><span class="chip st-publicada">Ativo</span></div>
+        <div class="small muted">Até 15 km · até R$ 400 · vale por mais 27 dias</div>
+      </div>
+      <a class="btn btn-ghost btn-block" href="Paciente-Inscricao.dc.html">
+        <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7z"></path><path d="M10 20h4"></path></svg>
+        Criar aviso de vaga
+      </a>
+    </div>
+  </div>
+
+  <nav class="tabbar" aria-label="Principal">
+    <a href="Paciente-Inicio.dc.html" class="on" aria-current="page">
+      <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"></path></svg>Início
+    </a>
+    <a href="Paciente-Reserva.dc.html">
+      <svg class="ico" sc-camel-view-box="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4"></path></svg>Reservas
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    // caminho escolhido: índices em cada nível. Exemplo: Ressonância > Joelho > Esquerdo = [0, 0, 0]
+    this.state = { path: [] };
+  }
+  tree() {
+    var sides = function (type, region) {
+      return [
+        { label: 'Esquerdo', name: type + ' de ' + region + ' esquerdo' },
+        { label: 'Direito', name: type + ' de ' + region + ' direito' }
+      ];
+    };
+    return {
+      q: 'Qual tipo de exame?',
+      children: [
+        { label: 'Ressonância', q: 'Qual região?', children: [
+          { label: 'Joelho', q: 'Qual lado?', children: sides('Ressonância', 'joelho') },
+          { label: 'Ombro', q: 'Qual lado?', children: sides('Ressonância', 'ombro') },
+          { label: 'Coluna lombar', name: 'Ressonância da coluna lombar' },
+          { label: 'Crânio', name: 'Ressonância do crânio' }
+        ] },
+        { label: 'Tomografia', q: 'Qual região?', children: [
+          { label: 'Crânio', name: 'Tomografia do crânio' },
+          { label: 'Tórax', name: 'Tomografia do tórax' },
+          { label: 'Abdômen', name: 'Tomografia do abdômen' },
+          { label: 'Seios da face', name: 'Tomografia dos seios da face' }
+        ] },
+        { label: 'Ultrassom', q: 'Qual região?', children: [
+          { label: 'Abdômen', name: 'Ultrassom do abdômen' },
+          { label: 'Pélvico', name: 'Ultrassom pélvico' },
+          { label: 'Tireoide', name: 'Ultrassom da tireoide' },
+          { label: 'Ombro', q: 'Qual lado?', children: sides('Ultrassom', 'ombro') }
+        ] },
+        { label: 'Mamografia', q: 'Qual mama?', children: [
+          { label: 'Esquerda', name: 'Mamografia da mama esquerda' },
+          { label: 'Direita', name: 'Mamografia da mama direita' },
+          { label: 'As duas', name: 'Mamografia das duas mamas' }
+        ] },
+        { label: 'Ecocardiograma', name: 'Ecocardiograma' }
+      ]
+    };
+  }
+  renderVals() {
+    var self = this;
+    var path = this.state.path;
+    var cur = this.tree();
+    var crumbs = [];
+    path.forEach(function (idx, level) {
+      cur = cur.children[idx];
+      crumbs.push({
+        label: cur.label,
+        aria: 'Trocar ' + cur.label,
+        sep: level < path.length - 1,
+        pick: function () { self.setState({ path: path.slice(0, level) }); }
+      });
+    });
+    var asking = !!cur.children;
+    return {
+      hasCrumbs: crumbs.length > 0,
+      crumbs: crumbs,
+      asking: asking,
+      done: !asking,
+      question: cur.q || '',
+      examName: cur.name || '',
+      options: asking ? cur.children.map(function (c, i) {
+        return { label: c.label, pick: function () { self.setState({ path: path.concat([i]) }); } };
+      }) : [],
+      restart: function () { self.setState({ path: [] }); }
+    };
+  }
+}
+</script>
+
+
+</body></html>

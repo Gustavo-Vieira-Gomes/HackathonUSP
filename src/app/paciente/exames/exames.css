@@ -1,0 +1,21 @@
+/* Paciente-Exames.dc.html */
+.scr-exames .enc{background:var(--mint);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.scr-exames .motivo{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:12px;font-weight:600;color:var(--ink-2);line-height:1.2}
+.scr-exames .motivo .ico{width:15px;height:15px;color:var(--teal-d)}
+.scr-exames .enc.nor{background:#fff;box-shadow:inset 0 0 0 1.5px var(--line)}
+.scr-exames .enc-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.scr-exames .enc-when{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.scr-exames .enc-price{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.scr-exames .enc-who{display:flex;flex-direction:column;min-width:0}
+.scr-exames .enc-who strong,.scr-exames .enc-who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-exames .strike{text-decoration:line-through;color:var(--mute);font-size:13px}
+.scr-exames .seg{display:flex;gap:4px;padding:4px;border-radius:16px;background:#e4f1ee}
+.scr-exames .seg button{flex:1;min-height:44px;border:0;border-radius:12px;background:transparent;color:var(--ink-2);font:600 15px var(--f-body),system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.scr-exames .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(23,54,58,.12)}
+.scr-exames .seg-n{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--teal);color:#fff;font-size:12px;display:inline-flex;align-items:center;justify-content:center}
+.scr-exames .wait{background:var(--mint);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.scr-exames .opt-nor{background:#fff;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 0 0 1.5px var(--line)}
+.scr-exames .pill{display:inline-flex;align-items:center;min-height:26px;padding:0 10px;border-radius:999px;font-weight:700;font-size:12px;white-space:nowrap}
+.scr-exames .pill.dark{background:var(--ink);color:#fff}
+.scr-exames .pill.light{background:#fff;color:var(--ink)}
+.scr-exames .pill.gray{background:#e4f1ee;color:var(--ink-2)}
