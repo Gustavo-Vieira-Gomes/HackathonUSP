@@ -100,7 +100,7 @@ before(async () => {
   fixtures = createSchemaFixtures(prisma);
   await clock.reset();
 
-  // Sem adapter de WhatsApp: o paciente só com esse canal recebe `sem_adapter` (C35).
+  // Sem adapter de WhatsApp: o paciente só com esse canal recebe `sem_canal` (C35).
   const adapters: ChannelAdapter[] = (['push', 'email'] as const).map(
     (channel) => ({
       channel,
@@ -656,7 +656,7 @@ test('C12 - a marca da onda é confirmada antes do envio', async () => {
   assert.deepEqual(seen, [1]);
 });
 
-test('C35 - onda pula paciente só com sem_adapter e conta até N', async () => {
+test('C35 - onda pula paciente só com sem_canal e conta até N', async () => {
   const { vacancy, subscriptions } = await scenario(7);
   for (const sub of subscriptions.slice(0, 2)) {
     await prisma.patient.update({
@@ -673,15 +673,25 @@ test('C35 - onda pula paciente só com sem_adapter e conta até N', async () => 
   const alerts = await prisma.alert.findMany({
     where: { vacancyId: vacancy.id },
   });
-  const alerted = new Set(alerts.map((a) => a.subscriptionId));
+  assert.ok(alerts.every((a) => a.wave === 1));
+  // As inscrições 1 e 2 têm só o `Alert` `sem_canal` que o dono grava (HACK-48).
+  for (const sub of subscriptions.slice(0, 2)) {
+    const own = alerts.filter((a) => a.subscriptionId === sub.id);
+    assert.deepEqual(
+      own.map((a) => [a.channel, a.result]),
+      [['whatsapp', 'sem_canal']],
+    );
+  }
+  const delivered = new Set(
+    alerts.filter((a) => a.result === 'enviado').map((a) => a.subscriptionId),
+  );
   assert.deepEqual(
-    [...alerted].sort(),
+    [...delivered].sort(),
     subscriptions
       .slice(2)
       .map((s) => s.id)
       .sort(),
   );
-  assert.ok(alerts.every((a) => a.wave === 1));
   const counted = await prisma.patient.findMany({
     where: { id: { in: subscriptions.slice(2).map((s) => s.patientId) } },
   });

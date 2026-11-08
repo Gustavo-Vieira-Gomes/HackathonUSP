@@ -158,7 +158,7 @@ export class WavesService {
   /**
    * Envia a onda já marcada, em lotes na ordem da fila: o primeiro com os N
    * primeiros, cada seguinte com o que falta para N. Conta o paciente com algum
-   * resultado diferente de `sem_adapter`; um paciente que falha não derruba os
+   * resultado diferente de `sem_canal`; um paciente que falha não derruba os
    * outros. A gravação de `Alert` é do `NotificationsService`.
    */
   private async send(wave: Wave): Promise<void> {
@@ -194,7 +194,7 @@ export class WavesService {
           );
           return;
         }
-        if (result.value.some((outcome) => outcome.result !== 'sem_adapter')) {
+        if (result.value.some((outcome) => outcome.result !== 'sem_canal')) {
           reached.push(candidate);
         }
       });
