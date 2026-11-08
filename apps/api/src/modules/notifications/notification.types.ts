@@ -58,7 +58,17 @@ export interface ChannelAdapter {
     recipient: NotificationRecipient,
     notification: OutgoingNotification,
     signal: AbortSignal,
+    delivery: DeliveryInfo,
   ): Promise<void>;
+}
+
+/**
+ * Identidade do envio num canal. `alertId` é estável entre tentativas e entre a
+ * reivindicação de um pendente abandonado (HACK-45): serve de chave de
+ * idempotência no fornecedor, para um reenvio não duplicar a mensagem.
+ */
+export interface DeliveryInfo {
+  alertId: string;
 }
 
 export const CHANNEL_ADAPTERS = Symbol('CHANNEL_ADAPTERS');
