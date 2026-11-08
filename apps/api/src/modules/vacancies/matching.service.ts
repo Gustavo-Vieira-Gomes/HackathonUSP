@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { STALE_PENDING_MS } from '../notifications/notifications.service';
 import { matchesVacancy, type MatchableVacancy } from './matching-rules';
 
 /** Estados de vaga que ainda aceitam candidatos (RN-24). */
@@ -59,6 +60,12 @@ export class MatchingService {
    * Inscrições ativas candidatas à vaga, da mais antiga para a mais nova. Quem já
    * tem `Alert` desta vaga, em qualquer canal ou onda, fica de fora: assim a próxima
    * onda pega os seguintes da fila em vez de repetir os primeiros (RN-34, RN-36).
+   *
+   * Exceção: um `Alert` pendente há mais de STALE_PENDING_MS foi abandonado por um
+   * processo que caiu entre gravar e enviar. Esse não conta, para que a inscrição
+   * volte e o `NotificationsService` reivindique e reenvie o alerta (HACK-45).
+   * A idade usa o relógio real, não `now`: mede a queda do processo, não o tempo
+   * do negócio, e é o mesmo critério que a reivindicação usa.
    */
   async candidatos(vacancyId: string, now: Date) {
     const vacancy = await this.prisma.vacancy.findUniqueOrThrow({
@@ -66,11 +73,20 @@ export class MatchingService {
       include: slotInclude,
     });
     const matchable = toMatchable(vacancy);
+    const staleBefore = new Date(Date.now() - STALE_PENDING_MS);
     const subscriptions = await this.prisma.subscription.findMany({
       where: {
         tussCode: vacancy.slot.exam.tussCode,
         expiresAt: { gt: now },
-        alerts: { none: { vacancyId } },
+        alerts: {
+          none: {
+            vacancyId,
+            OR: [
+              { result: { not: 'pendente' } },
+              { createdAt: { gte: staleBefore } },
+            ],
+          },
+        },
       },
       include: { windows: true },
       orderBy: { createdAt: 'asc' },
