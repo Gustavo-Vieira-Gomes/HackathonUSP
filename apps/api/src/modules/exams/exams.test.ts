@@ -252,31 +252,41 @@ test('H17-C9 - TUSS repetido responde 422 TUSS_ALREADY_REGISTERED, também em re
     fields: ['tussCode'],
   });
 
-  const racing = await newClinic();
-  const bodies = [
-    examBody({ priceSteps: [{ leadMinutes: 2880, discountPercent: 10 }] }),
-    examBody({ priceSteps: [{ leadMinutes: 1440, discountPercent: 25 }] }),
-  ];
-  const responses = await Promise.all(
-    bodies.map((b) => post(racing.cookie, b)),
-  );
-  assert.deepEqual(responses.map((r) => r.status).sort(), [201, 422]);
-  const loser = responses.find((r) => r.status === 422)!;
-  assert.equal(
-    ((await loser.json()) as { code: string }).code,
-    'TUSS_ALREADY_REGISTERED',
-  );
-  assert.equal(await examCount(racing.clinicId, MRI()), 1);
-  const exam = await t.prisma.exam.findFirstOrThrow({
-    where: { clinicId: racing.clinicId },
-    include: { priceSteps: true },
-  });
-  const steps = exam.priceSteps.map((s) => [s.leadMinutes, s.discountPercent]);
-  assert.ok(
-    JSON.stringify(steps) === '[[2880,10]]' ||
-      JSON.stringify(steps) === '[[1440,25]]',
-    JSON.stringify(steps),
-  );
+  // Dez rodadas, cada uma com clínica nova: uma rodada só deixa as duas
+  // requisições chegarem em série e não exerce a corrida (verificação, M10).
+  for (let round = 0; round < 10; round += 1) {
+    const racing = await newClinic();
+    const bodies = [
+      examBody({ priceSteps: [{ leadMinutes: 2880, discountPercent: 10 }] }),
+      examBody({ priceSteps: [{ leadMinutes: 1440, discountPercent: 25 }] }),
+    ];
+    const responses = await Promise.all(
+      bodies.map((b) => post(racing.cookie, b)),
+    );
+    assert.deepEqual(
+      responses.map((r) => r.status).sort(),
+      [201, 422],
+      `rodada ${round}`,
+    );
+    const loser = responses.find((r) => r.status === 422)!;
+    assert.equal(
+      ((await loser.json()) as { code: string }).code,
+      'TUSS_ALREADY_REGISTERED',
+      `rodada ${round}`,
+    );
+    assert.equal(await examCount(racing.clinicId, MRI()), 1, `rodada ${round}`);
+    const exam = await t.prisma.exam.findFirstOrThrow({
+      where: { clinicId: racing.clinicId },
+      include: { priceSteps: true },
+    });
+    const steps = JSON.stringify(
+      exam.priceSteps.map((s) => [s.leadMinutes, s.discountPercent]),
+    );
+    assert.ok(
+      steps === '[[2880,10]]' || steps === '[[1440,25]]',
+      `rodada ${round}: ${steps}`,
+    );
+  }
 });
 
 test('H17-C10 - outra clínica cadastra o mesmo TUSS', async () => {

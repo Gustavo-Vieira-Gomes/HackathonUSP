@@ -31,6 +31,13 @@ const stored = (clinicId: string) =>
   });
 
 test('H17-C18 - clínica nova lê sinal 20 e teto 5', async () => {
+  // Outra clínica fora do padrão, criada aqui: ler a clínica errada fica
+  // vermelho sem depender do que já está no banco (verificação, M3).
+  const other = await newClinic();
+  await t.prisma.clinic.update({
+    where: { id: other.clinicId },
+    data: { depositPercent: 37, dailyDiscountCap: 9 },
+  });
   const clinic = await newClinic();
   const response = await jsonRequest(
     t,
