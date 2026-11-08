@@ -25,3 +25,5 @@ services:
         sync: false
       - key: WEB_ORIGIN
         sync: false
+      - key: AUTH_PROXY_SECRET
+        sync: false

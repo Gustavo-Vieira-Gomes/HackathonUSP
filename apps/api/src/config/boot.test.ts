@@ -78,3 +78,10 @@ test('C5 - main.js com BETTER_AUTH_SECRET de 31 caracteres sai com 1', async () 
   assert.equal(result.output.includes('b'.repeat(31)), false);
   assert.equal(result.listening, false);
 });
+
+test('R2 - main em produção sem credencial do proxy falha antes de abrir a porta', async () => {
+  const result = await boot({ ...values, NODE_ENV: 'production' });
+  assert.equal(result.code, 1, result.output);
+  assert.match(result.output, /AUTH_PROXY_SECRET/);
+  assert.equal(result.listening, false);
+});

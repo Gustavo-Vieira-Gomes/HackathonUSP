@@ -9,6 +9,27 @@ const cookiesFromApi = [
   'better-auth.session_token=abc.def; Path=/; HttpOnly; SameSite=Lax',
   'better-auth.session_data=xyz; Path=/; HttpOnly; SameSite=Lax',
 ];
+
+async function withProxyEnv(
+  values: Record<string, string | undefined>,
+  run: () => Promise<void>,
+) {
+  const previous = Object.fromEntries(
+    Object.keys(values).map((key) => [key, process.env[key]]),
+  );
+  try {
+    for (const [key, value] of Object.entries(values)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    await run();
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
 const statusByPath: Record<string, number> = {
   '/api/auth/sign-in/email': 401,
   '/api/sign-up/paciente': 200,
@@ -120,4 +141,136 @@ test('C32 - timeout responde 504, conexão recusada 502, nunca 200; padrão de 1
     { baseUrl: await closedPortUrl() },
   );
   assert.equal(refused.status, 502);
+});
+
+test('R2 - proxy Vercel ignora IP/key do cliente e envia só IP da borda e chave do servidor', async () => {
+  const key = 'a'.repeat(64);
+  await withProxyEnv({ VERCEL: '1', AUTH_PROXY_SECRET: key }, async () => {
+    for (const edgeIp of ['198.51.100.10', '2001:db8:1::1']) {
+      const request = browserRequest('/api/auth/sign-in/email', {});
+      request.headers.set('x-vercel-forwarded-for', edgeIp);
+      request.headers.set('x-forwarded-for', '203.0.113.2, 203.0.113.3');
+      request.headers.set('x-real-ip', '203.0.113.4');
+      request.headers.set('forwarded', 'for=203.0.113.5');
+      request.headers.set('x-hackathon-client-ip', '203.0.113.6');
+      request.headers.set('x-hackathon-proxy-key', 'forged');
+      await proxyToApi(request, '/api/auth/sign-in/email');
+      const received = api.requests.at(-1);
+      assert.equal(received?.headers['x-hackathon-client-ip'], edgeIp);
+      assert.equal(received?.headers['x-hackathon-proxy-key'], key);
+      for (const header of [
+        'x-forwarded-for',
+        'x-real-ip',
+        'forwarded',
+        'x-vercel-forwarded-for',
+      ]) {
+        assert.equal(received?.headers[header], undefined, header);
+      }
+    }
+  });
+});
+
+test('R2 - falta de borda/IP único/configuração não chama upstream nem cria balde compartilhado', async () => {
+  await withProxyEnv(
+    { VERCEL: '1', AUTH_PROXY_SECRET: 'a'.repeat(64) },
+    async () => {
+      for (const ip of [
+        null,
+        '',
+        '198.51.100.1, 198.51.100.2',
+        'invalid',
+        '1.2.3.4:80',
+      ]) {
+        const before = api.requests.length;
+        const request = browserRequest('/api/auth/sign-in/email', {});
+        if (ip !== null) request.headers.set('x-vercel-forwarded-for', ip);
+        request.headers.set('x-forwarded-for', '198.51.100.99');
+        assert.equal(
+          (await proxyToApi(request, '/api/auth/sign-in/email')).status,
+          503,
+        );
+        assert.equal(api.requests.length, before);
+      }
+    },
+  );
+  for (const env of [
+    { VERCEL: '1', NODE_ENV: 'production', AUTH_PROXY_SECRET: undefined },
+    { VERCEL: '1', NODE_ENV: 'production', AUTH_PROXY_SECRET: 'short' },
+    { VERCEL: undefined, NODE_ENV: 'production', AUTH_PROXY_SECRET: undefined },
+  ]) {
+    await withProxyEnv(env, async () => {
+      assert.equal(
+        (
+          await proxyToApi(
+            browserRequest('/api/auth/sign-in/email', {}),
+            '/api/auth/sign-in/email',
+          )
+        ).status,
+        503,
+      );
+    });
+  }
+});
+
+test('R2 - fora da Vercel headers não ativam confiança; segredo não segue por HTTP público', async () => {
+  await withProxyEnv(
+    { VERCEL: undefined, NODE_ENV: 'test', AUTH_PROXY_SECRET: undefined },
+    async () => {
+      const request = browserRequest('/api/auth/sign-in/email', {});
+      request.headers.set('x-forwarded-for', '198.51.100.10');
+      request.headers.set('x-vercel-forwarded-for', '198.51.100.20');
+      request.headers.set('x-hackathon-client-ip', '198.51.100.30');
+      request.headers.set('x-hackathon-proxy-key', 'forged');
+      await proxyToApi(request, '/api/auth/sign-in/email');
+      for (const header of [
+        'x-forwarded-for',
+        'x-vercel-forwarded-for',
+        'x-hackathon-client-ip',
+        'x-hackathon-proxy-key',
+      ]) {
+        assert.equal(api.requests.at(-1)?.headers[header], undefined, header);
+      }
+      assert.equal(
+        (
+          await proxyToApi(request, '/api/auth/sign-in/email', {
+            baseUrl: 'https://api.example.test',
+          })
+        ).status,
+        503,
+      );
+    },
+  );
+  await withProxyEnv(
+    { VERCEL: '1', AUTH_PROXY_SECRET: 'a'.repeat(64) },
+    async () => {
+      const request = browserRequest('/api/auth/sign-in/email', {});
+      request.headers.set('x-vercel-forwarded-for', '198.51.100.10');
+      assert.equal(
+        (
+          await proxyToApi(request, '/api/auth/sign-in/email', {
+            baseUrl: 'http://api.example.test',
+          })
+        ).status,
+        503,
+      );
+    },
+  );
+});
+
+test('R2 - proxy preserva 429 e Retry-After do limiter', async () => {
+  const limited = await startFakeApi(() => ({
+    status: 429,
+    headers: { 'retry-after': '10' },
+  }));
+  try {
+    const response = await proxyToApi(
+      browserRequest('/api/auth/sign-in/email', {}),
+      '/api/auth/sign-in/email',
+      { baseUrl: limited.url },
+    );
+    assert.equal(response.status, 429);
+    assert.equal(response.headers.get('retry-after'), '10');
+  } finally {
+    await limited.close();
+  }
 });

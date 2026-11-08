@@ -1,4 +1,5 @@
 import 'server-only';
+import { isIP } from 'node:net';
 
 /** Tempo máximo de espera pelo Nest no repasse de /api/auth e /api/sign-up. */
 export const API_PROXY_TIMEOUT_MS = 10_000;
@@ -9,9 +10,13 @@ const REQUEST_HEADERS = [
   'cookie',
   'origin',
   'user-agent',
-  'x-forwarded-for',
 ];
-const RESPONSE_HEADERS = ['cache-control', 'content-type', 'location'];
+const RESPONSE_HEADERS = [
+  'cache-control',
+  'content-type',
+  'location',
+  'retry-after',
+];
 
 export interface ApiCallOptions {
   /** Padrão: `API_BASE_URL`, lido em tempo de execução. */
@@ -21,6 +26,40 @@ export interface ApiCallOptions {
 
 export function apiBaseUrl(): string {
   return process.env.API_BASE_URL ?? 'http://127.0.0.1:3001';
+}
+
+/** Só a borda Vercel pode fornecer IP público; headers do navegador não autenticam o proxy. */
+function proxyIdentity(request: Request, target: URL): Headers | null {
+  const key = process.env.AUTH_PROXY_SECRET;
+  const vercel = process.env.VERCEL === '1';
+  const loopback = (host: string) =>
+    host === '127.0.0.1' || host === '[::1]' || host === 'localhost';
+  const local =
+    !vercel &&
+    loopback(target.hostname) &&
+    loopback(new URL(request.url).hostname);
+
+  // Não transmitir a credencial em HTTP público nem inventar IP fora da borda.
+  if (
+    target.protocol !== 'https:' &&
+    !(loopback(target.hostname) && target.protocol === 'http:')
+  )
+    return null;
+  if (!local && !vercel) return null;
+  if (key && !/^[a-fA-F0-9]{64}$/.test(key)) return null;
+  if ((vercel || process.env.NODE_ENV === 'production') && !key) return null;
+
+  const headers = new Headers();
+  if (key) {
+    const ip = vercel
+      ? request.headers.get('x-vercel-forwarded-for')
+      : '127.0.0.1';
+    // Recusa listas/valores inválidos. Nunca escolher o primeiro IP do cliente.
+    if (!ip || !isIP(ip)) return null;
+    headers.set('x-hackathon-client-ip', ip);
+    headers.set('x-hackathon-proxy-key', key);
+  }
+  return headers;
 }
 
 /**
@@ -36,7 +75,16 @@ export async function proxyToApi(
   const target = new URL(path, options.baseUrl ?? apiBaseUrl());
   target.search = new URL(request.url).search;
 
-  const headers = new Headers();
+  const headers = proxyIdentity(request, target);
+  if (!headers) {
+    return Response.json(
+      {
+        code: 'PROXY_UNAVAILABLE',
+        message: 'A autenticação está indisponível.',
+      },
+      { status: 503, headers: { 'cache-control': 'no-store' } },
+    );
+  }
   for (const name of REQUEST_HEADERS) {
     const value = request.headers.get(name);
     if (value !== null) headers.set(name, value);

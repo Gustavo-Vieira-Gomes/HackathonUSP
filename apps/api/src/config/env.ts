@@ -14,6 +14,13 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: filled.min(32),
   BETTER_AUTH_URL: filled.pipe(z.url()),
   WEB_ORIGIN: filled.pipe(z.url()),
+  AUTH_PROXY_SECRET: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .regex(/^[a-fA-F0-9]{64}$/)
+      .optional(),
+  ),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
@@ -35,7 +42,17 @@ export function loadEnv(
   const picked = Object.fromEntries(
     REQUIRED_ENV.map((name) => [name, source[name]]),
   );
-  const result = envSchema.safeParse(picked);
+  const result = envSchema
+    .superRefine((env, context) => {
+      if (source.NODE_ENV === 'production' && !env.AUTH_PROXY_SECRET) {
+        context.addIssue({
+          code: 'custom',
+          path: ['AUTH_PROXY_SECRET'],
+          message: 'Obrigatório em produção.',
+        });
+      }
+    })
+    .safeParse({ ...picked, AUTH_PROXY_SECRET: source.AUTH_PROXY_SECRET });
   if (result.success) return result.data;
   const names = [
     ...new Set(result.error.issues.map((issue) => String(issue.path[0]))),

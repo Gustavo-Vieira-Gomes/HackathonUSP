@@ -39,3 +39,9 @@ Esta fatia não satisfaz sozinha esses critérios. Manter In Progress até exist
 - Acesso externo ainda ausente: CLIs dos hosts não instalados, sem sessão local de CLI, sem variáveis de credenciais e sem integrações instaladas para Vercel/Render/Neon. Runbook atualizado com os recursos e permissões necessários, sem valores secretos.
 - CI anterior do PR #4: [execução #17](https://github.com/Gustavo-Vieira-Gomes/HackathonUSP/actions/runs/42442352947) passou em Node 24 com Postgres, incluindo `db:deploy`, `check`, build e smoke completo. Uma nova execução deve validar a branch atualizada com a migration de domínio.
 - Aceite final continua pendente de health/home públicos e persistência de login em celular. Manter HACK-14 In Progress e o PR existente em rascunho enquanto faltar essa evidência.
+
+## Revisão R2 — procedência do IP
+
+Resultado: remover o repasse de XFF arbitrário e impedir ingresso direto à autenticação do Nest com IP forjado. Next lê um IP único da borda apenas em runtime Vercel; middleware Nest autentica a credencial entre servidores antes de aceitar o header interno; Better Auth não lê mais headers públicos de IP. Boot em produção exige a credencial e o proxy recusa falta de borda/configuração em runtime. Migrations não são alteradas.
+
+Validação prevista: headers falsos ignorados, IPv4/IPv6, falta/invalidade/listas de IP, credencial ausente/errada, boot sem configuração, health público, persistência do IP correto em sessão e 429 por IP sem evasão via XFF nem contagem única para todos os clientes. O smoke de login usa chave efêmera entre os dois servidores locais. Teste da borda real continua pendente dos hosts.

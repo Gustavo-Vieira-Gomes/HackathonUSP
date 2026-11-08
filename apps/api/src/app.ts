@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { type INestApplication, type Type } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { authProxyMiddleware } from './auth/auth-proxy.middleware';
 import { type AppEnv, loadEnv } from './config/env';
 
 export interface CreateAppOptions {
@@ -14,7 +15,9 @@ export async function createApp(
   options: CreateAppOptions = {},
 ): Promise<INestApplication> {
   const env = options.env ?? loadEnv();
-  return createAppFromModule(AppModule.register(env), options);
+  const app = await createAppFromModule(AppModule.register(env), options);
+  app.use(authProxyMiddleware(env));
+  return app;
 }
 
 /**

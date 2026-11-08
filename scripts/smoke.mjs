@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
 import { createRequire } from 'node:module';
@@ -81,12 +82,14 @@ try {
   const apiUrl = `http://127.0.0.1:${apiPort}`;
   const webPort = await freePort();
   const webUrl = `http://127.0.0.1:${webPort}`;
+  const proxySecret = randomBytes(32).toString('hex');
   // DATABASE_URL e BETTER_AUTH_SECRET vêm do ambiente (CI) ou do .env da API (local).
   const api = start(['dist/main.js'], 'apps/api', {
     PORT: String(apiPort),
     HOST: '127.0.0.1',
     BETTER_AUTH_URL: apiUrl,
     WEB_ORIGIN: webUrl,
+    AUTH_PROXY_SECRET: proxySecret,
   });
   const apiResponse = await ready(`${apiUrl}/api/health`, api);
   assert.deepEqual(await apiResponse.json(), { status: 'ok', service: 'api' });
@@ -100,7 +103,7 @@ try {
       '127.0.0.1',
     ],
     'apps/web',
-    { API_BASE_URL: apiUrl },
+    { API_BASE_URL: apiUrl, AUTH_PROXY_SECRET: proxySecret, VERCEL: '' },
   );
   const webResponse = await ready(`${webUrl}/api/health`, web);
   assert.deepEqual(await webResponse.json(), { status: 'ok', service: 'web' });

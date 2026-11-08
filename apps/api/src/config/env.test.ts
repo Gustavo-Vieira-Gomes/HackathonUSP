@@ -51,3 +51,28 @@ test('C5 - BETTER_AUTH_SECRET com 31 caracteres falha e com 32 é aceito', () =>
   const env = loadEnv({ ...valid, BETTER_AUTH_SECRET: 'a'.repeat(32) });
   assert.equal(env.BETTER_AUTH_SECRET.length, 32);
 });
+
+test('R2 - produção exige AUTH_PROXY_SECRET hex de 256 bits sem expor seu valor', () => {
+  for (const key of [undefined, '', 'curto', 'secret'.repeat(20)]) {
+    assert.throws(
+      () =>
+        loadEnv({ ...valid, NODE_ENV: 'production', AUTH_PROXY_SECRET: key }),
+      (error: unknown) =>
+        error instanceof Error &&
+        error.message.includes('AUTH_PROXY_SECRET') &&
+        (!key || !error.message.includes(key)),
+    );
+  }
+  assert.equal(
+    loadEnv({
+      ...valid,
+      NODE_ENV: 'production',
+      AUTH_PROXY_SECRET: 'a'.repeat(64),
+    }).AUTH_PROXY_SECRET,
+    'a'.repeat(64),
+  );
+  assert.equal(
+    loadEnv({ ...valid, AUTH_PROXY_SECRET: '' }).AUTH_PROXY_SECRET,
+    undefined,
+  );
+});

@@ -11,6 +11,11 @@ export function createAuth(env: AppEnv, prisma: PrismaClient) {
     basePath: '/api/auth',
     secret: env.BETTER_AUTH_SECRET,
     trustedOrigins: [env.WEB_ORIGIN],
+    advanced: { ipAddress: { ipAddressHeaders: ['x-hackathon-client-ip'] } },
+    rateLimit: {
+      enabled:
+        Boolean(env.AUTH_PROXY_SECRET) || process.env.NODE_ENV === 'production',
+    },
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
     emailAndPassword: { enabled: true },
     user: {
