@@ -8,7 +8,13 @@ export const REQUIRED_ENV = [
 ] as const;
 
 /** Opcionais: ausentes valem o padrão do schema. */
-export const OPTIONAL_ENV = ['DEMO_CLOCK_ENABLED', 'DEMO_CLOCK_TOKEN'] as const;
+export const OPTIONAL_ENV = [
+  'DEMO_CLOCK_ENABLED',
+  'DEMO_CLOCK_TOKEN',
+  'GEOCODER_URL',
+  'GEOCODER_USER_AGENT',
+  'GEOCODER_MIN_INTERVAL_MS',
+] as const;
 
 const filled = z.string().trim().min(1);
 
@@ -34,6 +40,19 @@ const envSchema = z
       (value) => (value === '' ? undefined : value),
       secret.optional(),
     ),
+    // Geocodificador do cadastro de clínica (HACK-16): Nominatim, sem chave.
+    // Nominatim público só serve à demo; uso real troca a URL.
+    GEOCODER_URL: filled
+      .pipe(z.url())
+      .default('https://nominatim.openstreetmap.org'),
+    // Identificação genérica do app exigida pela política do Nominatim (sem e-mail).
+    GEOCODER_USER_AGENT: filled.default('hackathon-usp-marketplace/0.1'),
+    // Intervalo mínimo entre chamadas, por processo (política: 1 req/s).
+    GEOCODER_MIN_INTERVAL_MS: z
+      .string()
+      .regex(/^\d+$/)
+      .default('1000')
+      .transform(Number),
   })
   .superRefine((env, ctx) => {
     if (env.DEMO_CLOCK_ENABLED && !env.DEMO_CLOCK_TOKEN) {
@@ -71,6 +90,6 @@ export function loadEnv(
   ];
   throw new EnvValidationError(
     `Configuração inválida ou ausente: ${names.join(', ')}. ` +
-      'Confira o .env (modelo em .env.example); BETTER_AUTH_SECRET e DEMO_CLOCK_TOKEN exigem 32 caracteres ou mais e não podem ser o valor de exemplo; DEMO_CLOCK_TOKEN é obrigatório com DEMO_CLOCK_ENABLED=true.',
+      'Confira o .env (modelo em .env.example); BETTER_AUTH_SECRET e DEMO_CLOCK_TOKEN exigem 32 caracteres ou mais e não podem ser o valor de exemplo; DEMO_CLOCK_TOKEN é obrigatório com DEMO_CLOCK_ENABLED=true; GEOCODER_URL é URL e GEOCODER_MIN_INTERVAL_MS é inteiro ≥ 0.',
   );
 }

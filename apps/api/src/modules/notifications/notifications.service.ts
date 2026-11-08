@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { isUniqueViolation } from '../../prisma/prisma-errors';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CHANNEL_ADAPTERS,
@@ -18,15 +19,6 @@ export const STALE_PENDING_MS = 2 * CHANNEL_TIMEOUT_MS;
 export interface ChannelOutcome {
   channel: NotificationChannel;
   result: 'enviado' | 'falhou' | 'duplicado' | 'sem_adapter';
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'P2002'
-  );
 }
 
 /**

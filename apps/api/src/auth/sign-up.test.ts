@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { signUpResponseSchema, type UserRole } from '@hackathon/contracts';
+import {
+  clinicSignUpResponseSchema,
+  signUpResponseSchema,
+  type UserRole,
+} from '@hackathon/contracts';
 import { AuthService } from '@thallesp/nestjs-better-auth';
 import {
+  clinicSignUpBody,
   jsonRequest,
   signUp,
   startTestApp,
@@ -21,15 +26,31 @@ const roles: UserRole[] = ['paciente', 'clinica'];
 const countByEmail = (email: string) =>
   t.prisma.user.count({ where: { email } });
 
+/** Corpo válido da rota: a de clínica exige o perfil completo (HACK-16). */
+function bodyFor(
+  role: UserRole,
+  account: { name: string; email: string; password: string },
+): Record<string, unknown> {
+  return role === 'clinica'
+    ? clinicSignUpBody(account.email, account)
+    : account;
+}
+
+/** Erro de validação: 400 na rota de paciente (HACK-12), 422 na de clínica (HACK-16). */
+const validationStatus = (role: UserRole) => (role === 'clinica' ? 422 : 400);
+
 async function assertCreated(role: UserRole) {
   const email = t.email();
-  const response = await signUp(t, role, {
-    name: 'Fulana',
-    email,
-    password: '12345678',
-  });
+  const response = await signUp(
+    t,
+    role,
+    bodyFor(role, { name: 'Fulana', email, password: '12345678' }),
+  );
   assert.equal(response.status, 200, await response.clone().text());
-  const body = signUpResponseSchema.parse(await response.json());
+  // A rota de clínica devolve também o `clinic` criado (HACK-16).
+  const schema =
+    role === 'clinica' ? clinicSignUpResponseSchema : signUpResponseSchema;
+  const body = schema.parse(await response.json());
   assert.equal(body.user.role, role);
   assert.equal(body.user.email, email);
   const cookie = response.headers
@@ -49,19 +70,21 @@ test('C7 - cadastro de paciente responde 200 com role paciente e cookie HttpOnly
   await assertCreated('paciente');
 });
 
-test('C8 - corpo com role ou campo extra responde 400 e não cria usuário', async () => {
+test('C8 - corpo com role ou campo extra responde 400 (422 na clínica) e não cria usuário', async () => {
   let cases = 0;
   for (const role of roles) {
     const other: UserRole = role === 'paciente' ? 'clinica' : 'paciente';
     for (const extra of [{ role: other }, { foo: 'bar' }]) {
       const email = t.email();
       const response = await signUp(t, role, {
-        name: 'Fulana',
-        email,
-        password: '12345678',
+        ...bodyFor(role, { name: 'Fulana', email, password: '12345678' }),
         ...extra,
       });
-      assert.equal(response.status, 400, `${role} ${JSON.stringify(extra)}`);
+      assert.equal(
+        response.status,
+        validationStatus(role),
+        `${role} ${JSON.stringify(extra)}`,
+      );
       assert.equal(await countByEmail(email), 0);
       cases++;
     }
@@ -77,17 +100,17 @@ test('C9 - e-mail já cadastrado responde 422 e não cria segundo usuário', asy
   ];
   for (const [first, second] of pairs) {
     const email = t.email();
-    const created = await signUp(t, first, {
-      name: 'A',
-      email,
-      password: '12345678',
-    });
+    const created = await signUp(
+      t,
+      first,
+      bodyFor(first, { name: 'A', email, password: '12345678' }),
+    );
     assert.equal(created.status, 200);
-    const repeated = await signUp(t, second, {
-      name: 'B',
-      email,
-      password: '87654321',
-    });
+    const repeated = await signUp(
+      t,
+      second,
+      bodyFor(second, { name: 'B', email, password: '87654321' }),
+    );
     assert.equal(repeated.status, 422, `${first}→${second}`);
     assert.equal(await countByEmail(email), 1);
     const stored = await t.prisma.user.findUniqueOrThrow({ where: { email } });
@@ -95,15 +118,15 @@ test('C9 - e-mail já cadastrado responde 422 e não cria segundo usuário', asy
   }
 });
 
-test('C10 - senha de 7 caracteres responde 400 nas duas rotas e não cria usuário', async () => {
+test('C10 - senha de 7 caracteres responde 400 (422 na clínica) nas duas rotas e não cria usuário', async () => {
   for (const role of roles) {
     const email = t.email();
-    const response = await signUp(t, role, {
-      name: 'Fulana',
-      email,
-      password: '1234567',
-    });
-    assert.equal(response.status, 400, role);
+    const response = await signUp(
+      t,
+      role,
+      bodyFor(role, { name: 'Fulana', email, password: '1234567' }),
+    );
+    assert.equal(response.status, validationStatus(role), role);
     assert.equal(await countByEmail(email), 0);
   }
 });
