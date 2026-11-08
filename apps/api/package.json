@@ -12,7 +12,8 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy",
+    "seed": "node --env-file-if-exists=.env --import tsx src/modules/demo-data/seed.cli.ts"
   },
   "dependencies": {
     "@hackathon/contracts": "*",

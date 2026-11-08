@@ -18,6 +18,16 @@ Estrutura frontend aprovada: organização simplificada do Portal. Páginas simp
 
 Políticas centralizadas em .claude/rules: project, engineering, security e design-patterns globais; frontend/backend/contracts com frontmatter paths. AGENTS e CLAUDE são pontos de entrada para a mesma fonte. Extração na segunda ocorrência da mesma regra com invariantes comuns; regras sensíveis têm dono único desde a primeira implementação. Padrões adotados por necessidade concreta, preservando os recursos nativos do Nest.
 
+## Decisões — HACK-15
+
+- Retomada do handoff 909a786; integrar main e preservar cadastro/login/exames/agenda atuais. A busca web/API extra do WIP sai desta entrega por não fazer parte do card.
+- São Paulo conforme manifesto já pesquisado; manter proveniência por clínica. Preços/expediente/canais e consentimentos são sintéticos de demonstração.
+- `demoCalendarTarget` só marca duas clínicas para conexão futura. Não criar tokens nem conexões Google falsas.
+- IDs gerados pelo Prisma: acrescentar default uuid() client-side ao User.id (Better Auth continua podendo informar seu próprio id); usar chaves naturais para idempotência.
+- Catálogo HACK-17 é a fonte TUSS. Não semear abdome total com protocolo de abdome superior; excluir o TC de tórax fora da lista fechada vigente.
+- Substituir testes WIP de rotas retiradas por provas do seed, sem enfraquecer testes já presentes em main.
+- HACK-15 concluído no worktree: seed duplo, matching SQL com 12 candidatos, 10 clínicas/2 alvos; check 409 testes, build e smoke verdes. Publicação em PR para main, revisão/merge ficam com a esteira do maestro.
+
 ## Decisões HACK-23
 
 - Autorizado executar a esteira e publicar PR sem pausas. Base HTTPS feat/hack-23-complete resolveu para 0d7ee6e, sem WIP/handoff mencionado no card.
