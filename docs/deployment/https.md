@@ -2,7 +2,25 @@
 
 Card: https://linear.app/workspace-do-gustavo/issue/HACK-14
 
-Status: preparação; nenhum host ou banco remoto foi provisionado por esta entrega. Aguarda primeira migration de domínio do HACK-13, acesso às contas e URLs definitivas. HACK-12 está integrado na base.
+Status: preparação integrada à primeira migration de domínio; nenhum host ou banco remoto foi provisionado por esta entrega. HACK-12 e a fatia 1 do HACK-13 estão na base. Faltam acesso às contas e URLs definitivas.
+
+## Migration liberada
+
+O [PR #5](https://github.com/Gustavo-Vieira-Gomes/HackathonUSP/pull/5), squash `26d6e45`, entregou `20261108032558_hack_13_clinica_exame_paciente_inscricao`. Ela cria `Clinic`, `ClinicOpeningHours`, `Exam`, `PriceStep`, `Patient`, `Subscription` e `SubscriptionWindow`, com índices, FKs e dois CHECKs em `Exam`. A migration de autenticação `20261108025102_init_auth` foi preservada. O `migrate deploy` configurado no start aplica ambas em ordem.
+
+Evidências da entrega: `.specs/features/hack-13-modelo-dados/verification.md` e testes `apps/api/src/prisma/domain-schema.test.ts`, executados contra Postgres na revisão. O estado Done do HACK-13 no Linear não equivale à entrega da fatia 2: a revisão ainda registra `Slot`, `Vacancy`, `Reservation`, `Alert`, `Transition` e RN-41 como pendentes. Essa limitação não impede publicar a primeira fatia, mas não permite apresentar reserva transacional como pronta.
+
+## Acessos necessários para publicar
+
+Na retomada, não havia CLI dos hosts, sessão local de CLI, variáveis de credenciais nem integração instalada para Vercel, Render ou Neon. Disponibilizar o acesso por integração autenticada ou sessão local do provedor, sem colar tokens, senhas ou conexão de banco no chat/Linear/PR.
+
+| Provedor | Acesso necessário                                                                                                                                                                                                                               |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vercel   | Conta/time do projeto; permissão para importar este repositório, criar/configurar o projeto `apps/web`, definir variáveis Production e publicar/consultar deploys. Se já existir projeto, informar seu nome/ID e time, sem credenciais.         |
+| Render   | Workspace e autorização do GitHub para este repositório; permissão para criar/configurar o serviço web pelo Blueprint, definir secrets e consultar deploys/logs. Se já existir serviço, informar nome/ID.                                       |
+| Neon     | Projeto e branch de banco exclusivos do ambiente; permissão para obter/configurar a conexão TLS no Render e aplicar migrations com criação de tabelas, índices e FKs. Informar projeto/branch/banco escolhidos, sem enviar a conexão pelo chat. |
+
+Após autenticar os provedores, conferir os recursos existentes antes de criar novos, definir as URLs dos dois hosts, configurar `BETTER_AUTH_URL`, `WEB_ORIGIN` e `API_BASE_URL`, aplicar as migrations no banco escolhido e executar o aceite abaixo. Não há URL pública comprovada nesta etapa.
 
 ## Topologia e sessão
 
@@ -14,7 +32,7 @@ Esse fluxo usa requisições do mesmo domínio no navegador e não exige CORS HT
 
 ## Antes de conectar o banco
 
-1. Aguardar a primeira migration de domínio do HACK-13 integrada à `main` e revisar os SQLs com o responsável. A migration de autenticação do HACK-12 sozinha não satisfaz esse acordo.
+1. Confirmar que o SHA a publicar contém `26d6e45` (primeira fatia HACK-13) e os dois diretórios de migration acima. O SQL e a revisão foram conferidos nesta retomada; a dependência da primeira migration está satisfeita. Não aplicar a partir de uma branch antiga que contenha só a migration de autenticação.
 2. Criar/selecionar o projeto Neon e um branch de banco exclusivo para este ambiente. Copiar a conexão Postgres com TLS fornecida pelo painel, mantendo `sslmode=require` e demais parâmetros. Não desativar validação TLS para contornar falha.
 3. Guardar a conexão somente em `DATABASE_URL` no Render. Não adicionar a conexão ao Next, ao Git, à descrição do PR ou aos logs. Para esta primeira instância usar a conexão direta, compatível com a execução de migrations no start; avaliar pooling separadamente se houver mais instâncias.
 

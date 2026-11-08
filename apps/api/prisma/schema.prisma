@@ -1,5 +1,7 @@
-// Schema de autenticação exigido pelo adaptador Prisma do Better Auth.
-// O modelo de domínio é do HACK-13.
+// Autenticação (Better Auth, HACK-12) e modelo de domínio (HACK-13).
+// Unidades do domínio: dinheiro em centavos (Int, sufixo Cents), percentuais Int 0-100,
+// durações Int em minutos, instantes em UTC (timestamp(3)) e expediente/janelas em hora
+// local de America/Sao_Paulo (weekday 0-6 a partir de domingo, minuto do dia 0-1440).
 
 generator client {
   provider     = "prisma-client"
@@ -24,6 +26,8 @@ model User {
   updatedAt     DateTime  @default(now()) @updatedAt
   sessions      Session[]
   accounts      Account[]
+  clinic        Clinic?
+  patient       Patient?
 }
 
 model Session {
@@ -68,4 +72,133 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt
 
   @@index([identifier])
+}
+
+// ---------------------------------------------------------------------------
+// Domínio · HACK-13 fatia 1
+// ---------------------------------------------------------------------------
+
+// Perfil de clínica de um User (role "clinica"), um para um (RN-01).
+model Clinic {
+  id                String               @id @default(uuid()) @db.Uuid
+  userId            String               @unique
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  address           String
+  latitude          Float
+  longitude         Float
+  cnes              String               @unique
+  technicalManager  String
+  // Teto diário de vagas com desconto (RN-28).
+  dailyDiscountCap  Int                  @default(5)
+  // Percentual do sinal sobre o preço do momento (RN-40, D1).
+  depositPercent    Int                  @default(20)
+  // Tamanho da onda de alertas e Z, a espera por onda (RN-34, D3).
+  waveSize          Int                  @default(5)
+  waveWindowMinutes Int                  @default(10)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  openingHours      ClinicOpeningHours[]
+  exams             Exam[]
+}
+
+// Faixa de expediente num dia da semana, em hora local.
+model ClinicOpeningHours {
+  id          String @id @default(uuid()) @db.Uuid
+  clinicId    String @db.Uuid
+  clinic      Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  weekday     Int
+  startMinute Int
+  endMinute   Int
+
+  @@index([clinicId])
+}
+
+// Exame oferecido pela clínica (RN-02). O banco garante piso <= preço cheio e
+// X, Y > 0 por CHECK escrito na migration (o Prisma não descreve CHECK no schema).
+model Exam {
+  id                   String      @id @default(uuid()) @db.Uuid
+  clinicId             String      @db.Uuid
+  clinic               Clinic      @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  tussCode             String
+  name                 String
+  fullPriceCents       Int
+  floorPriceCents      Int
+  // Antecedência mínima para encaixe.
+  minLeadMinutes       Int
+  preparationCondition String
+  preparationHours     Int
+  // Ids de pergunta do catálogo do HACK-41 que contraindicam o exame.
+  contraindications    String[]
+  // X: tolerância de atraso; Y: tempo máximo para chegar no no-show (RN-33).
+  toleranceMinutes     Int
+  maxTravelMinutes     Int
+  // Chave e versão do questionário no catálogo do HACK-41 (D5).
+  questionnaireKey     String
+  questionnaireVersion Int
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  priceSteps           PriceStep[]
+
+  @@unique([clinicId, tussCode])
+}
+
+// Degrau de preço: desconto aplicado quando faltam leadMinutes para o horário (RN-26).
+model PriceStep {
+  id              String @id @default(uuid()) @db.Uuid
+  examId          String @db.Uuid
+  exam            Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  leadMinutes     Int
+  discountPercent Int
+
+  @@index([examId])
+}
+
+// Perfil de paciente de um User (role "paciente"), um para um (RN-11).
+model Patient {
+  id                  String         @id @default(uuid()) @db.Uuid
+  userId              String         @unique
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone               String
+  // Aceite do termo LGPD de dado de saúde; sem ele a conta não nasce (F1).
+  healthDataConsentAt DateTime
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  subscriptions       Subscription[]
+}
+
+// Inscrição na lista de encaixe (RN-17). Uma por paciente e TUSS: renovar ou se
+// reinscrever atualiza a mesma linha (RN-20, D4).
+model Subscription {
+  id               String               @id @default(uuid()) @db.Uuid
+  patientId        String               @db.Uuid
+  patient          Patient              @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  tussCode         String
+  maxPriceCents    Int
+  // Centro e raio da região.
+  latitude         Float
+  longitude        Float
+  radiusMeters     Int
+  // "Posso ir hoje", com a localização atual informada.
+  canGoToday       Boolean              @default(false)
+  currentLatitude  Float?
+  currentLongitude Float?
+  expiresAt        DateTime
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  windows          SubscriptionWindow[]
+
+  @@unique([patientId, tussCode])
+}
+
+// Janela de disponibilidade do paciente num dia da semana, em hora local (RN-21).
+model SubscriptionWindow {
+  id             String       @id @default(uuid()) @db.Uuid
+  subscriptionId String       @db.Uuid
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  weekday        Int
+  startMinute    Int
+  endMinute      Int
+
+  @@index([subscriptionId])
 }
