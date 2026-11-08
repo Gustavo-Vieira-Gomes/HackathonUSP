@@ -128,31 +128,31 @@ Proof: `cd apps/web && npx tsx --conditions=react-server --test --test-name-patt
 
 ## Coverage
 
-| Set (size) | Member -> proof | Unproven |
-| --- | --- | --- |
-| `GET /api/auth/one-time-token/generate` statuses (4) | `200` C1 · `401` C1 · `502` C32 · `504` C32 | - |
-| `WS /realtime` handshake statuses (5) | `101` C2 · `403` C9 · `400` C9 · `connect_error unauthorized` C4 · `connect_error unavailable` C8 | - |
-| causas de `401` na geração (2) | sem cookie C1 · sessão encerrada C1 | - |
-| causas de `unauthorized` no handshake (7) | token adulterado C4 · token expirado C4 · token ruim com cookie bom C4 · token reutilizado C5 · sem token nem cookie C7 · cookie adulterado C7 · cookie de sessão encerrada C7 | - |
-| caminhos de autenticação do handshake (2) | token C2 · cookie C6 | - |
-| caminhos de `unavailable` (2) | token C8 · cookie C8 | - |
-| papéis → sala própria (2) | `paciente` C2 · `clinica` C3 | - |
-| origem do handshake (3) | igual a `WEB_ORIGIN` C9 · diferente C9 · ausente C9 | - |
-| transportes recusados por origem (2) | `polling` C9 · `websocket` C9 | - |
-| campos do cliente ignorados na sala (3) | `auth` C10 · query C10 · `role` em `auth` C10 | - |
-| eventos cliente → servidor (2) | `vaga.assinar` C11 · `vaga.sair` C14 | - |
-| ack de `vaga.assinar`/`vaga.sair` (3) | `{ ok: true }` C11 · `payload_invalido` C12 · `limite_assinaturas` C13 | - |
-| `vagaId` inválido × evento (10) | C12, table-driven over all 10 | - |
-| `vagaId` borda (2 edges) | 64 C12 · 65 C12 | - |
-| limite de salas de vaga (2 edges) | 20 C13 · 21 C13 | - |
-| eventos servidor → sala (4) | `vaga.publicada` C17 · `vaga.preco` C15 · `vaga.reservada` C16 · `reserva.criada` C18 | - |
-| salas de destino (3) | `paciente:<id>` C17 · `clinica:<id>` C18 · `vaga:<id>` C15 | - |
-| payload inválido no emissor (7) | C19, table-driven over all 7 | - |
-| sala vazia por tipo (3) | `vaga` C20 · `paciente` C20 · `clinica` C20 | - |
-| estados do cliente (3) | `conectado` C26 · `reconectando` C26 · `nao_autenticado` C27 | - |
-| causas de `nao_autenticado` (2) | geração `401` C27 · handshake `unauthorized` C27 | - |
-| portas de uma via (7) | 1 C2, C4, C5 · 2 C21 · 3 C28 · 4 C29 · 5 C29 · 6 C2, C3, C10 · 7 C30 | - |
-| startup config: `RealtimeModule` e `WEB_ORIGIN` no gateway (1 assembly) | `AppModule.register`, usado por `createApp` no `main.ts` e por `startTestApp` C2, C9 | - |
+| Set (size)                                                              | Member -> proof                                                                                                                                                                | Unproven |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| `GET /api/auth/one-time-token/generate` statuses (4)                    | `200` C1 · `401` C1 · `502` C32 · `504` C32                                                                                                                                    | -        |
+| `WS /realtime` handshake statuses (5)                                   | `101` C2 · `403` C9 · `400` C9 · `connect_error unauthorized` C4 · `connect_error unavailable` C8                                                                              | -        |
+| causas de `401` na geração (2)                                          | sem cookie C1 · sessão encerrada C1                                                                                                                                            | -        |
+| causas de `unauthorized` no handshake (7)                               | token adulterado C4 · token expirado C4 · token ruim com cookie bom C4 · token reutilizado C5 · sem token nem cookie C7 · cookie adulterado C7 · cookie de sessão encerrada C7 | -        |
+| caminhos de autenticação do handshake (2)                               | token C2 · cookie C6                                                                                                                                                           | -        |
+| caminhos de `unavailable` (2)                                           | token C8 · cookie C8                                                                                                                                                           | -        |
+| papéis → sala própria (2)                                               | `paciente` C2 · `clinica` C3                                                                                                                                                   | -        |
+| origem do handshake (3)                                                 | igual a `WEB_ORIGIN` C9 · diferente C9 · ausente C9                                                                                                                            | -        |
+| transportes recusados por origem (2)                                    | `polling` C9 · `websocket` C9                                                                                                                                                  | -        |
+| campos do cliente ignorados na sala (3)                                 | `auth` C10 · query C10 · `role` em `auth` C10                                                                                                                                  | -        |
+| eventos cliente → servidor (2)                                          | `vaga.assinar` C11 · `vaga.sair` C14                                                                                                                                           | -        |
+| ack de `vaga.assinar`/`vaga.sair` (3)                                   | `{ ok: true }` C11 · `payload_invalido` C12 · `limite_assinaturas` C13                                                                                                         | -        |
+| `vagaId` inválido × evento (10)                                         | C12, table-driven over all 10                                                                                                                                                  | -        |
+| `vagaId` borda (2 edges)                                                | 64 C12 · 65 C12                                                                                                                                                                | -        |
+| limite de salas de vaga (2 edges)                                       | 20 C13 · 21 C13                                                                                                                                                                | -        |
+| eventos servidor → sala (4)                                             | `vaga.publicada` C17 · `vaga.preco` C15 · `vaga.reservada` C16 · `reserva.criada` C18                                                                                          | -        |
+| salas de destino (3)                                                    | `paciente:<id>` C17 · `clinica:<id>` C18 · `vaga:<id>` C15                                                                                                                     | -        |
+| payload inválido no emissor (7)                                         | C19, table-driven over all 7                                                                                                                                                   | -        |
+| sala vazia por tipo (3)                                                 | `vaga` C20 · `paciente` C20 · `clinica` C20                                                                                                                                    | -        |
+| estados do cliente (3)                                                  | `conectado` C26 · `reconectando` C26 · `nao_autenticado` C27                                                                                                                   | -        |
+| causas de `nao_autenticado` (2)                                         | geração `401` C27 · handshake `unauthorized` C27                                                                                                                               | -        |
+| portas de uma via (7)                                                   | 1 C2, C4, C5 · 2 C21 · 3 C28 · 4 C29 · 5 C29 · 6 C2, C3, C10 · 7 C30                                                                                                           | -        |
+| startup config: `RealtimeModule` e `WEB_ORIGIN` no gateway (1 assembly) | `AppModule.register`, usado por `createApp` no `main.ts` e por `startTestApp` C2, C9                                                                                           | -        |
 
 - Claims naming a status code, route or response shape: C1, C2-C10 (handshake), C11-C14 (acks), C15-C18 (payloads), C21 - each has a proof that crosses the socket.io or HTTP boundary
 - C19 prova no nível do serviço porque o serviço é a fronteira dos emissores; C21 prova o schema no próprio pacote, e C15-C18, C25 provam o mesmo schema nos dois consumidores
