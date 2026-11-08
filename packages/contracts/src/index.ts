@@ -37,5 +37,4 @@ export const signUpResponseSchema = z.strictObject({
 export type SignUpResponse = z.infer<typeof signUpResponseSchema>;
 export * from './clinic-vacancies';
 
-
 export * from './patient';

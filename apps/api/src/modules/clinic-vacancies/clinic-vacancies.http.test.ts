@@ -148,12 +148,8 @@ test('H20 HTTP: no-show usa relógio, isola clínica, retém sinal e cancela vag
   );
   const exam = examSchema.parse(await examResponse.json());
   const patient = await signUpWithCookie(t, 'paciente');
-  const profile = await t.prisma.patient.create({
-    data: {
-      userId: patient.id,
-      phone: '+5511999999999',
-      healthDataConsentAt: new Date(),
-    },
+  const profile = await t.prisma.patient.findUniqueOrThrow({
+    where: { userId: patient.id },
   });
   const slot = await t.prisma.slot.create({
     data: {
