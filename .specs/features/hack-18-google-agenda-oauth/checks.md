@@ -93,7 +93,7 @@ Proof: `RUN --test-name-pattern="^C21 " HTTP` (2 rotas × 2 status)
 **C22** - `PUT .../calendar` com `{ calendarId }` de uma agenda `owner` da lista: `200` com `status` `connected`, `calendarName` igual ao nome da agenda e `connectedAt`; a linha tem o id e o nome da agenda e status `CONNECTED` (S3, AC 15)
 Proof: `RUN --test-name-pattern="^C22 " HTTP`
 
-**C23** - `PUT .../calendar` com `calendarId` fora da lista e com `calendarId` de agenda `writer` da conta responde `422` com `code` `CALENDAR_NOT_AVAILABLE`; corpo sem `calendarId`, com `calendarId` `''` e com `calendarId` numérico responde `400` com `code` `INVALID_BODY` (convenção do `sign-up.controller.ts`) e o falso recebe 0 chamadas; a linha fica igual nos 5 casos (S3, AC 16)
+**C23** - `PUT .../calendar` com `calendarId` fora da lista e com `calendarId` de agenda `writer` da conta responde `422` com `code` `CALENDAR_NOT_AVAILABLE`; corpo sem `calendarId`, com `calendarId` `''` e com `calendarId` numérico responde `422` com `code` `VALIDATION_FAILED` e `fields` igual a `['calendarId']` (`ZodBodyPipe` do HACK-16) e o falso recebe 0 chamadas; a linha fica igual nos 5 casos (S3, AC 16)
 Proof: `RUN --test-name-pattern="^C23 " HTTP` (5 casos)
 
 **C24** - Com o falso de listagem lançando o erro de credencial recusada (`invalid_grant` e `401`), `GET .../calendars` e `PUT .../calendar` respondem `409` com `CALENDAR_NOT_AUTHORIZED`, e a linha fica `EXPIRED` com os dois tokens nulos (S3, AC 17)
@@ -118,7 +118,7 @@ Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^C29 " WVM
 Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^C30 " WVM` (7 casos)
 Proof: `npm run smoke` (asserção `C30`: HTML de `/clinica/agenda?google=denied` com cookie de clínica tem `role="alert"` com a mensagem de `denied`)
 
-**C31** - O serviço da Server Action de escolher envia `PUT .../calendar` com `{ calendarId }` e o cookie; `200` dentro do contrato é sucesso; `400`, `409`, `422`, `502` e `504` devolvem erro com o `code` da API e nunca sucesso (S3, AC 15 e AC 16 do lado do Next)
+**C31** - O serviço da Server Action de escolher envia `PUT .../calendar` com `{ calendarId }` e o cookie; `200` dentro do contrato é sucesso; `409`, `422` (`CALENDAR_NOT_AVAILABLE` e `VALIDATION_FAILED`), `502` e `504` devolvem erro com o `code` da API e nunca sucesso (S3, AC 15 e AC 16 do lado do Next)
 Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^C31 " WACT` (6 casos)
 
 **C32** - Sem cookie, `GET /clinica/agenda` no Next redireciona para `/clinica/login` (S3; Observable, não autorizado)
@@ -180,11 +180,11 @@ Proof: `npm ls googleapis -w @hackathon/api` (da raiz; sai 0 só com a dependên
 | `POST /api/clinic/google-calendar/connect` statuses (4)                          | 200 C8 · 401 C9 · 403 C9 · 503 C5                                                                                                                                                                                           | -        |
 | `GET /api/clinic/google-calendar/callback` statuses (4)                          | 302 C10 · 401 C9 · 403 C9 · 503 C5                                                                                                                                                                                          | -        |
 | `GET /api/clinic/google-calendar/calendars` statuses (7)                         | 200 C20 · 401 C9 · 403 C9 · 409 C21 · 502 C25 · 503 C5 · 504 C25                                                                                                                                                            | -        |
-| `PUT /api/clinic/google-calendar/calendar` statuses (9)                          | 200 C22 · 400 C23 · 401 C9 · 403 C9 · 409 C21 · 422 C23 · 502 C25 · 503 C5 · 504 C25                                                                                                                                        | -        |
+| `PUT /api/clinic/google-calendar/calendar` statuses (8)                          | 200 C22 · 401 C9 · 403 C9 · 409 C21 · 422 C23 · 502 C25 · 503 C5 · 504 C25                                                                                                                                                  | -        |
 | `GET /api/google-calendar/callback` (Next) statuses (3)                          | 302 C18 · 502 C18 · 504 C18                                                                                                                                                                                                 | -        |
 | resultados `google=` do callback (5)                                             | `awaiting_calendar` C10 · `denied` C14 · `invalid_state` C11 · `no_refresh_token` C15 · `google_unavailable` C16                                                                                                            | -        |
 | state recusado (6)                                                               | ausente C11 · desconhecido C11 · vencido C11 · consumido C11 · outra sessão C11 · outra clínica C12                                                                                                                         | -        |
-| `code` de erro do Nest (7)                                                       | `GOOGLE_CALENDAR_UNAVAILABLE` C5 · `NOT_A_CLINIC` C9 · `CALENDAR_NOT_AUTHORIZED` C21 · `CALENDAR_NOT_AVAILABLE` C23 · `INVALID_BODY` C23 · `GOOGLE_UNAVAILABLE` C25 · `GOOGLE_TIMEOUT` C25                                  | -        |
+| `code` de erro do Nest (7)                                                       | `GOOGLE_CALENDAR_UNAVAILABLE` C5 · `403` do `@ClinicOnly()` C9 · `CALENDAR_NOT_AUTHORIZED` C21 · `CALENDAR_NOT_AVAILABLE` C23 · `VALIDATION_FAILED` C23 · `GOOGLE_UNAVAILABLE` C25 · `GOOGLE_TIMEOUT` C25                   | -        |
 | `CalendarConnectionStatus` no `GET` de status (4)                                | `DISCONNECTED` C26 · `AWAITING_CALENDAR` C26 · `CONNECTED` C26 · `EXPIRED` C26                                                                                                                                              | -        |
 | transições de status (6)                                                         | sem linha → `AWAITING_CALENDAR` C10 · `CONNECTED` → `AWAITING_CALENDAR` C17 · `AWAITING_CALENDAR` → `CONNECTED` C22 · `CONNECTED` → `EXPIRED` C42 · listagem recusada → `EXPIRED` C24 · `EXPIRED` → `AWAITING_CALENDAR` C17 | -        |
 | estados da tela, 4 status, indisponível e erro de carga (6)                      | `connected` C27 · `disconnected` C27 · `expired` C27 · `awaiting_calendar` C27, C28 · indisponível C6 · erro C29                                                                                                            | -        |
@@ -227,7 +227,7 @@ Cost: 46 checks em 9 arquivos de teste. Sem estas linhas, a tradução de erro d
 - validação: C1, C2, C11, C23
 - modos de falha: C15, C16, C25, C29
 - idempotência: C13 (state consumido uma vez), C42 (`markCredentialsRejected` repetido)
-- autorização: C9, C12 - guard de clínica do HACK-16 + clínica sempre da sessão, nunca de query ou corpo
+- autorização: C9, C12 - `@ClinicOnly()` + `@CurrentClinicId()` do HACK-16, clínica sempre da sessão, nunca de query ou corpo
 - concorrência: C13
 - ciclo de vida do dado: C17 (reconectar substitui os tokens só depois do callback), C42 (tokens apagados ao expirar), C46 (cascade ao apagar a clínica); não há linha existente a migrar
 - falha de dependência: C16, C24, C25, C39 - Google; API fora do ar no Next em C18 e C29
