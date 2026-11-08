@@ -12,9 +12,7 @@
       "signal": "ac_gap",
       "scope": "apps/web",
       "status": "candidate",
-      "features": [
-        "hack-38-tempo-real-websocket"
-      ],
+      "features": ["hack-38-tempo-real-websocket"],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
@@ -30,9 +28,7 @@
       "signal": "spec_precision_gap",
       "scope": "apps/api",
       "status": "candidate",
-      "features": [
-        "hack-29-maquina-estados"
-      ],
+      "features": ["hack-29-maquina-estados"],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
@@ -48,9 +44,7 @@
       "signal": "spec_precision_gap",
       "scope": "apps/api",
       "status": "candidate",
-      "features": [
-        "hack-29-maquina-estados"
-      ],
+      "features": ["hack-29-maquina-estados"],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
