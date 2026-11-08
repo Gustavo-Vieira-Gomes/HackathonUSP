@@ -167,6 +167,10 @@ model Patient {
   userId              String         @unique
   user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   phone               String
+  // Telefone confirmado por código; sem isso o WhatsApp não é usado (HACK-34).
+  phoneVerifiedAt     DateTime?
+  // Canais em que o paciente aceita receber alertas (RN-35, HACK-34).
+  alertChannels       AlertChannel[] @default([push, email])
   // Aceite do termo LGPD de dado de saúde; sem ele a conta não nasce (F1).
   healthDataConsentAt DateTime
   createdAt           DateTime       @default(now())
@@ -397,4 +401,12 @@ model Transition {
 
   @@index([vacancyId, occurredAt])
   @@index([reservationId, occurredAt])
+}
+
+// Relógio da demo (HACK-30): deslocamento aplicado ao relógio real por todas as
+// regras de tempo. Uma linha só (id = 1, CHECK), para sobreviver a um restart.
+model DemoClock {
+  id            Int      @id @default(1)
+  offsetMinutes Int      @default(0)
+  updatedAt     DateTime @updatedAt
 }

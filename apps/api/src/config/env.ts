@@ -7,6 +7,9 @@ export const REQUIRED_ENV = [
   'WEB_ORIGIN',
 ] as const;
 
+/** Opcionais: ausentes valem o padrão do schema. */
+export const OPTIONAL_ENV = ['DEMO_CLOCK_ENABLED'] as const;
+
 const filled = z.string().trim().min(1);
 
 /** Placeholder antigo do .env.example e marcadores de valor de exemplo. */
@@ -19,6 +22,11 @@ const envSchema = z.object({
     .refine((secret) => !EXAMPLE_SECRET.test(secret)),
   BETTER_AUTH_URL: filled.pipe(z.url()),
   WEB_ORIGIN: filled.pipe(z.url()),
+  // Liga o endpoint que adianta o relógio da demo (HACK-30). Desligado por padrão.
+  DEMO_CLOCK_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
@@ -38,7 +46,7 @@ export function loadEnv(
   source: Record<string, string | undefined> = process.env,
 ): AppEnv {
   const picked = Object.fromEntries(
-    REQUIRED_ENV.map((name) => [name, source[name]]),
+    [...REQUIRED_ENV, ...OPTIONAL_ENV].map((name) => [name, source[name]]),
   );
   const result = envSchema.safeParse(picked);
   if (result.success) return result.data;

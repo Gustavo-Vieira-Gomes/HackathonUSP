@@ -66,6 +66,36 @@ export function localWeekdayAndMinute(at: Date): {
   };
 }
 
+const localDateTimeParts = new Intl.DateTimeFormat('en-US', {
+  timeZone: CLINIC_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** Instante da meia-noite local (America/Sao_Paulo) do dia de `at`. */
+export function localDayStart(at: Date): Date {
+  const p = Object.fromEntries(
+    localDateTimeParts
+      .formatToParts(at)
+      .map((part) => [part.type, Number(part.value)]),
+  ) as Record<'year' | 'month' | 'day' | 'hour' | 'minute' | 'second', number>;
+  const wallAsUtc = Date.UTC(
+    p.year,
+    p.month - 1,
+    p.day,
+    p.hour,
+    p.minute,
+    p.second,
+  );
+  const offsetMs = wallAsUtc - Math.floor(at.getTime() / 1000) * 1000;
+  return new Date(Date.UTC(p.year, p.month - 1, p.day) - offsetMs);
+}
+
 /**
  * O horário inteiro, do início ao fim, cabe em alguma janela da inscrição (RN-21).
  * O fim é medido a partir do início no mesmo dia local: um exame que atravessa a

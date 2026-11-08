@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   haversineMeters,
+  localDayStart,
   localWeekdayAndMinute,
   matchesVacancy,
   type MatchableSubscription,
@@ -142,5 +143,21 @@ describe('matchesVacancy · fim do horário na janela (RN-21)', () => {
       endsAt: new Date(at2330.getTime() + 30 * 60_000),
     };
     assert.equal(matchesVacancy(lateNight, fits, now), true);
+  });
+});
+
+describe('localDayStart', () => {
+  it('meia-noite de São Paulo é 03:00 UTC', () => {
+    assert.equal(
+      localDayStart(new Date('2026-11-14T13:00:00Z')).toISOString(),
+      '2026-11-14T03:00:00.000Z',
+    );
+  });
+
+  it('01:00 UTC de domingo ainda é o sábado local', () => {
+    assert.equal(
+      localDayStart(new Date('2026-11-15T01:00:00Z')).toISOString(),
+      '2026-11-14T03:00:00.000Z',
+    );
   });
 });
