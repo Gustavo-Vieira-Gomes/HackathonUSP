@@ -12,9 +12,7 @@
       "signal": "ac_gap",
       "scope": "apps/web",
       "status": "candidate",
-      "features": [
-        "hack-38-tempo-real-websocket"
-      ],
+      "features": ["hack-38-tempo-real-websocket"],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
@@ -30,9 +28,7 @@
       "signal": "spec_precision_gap",
       "scope": "apps/api",
       "status": "candidate",
-      "features": [
-        "hack-29-maquina-estados"
-      ],
+      "features": ["hack-29-maquina-estados"],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
@@ -48,9 +44,7 @@
       "signal": "spec_precision_gap",
       "scope": "apps/api",
       "status": "candidate",
-      "features": [
-        "hack-29-maquina-estados"
-      ],
+      "features": ["hack-29-maquina-estados"],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
@@ -66,9 +60,7 @@
       "signal": "surviving_mutant",
       "scope": "apps/api guards",
       "status": "candidate",
-      "features": [
-        "hack-16-cadastro-login-clinica"
-      ],
+      "features": ["hack-16-cadastro-login-clinica"],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
@@ -84,14 +76,10 @@
       "signal": "spec_precision_gap",
       "scope": "",
       "status": "candidate",
-      "features": [
-        "hack-16-cadastro-login-clinica"
-      ],
+      "features": ["hack-16-cadastro-login-clinica"],
       "recurrence": 1,
       "harmful": 0,
-      "evidence": [
-        "clinic-sign-up.test.ts:270 C9"
-      ],
+      "evidence": ["clinic-sign-up.test.ts:270 C9"],
       "created": "2026-11-08T06:25:57Z",
       "last_seen": "2026-11-08T06:25:57Z"
     },
@@ -102,9 +90,7 @@
       "signal": "ac_gap",
       "scope": "apps/api/oauth-callback",
       "status": "candidate",
-      "features": [
-        "hack-18-google-agenda-oauth"
-      ],
+      "features": ["hack-18-google-agenda-oauth"],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
