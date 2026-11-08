@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 6,
+  "next_id": 7,
   "lessons": [
     {
       "id": "L-001",
@@ -12,7 +12,9 @@
       "signal": "ac_gap",
       "scope": "apps/web",
       "status": "candidate",
-      "features": ["hack-38-tempo-real-websocket"],
+      "features": [
+        "hack-38-tempo-real-websocket"
+      ],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
@@ -28,7 +30,9 @@
       "signal": "spec_precision_gap",
       "scope": "apps/api",
       "status": "candidate",
-      "features": ["hack-29-maquina-estados"],
+      "features": [
+        "hack-29-maquina-estados"
+      ],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
@@ -44,7 +48,9 @@
       "signal": "spec_precision_gap",
       "scope": "apps/api",
       "status": "candidate",
-      "features": ["hack-29-maquina-estados"],
+      "features": [
+        "hack-29-maquina-estados"
+      ],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
@@ -60,7 +66,9 @@
       "signal": "surviving_mutant",
       "scope": "apps/api guards",
       "status": "candidate",
-      "features": ["hack-16-cadastro-login-clinica"],
+      "features": [
+        "hack-16-cadastro-login-clinica"
+      ],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
@@ -76,12 +84,34 @@
       "signal": "spec_precision_gap",
       "scope": "",
       "status": "candidate",
-      "features": ["hack-16-cadastro-login-clinica"],
+      "features": [
+        "hack-16-cadastro-login-clinica"
+      ],
       "recurrence": 1,
       "harmful": 0,
-      "evidence": ["clinic-sign-up.test.ts:270 C9"],
+      "evidence": [
+        "clinic-sign-up.test.ts:270 C9"
+      ],
       "created": "2026-11-08T06:25:57Z",
       "last_seen": "2026-11-08T06:25:57Z"
+    },
+    {
+      "id": "L-006",
+      "key": "ac_gap::callback oauth todo valor de error do provedor e a ausencia de code com state valido precisam de um caso afirmado nao so access denied e falha da troca",
+      "text": "Callback OAuth: todo valor de error do provedor e a ausência de code com state válido precisam de um caso afirmado, não só access_denied e falha da troca.",
+      "signal": "ac_gap",
+      "scope": "apps/api/oauth-callback",
+      "status": "candidate",
+      "features": [
+        "hack-18-google-agenda-oauth"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "apps/api/src/modules/google-calendar/google-calendar-connection.service.ts:153 (apps/api/oauth-callback)"
+      ],
+      "created": "2026-11-08T07:30:12Z",
+      "last_seen": "2026-11-08T07:30:12Z"
     }
   ]
 }
