@@ -4,9 +4,11 @@
 // local de America/Sao_Paulo (weekday 0-6 a partir de domingo, minuto do dia 0-1440).
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
-  moduleFormat = "cjs"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
+  // Índice único parcial (`where: raw(...)`) da trava da vaga, RN-41 (porta 4 da fatia 2).
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -100,6 +102,7 @@ model Clinic {
   updatedAt         DateTime             @updatedAt
   openingHours      ClinicOpeningHours[]
   exams             Exam[]
+  slots             Slot[]
 }
 
 // Faixa de expediente num dia da semana, em hora local.
@@ -139,6 +142,7 @@ model Exam {
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
   priceSteps           PriceStep[]
+  slots                Slot[]
 
   @@unique([clinicId, tussCode])
 }
@@ -151,7 +155,8 @@ model PriceStep {
   leadMinutes     Int
   discountPercent Int
 
-  @@index([examId])
+  // Um degrau por antecedência: dois descontos no mesmo ponto deixariam o preço ambíguo.
+  @@unique([examId, leadMinutes])
 }
 
 // Perfil de paciente de um User (role "paciente"), um para um (RN-11).
@@ -165,6 +170,7 @@ model Patient {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   subscriptions       Subscription[]
+  reservations        Reservation[]
 }
 
 // Inscrição na lista de encaixe (RN-17). Uma por paciente e TUSS: renovar ou se
@@ -187,6 +193,7 @@ model Subscription {
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   windows          SubscriptionWindow[]
+  alerts           Alert[]
 
   @@unique([patientId, tussCode])
 }
@@ -201,4 +208,184 @@ model SubscriptionWindow {
   endMinute      Int
 
   @@index([subscriptionId])
+}
+
+// ---------------------------------------------------------------------------
+// Domínio · HACK-13 fatia 2
+// ---------------------------------------------------------------------------
+// Nomes em inglês; valores dos enums em português, iguais aos da spec (RN-24).
+// Todas as FKs desta fatia são Restrict: horário, vaga, reserva, alerta e transição
+// são histórico (RN-50, RN-51) e não somem em cascata.
+// Faixas numéricas e invariantes de forma ficam em CHECK escrito na migration.
+
+enum SlotOrigin {
+  agenda
+  manual
+}
+
+enum VacancyOrigin {
+  cancelamento
+  no_show
+  vazio
+}
+
+// Estados da vaga (RN-24). A ordem das transições é regra do HACK-29.
+enum VacancyState {
+  publicada
+  alertando
+  reservada
+  realizada
+  expirada
+  cancelada
+}
+
+enum ReservationType {
+  comum
+  encaixe
+  no_show
+}
+
+// Reserva ativa = confirmada ou realizada: só ela ocupa a vaga e o horário (RN-41).
+enum ReservationState {
+  aguardando_pagamento
+  confirmada
+  realizada
+  no_show
+  cancelada
+  expirada
+}
+
+enum PaymentMethod {
+  pix
+  cartao
+  no_local
+}
+
+enum AlertChannel {
+  push
+  email
+  whatsapp
+}
+
+enum AlertResult {
+  pendente
+  enviado
+  falhou
+  cancelado
+}
+
+enum TransitionOrigin {
+  agenda
+  clinica
+  paciente
+  motor
+}
+
+// Horário da agenda de um exame. O banco garante fim > início (CHECK).
+model Slot {
+  id            String        @id @default(uuid()) @db.Uuid
+  clinicId      String        @db.Uuid
+  clinic        Clinic        @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  examId        String        @db.Uuid
+  exam          Exam          @relation(fields: [examId], references: [id], onDelete: Restrict)
+  startsAt      DateTime
+  endsAt        DateTime
+  origin        SlotOrigin
+  // Id do evento na Google Agenda (HACK-19).
+  googleEventId String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  vacancies     Vacancy[]
+  reservations  Reservation[]
+
+  @@index([clinicId, startsAt])
+  @@index([examId])
+}
+
+// Vaga de encaixe num horário (RN-22). No máximo uma ativa por horário.
+// O predicado dos índices parciais está na forma que o Postgres guarda (pg_get_expr):
+// escrito como `IN (...)`, o `migrate diff` veria drift e recriaria o índice.
+model Vacancy {
+  id                String        @id @default(uuid()) @db.Uuid
+  slotId            String        @db.Uuid
+  slot              Slot          @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  origin            VacancyOrigin
+  state             VacancyState  @default(publicada)
+  // Preço do momento, recalculado pelos degraus (RN-26).
+  currentPriceCents Int
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  reservations      Reservation[]
+  alerts            Alert[]
+  transitions       Transition[]
+
+  @@unique([slotId], map: "Vacancy_active_slot_key", where: raw("state = ANY (ARRAY['publicada'::\"VacancyState\", 'alertando'::\"VacancyState\", 'reservada'::\"VacancyState\"])"))
+}
+
+// Reserva de um horário. Comum: só slotId; encaixe e no-show: slotId e vacancyId (CHECK).
+// A trava da RN-41 são os dois índices parciais: a confirmação que chega depois
+// recebe P2002 e o HACK-27 responde "vaga acabou de ser preenchida".
+model Reservation {
+  id                String           @id @default(uuid()) @db.Uuid
+  slotId            String           @db.Uuid
+  slot              Slot             @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  vacancyId         String?          @db.Uuid
+  vacancy           Vacancy?         @relation(fields: [vacancyId], references: [id], onDelete: Restrict)
+  patientId         String           @db.Uuid
+  patient           Patient          @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  type              ReservationType
+  state             ReservationState @default(aguardando_pagamento)
+  chargedPriceCents Int
+  // Sinal pago (RN-40); 0 na reserva comum paga no local.
+  depositCents      Int
+  // no_local só na reserva comum (RN-39, CHECK).
+  paymentMethod     PaymentMethod
+  googleEventId     String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  transitions       Transition[]
+
+  @@unique([vacancyId], map: "Reservation_active_vacancy_key", where: raw("state = ANY (ARRAY['confirmada'::\"ReservationState\", 'realizada'::\"ReservationState\"])"))
+  @@unique([slotId], map: "Reservation_active_slot_key", where: raw("state = ANY (ARRAY['confirmada'::\"ReservationState\", 'realizada'::\"ReservationState\"])"))
+  @@index([vacancyId])
+  @@index([slotId])
+  @@index([patientId])
+}
+
+// Alerta de uma vaga a uma inscrição, uma linha por canal (RN-34, RN-36).
+model Alert {
+  id             String       @id @default(uuid()) @db.Uuid
+  vacancyId      String       @db.Uuid
+  vacancy        Vacancy      @relation(fields: [vacancyId], references: [id], onDelete: Restrict)
+  subscriptionId String       @db.Uuid
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  // Número da onda, a partir de 1.
+  wave           Int
+  channel        AlertChannel
+  sentAt         DateTime?
+  result         AlertResult  @default(pendente)
+  createdAt      DateTime     @default(now())
+
+  @@unique([vacancyId, subscriptionId, channel])
+  @@index([subscriptionId])
+}
+
+// Registro de mudança de estado de uma vaga ou de uma reserva, exatamente um alvo
+// (CHECK). fromState/toState são texto porque guardam valores de dois enums; quem
+// valida e grava é o HACK-29, na mesma transação da mudança (RN-50).
+model Transition {
+  id            String           @id @default(uuid()) @db.Uuid
+  vacancyId     String?          @db.Uuid
+  vacancy       Vacancy?         @relation(fields: [vacancyId], references: [id], onDelete: Restrict)
+  reservationId String?          @db.Uuid
+  reservation   Reservation?     @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  // Nulo na criação.
+  fromState     String?
+  toState       String
+  origin        TransitionOrigin
+  reason        String
+  occurredAt    DateTime         @default(now())
+
+  @@index([vacancyId, occurredAt])
+  @@index([reservationId, occurredAt])
 }
