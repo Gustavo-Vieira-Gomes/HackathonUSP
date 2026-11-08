@@ -1,4 +1,8 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
@@ -91,26 +95,60 @@ export class PricingService {
   }
 
   /**
-   * Teto diário de vagas com desconto por clínica (RN-28). Conta as vagas que a
-   * clínica publicou no dia local (America/Sao_Paulo) e recusa com 422 quando o
-   * teto foi atingido. A publicação (HACK-20) chama antes de
-   * `VacanciesService.publish`, na mesma transação. Toda vaga de encaixe conta,
-   * porque todas descem de preço.
+   * Publica dentro do teto diário de vagas com desconto da clínica (RN-28). Toda vaga
+   * de encaixe conta, porque todas descem de preço; acima do teto, 422 com o teto.
+   *
+   * A contagem e a publicação rodam na mesma transação, com a linha da clínica
+   * travada (`FOR UPDATE`) antes de contar. Sem a trava, duas publicações simultâneas
+   * contariam o mesmo número em READ COMMITTED e as duas passariam (HACK-47). Com
+   * ela, a segunda espera o commit da primeira e já conta a vaga nova.
+   *
+   * `publish` recebe a transação e deve criar a vaga nela, por exemplo com
+   * `VacanciesService.publish(data, meta, tx)`. Quem já tem uma transação passa em
+   * `options.tx`; a trava vale até o fim dela.
    *
    * `publishedAt` é o relógio real, não o da demo: `Vacancy.createdAt` é gravado
    * pelo banco em tempo real, e adiantar o relógio não pode mudar o dia contado.
    */
-  async assertDailyDiscountCap(
+  async publishWithinDailyCap<T>(
     clinicId: string,
-    db: Prisma.TransactionClient = this.prisma,
-    publishedAt: Date = new Date(),
+    publish: (tx: Prisma.TransactionClient) => Promise<T>,
+    options: { tx?: Prisma.TransactionClient; publishedAt?: Date } = {},
+  ): Promise<T> {
+    const run = async (tx: Prisma.TransactionClient) => {
+      await this.lockClinic(tx, clinicId);
+      await this.assertBelowCap(
+        tx,
+        clinicId,
+        options.publishedAt ?? new Date(),
+      );
+      return publish(tx);
+    };
+    return options.tx ? run(options.tx) : this.prisma.$transaction(run);
+  }
+
+  private async lockClinic(
+    tx: Prisma.TransactionClient,
+    clinicId: string,
   ): Promise<void> {
-    const clinic = await db.clinic.findUniqueOrThrow({
+    const rows = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id" FROM "Clinic" WHERE "id" = ${clinicId}::uuid FOR UPDATE`;
+    if (rows.length === 0) {
+      throw new NotFoundException('Clínica não encontrada.');
+    }
+  }
+
+  private async assertBelowCap(
+    tx: Prisma.TransactionClient,
+    clinicId: string,
+    publishedAt: Date,
+  ): Promise<void> {
+    const clinic = await tx.clinic.findUniqueOrThrow({
       where: { id: clinicId },
       select: { dailyDiscountCap: true },
     });
     const dayStart = localDayStart(publishedAt);
-    const published = await db.vacancy.count({
+    const published = await tx.vacancy.count({
       where: {
         slot: { clinicId },
         createdAt: { gte: dayStart, lt: new Date(dayStart.getTime() + DAY_MS) },
