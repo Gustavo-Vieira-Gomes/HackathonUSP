@@ -13,6 +13,7 @@ import type {
   VacancyState,
 } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ClockService } from '../clock/clock.service';
 import { canTransition } from './vacancy-transitions';
 
 export type TransitionMeta = { origin: TransitionOrigin; reason: string };
@@ -29,7 +30,10 @@ const EXPIRE_REASON = 'Horário do exame chegou sem reserva';
 export class VacanciesService {
   private readonly logger = new Logger(VacanciesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clock: ClockService,
+  ) {}
 
   /** Cria a vaga em `publicada` com a primeira linha do log (T1). */
   async publish(
@@ -49,28 +53,34 @@ export class VacanciesService {
           toState: 'publicada',
           origin: meta.origin,
           reason,
-          occurredAt: new Date(),
+          occurredAt: this.clock.now(),
         },
       });
       return vacancy;
     });
   }
 
-  /** Muda o estado se o par estiver na tabela; senão 409 sem gravar nada. */
+  /**
+   * Muda o estado se o par estiver na tabela; senão 409 sem gravar nada. `now` é o
+   * instante do negócio gravado no `occurredAt`: o motor passa o do tick, para a
+   * onda ficar no minuto em que foi decidida (HACK-32).
+   */
   async transition(
     vacancyId: string,
     to: VacancyState,
     meta: TransitionMeta,
     tx?: Prisma.TransactionClient,
+    now: Date = this.clock.now(),
   ): Promise<Vacancy> {
-    return this.apply(vacancyId, to, meta, new Date(), tx);
+    return this.apply(vacancyId, to, meta, now, tx);
   }
 
   /**
    * Expira as vagas sem reserva cujo horário chegou (RN-25). Uma transação por vaga:
-   * a que perde uma corrida (409) fica de fora da contagem e não para as outras.
+   * a que perde uma corrida (409) ou falha por outro motivo fica de fora da contagem
+   * e não para as outras; a falha que não é corrida vai para o log.
    */
-  async expireDue(now: Date = new Date()): Promise<number> {
+  async expireDue(now: Date = this.clock.now()): Promise<number> {
     const due = await this.prisma.vacancy.findMany({
       where: {
         state: { in: ['publicada', 'alertando'] },
@@ -89,7 +99,12 @@ export class VacanciesService {
         );
         expired += 1;
       } catch (error) {
-        if (!(error instanceof ConflictException)) throw error;
+        if (error instanceof ConflictException) continue;
+        this.logger.warn(
+          `Expiração da vaga ${id} falhou: ${
+            error instanceof Error ? error.message : 'erro desconhecido'
+          }`,
+        );
       }
     }
     return expired;
@@ -137,7 +152,7 @@ export class VacanciesService {
           toState: to,
           origin: meta.origin,
           reason,
-          occurredAt: await this.nextOccurredAt(db, vacancyId),
+          occurredAt: await this.nextOccurredAt(db, vacancyId, now),
         },
       });
       return db.vacancy.findUniqueOrThrow({ where: { id: vacancyId } });
@@ -151,8 +166,8 @@ export class VacanciesService {
   private async nextOccurredAt(
     db: Prisma.TransactionClient,
     vacancyId: string,
+    now: Date,
   ): Promise<Date> {
-    const now = new Date();
     const last = await db.transition.findFirst({
       where: { vacancyId },
       orderBy: { occurredAt: 'desc' },

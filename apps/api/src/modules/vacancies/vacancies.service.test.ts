@@ -16,6 +16,7 @@ import {
 } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { createSchemaFixtures, examData } from '../../testing/schema-fixtures';
+import { ClockService } from '../clock/clock.service';
 import { VacanciesService } from './vacancies.service';
 
 /**
@@ -664,5 +665,104 @@ test('C23 - recusa registra warn sem motivo', async () => {
     assert.ok(!JSON.stringify(args).includes(marker));
   } finally {
     warn.mock.restore();
+  }
+});
+
+// HACK-32 - ressalva 2 do 29 e relógio da demo (checks.md do HACK-32)
+
+test('HACK-32 C16 - erro que não é 409 numa vaga não para o expireDue', async () => {
+  const now = era(6);
+  await service.expireDue(now);
+  const due = new Date(now.getTime() - HOUR);
+  const a = await createVacancy('alertando', due);
+  const b = await createVacancy('alertando', due);
+  const c = await createVacancy('alertando', due);
+  const spy = replaceTransaction(
+    (original) => (fn, options) =>
+      original(
+        (tx) =>
+          fn(
+            wrap(tx, {
+              vacancy: wrap(tx.vacancy, {
+                findUnique: async (args: Prisma.VacancyFindUniqueArgs) => {
+                  if (args.where.id === b.id) {
+                    throw new Error('falha forçada que não é 409');
+                  }
+                  return tx.vacancy.findUnique(args);
+                },
+              }),
+            }),
+          ),
+        options,
+      ),
+  );
+  const warn = mock.method(Logger.prototype, 'warn', () => undefined);
+  let expired: number;
+  try {
+    expired = await service.expireDue(now);
+  } finally {
+    spy.restore();
+    warn.mock.restore();
+  }
+  assert.equal(expired, 2);
+  assert.equal((await snapshot(a.id)).state, 'expirada');
+  assert.equal((await snapshot(c.id)).state, 'expirada');
+  assert.equal((await snapshot(b.id)).state, 'alertando');
+  const lines = warn.mock.calls.map((call) => String(call.arguments[0]));
+  assert.equal(lines.filter((line) => line.includes(b.id)).length, 1);
+});
+
+test('HACK-32 C22 - serviço de vagas usa o relógio da demo', async () => {
+  const clock = app.get(ClockService);
+  await clock.reset();
+  try {
+    await clock.advance(25 * 60);
+    const before = clock.now();
+    const vacancy = await publishVacancy(new Date(Date.now() + 48 * HOUR));
+    await service.transition(vacancy.id, 'alertando', meta());
+    const after = clock.now();
+    const rows = await service.timeline(vacancy.id);
+    assert.equal(rows.length, 2);
+    for (const row of rows) {
+      const at = row.occurredAt.getTime();
+      assert.ok(
+        at >= before.getTime() && at <= after.getTime(),
+        `${row.occurredAt.toISOString()} fora de [${before.toISOString()}, ${after.toISOString()}]`,
+      );
+      assert.ok(
+        at - Date.now() > 24 * HOUR,
+        'occurredAt devia estar ~25 h à frente',
+      );
+    }
+
+    await service.expireDue(); // drena o que o relógio adiantado já venceu
+    const target = await createVacancy(
+      'publicada',
+      new Date(Date.now() + HOUR),
+    );
+    assert.equal(await service.expireDue(), 1);
+    assert.equal((await snapshot(target.id)).state, 'expirada');
+  } finally {
+    await clock.reset();
+  }
+});
+
+test('HACK-32 C23 - occurredAt continua crescente quando o relógio recua', async () => {
+  const clock = app.get(ClockService);
+  await clock.reset();
+  try {
+    const vacancy = await publishVacancy(new Date(Date.now() + 48 * HOUR));
+    await clock.advance(60);
+    const ahead = await service.transition(vacancy.id, 'alertando', meta());
+    assert.equal(ahead.state, 'alertando');
+    await clock.reset();
+    await service.transition(vacancy.id, 'alertando', meta());
+    const rows = await service.timeline(vacancy.id);
+    const [, first, second] = rows;
+    assert.ok(first && second);
+    assert.ok(first.occurredAt.getTime() - Date.now() > 50 * MINUTE);
+    assert.equal(second.occurredAt.getTime(), first.occurredAt.getTime() + 1);
+  } finally {
+    await clock.reset();
   }
 });
