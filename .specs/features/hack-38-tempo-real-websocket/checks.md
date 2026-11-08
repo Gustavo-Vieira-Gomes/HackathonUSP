@@ -53,7 +53,7 @@ Proof: `cd apps/api && node --env-file-if-exists=.env --test --test-name-pattern
 
 ### S2 - página da vaga ao vivo · 4 arquivos · ~22 KB · ~6k
 
-**C11** - Um cliente conectado só por token (sem header `cookie`, como em produção) emite `vaga.assinar { vagaId: 'v1' }` e recebe no ack `{ ok: true }`, e o socket passa a estar na sala `vaga:v1`; o guard global do Better Auth não barra a mensagem (S2, AC 12; Impact "guard global")
+**C11** - Um cliente conectado só por token (sem header `cookie`, como em produção) emite `vaga.assinar { vagaId: 'v1' }` e recebe no ack `{ ok: true }`, e o socket passa a estar na sala `vaga:v1`; nenhum guard barra a mensagem, pois no Nest 11 os guards globais não rodam em gateway (S2, AC 12; desvio M2)
 Proof: `cd apps/api && node --env-file-if-exists=.env --test --test-name-pattern="^C11 " .test-dist/modules/realtime/realtime-subscriptions.test.js`
 
 **C12** - `vaga.assinar` e `vaga.sair` com `vagaId` `''`, `123`, ausente, `null` ou string de 65 caracteres respondem `{ ok: false, erro: 'payload_invalido' }` e as salas do socket ficam iguais às de antes; `vagaId` de 64 caracteres em `vaga.assinar` responde `{ ok: true }` (S2, AC 13)
@@ -178,3 +178,4 @@ Proof: `cd apps/web && npx tsx --conditions=react-server --test --test-name-patt
 - Mecanismo: um construtor (estimativa sob o orçamento). Base do build: `origin/main` em `0779304` (merge do HACK-12, fast-forward); pressupostos «12» reconferidos contra `0779304`: só voltaram arquivos do HACK-41 que a branch do 12 não tinha.
 - **Settled mid-build:** C31 - a prova gravava o log em `.test-logs/` sem criar a pasta; a prova ganhou `mkdir -p .test-logs &&` antes. A afirmação não mudou.
 - **Settled mid-build:** C9 - o upgrade websocket recusado por origem responde 400 (o `abortUpgrade` do engine.io 6 escreve 400 fixo), não 403; o Maestro decidiu em 08/11/2026 (opção A, desvio M1 no plano) e o C9 e o AC 10 passaram a dizer 403 no polling e 400 no upgrade, sem conexão aberta.
+- **Settled mid-build:** C11 - a mutação que tira o `@AllowAnonymous()` sobreviveu: no Nest 11 os guards globais não rodam em gateway (`socket-module.js:81`). O Maestro decidiu em 08/11/2026 tirar o decorator (desvio M2 no plano); a afirmação do C11 segue a mesma, sem a menção ao decorator.
