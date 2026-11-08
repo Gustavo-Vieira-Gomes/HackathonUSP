@@ -5,6 +5,7 @@ import { ConfigModule } from './config/config.module';
 import type { AppEnv } from './config/env';
 import { ExamplesModule } from './examples/examples.module';
 import { HealthController } from './health/health.controller';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { VacanciesModule } from './modules/vacancies/vacancies.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -22,6 +23,7 @@ export class AppModule {
         ExamplesModule,
         RealtimeModule,
         VacanciesModule,
+        NotificationsModule,
       ],
       controllers: [HealthController],
     };

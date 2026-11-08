@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { MatchingService } from './matching.service';
 import { VacanciesService } from './vacancies.service';
 
 /**
@@ -6,5 +7,8 @@ import { VacanciesService } from './vacancies.service';
  * `Vacancy.state` importa este módulo e injeta o `VacanciesService`; update direto
  * do estado fora daqui é recusado na revisão.
  */
-@Module({ providers: [VacanciesService], exports: [VacanciesService] })
+@Module({
+  providers: [VacanciesService, MatchingService],
+  exports: [VacanciesService, MatchingService],
+})
 export class VacanciesModule {}
