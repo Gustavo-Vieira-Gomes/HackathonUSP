@@ -100,8 +100,8 @@ Proof: `RUN --test-name-pattern="onda do mesmo tick leva o preço novo" MOT`
 Proof: `RUN --test-name-pattern="serviço de vagas usa o relógio da demo" SVC`
 Proof: `! grep -n "new Date()" apps/api/src/modules/vacancies/vacancies.service.ts`
 
-**C23** - **[relógio]** Depois de uma transição gravada com o relógio adiantado por `clock.advance(60)`, o relógio volta ao real por `clock.reset()` e a transição seguinte da mesma vaga grava `occurredAt` = anterior + 1 ms (D6 do HACK-29 preservada em `nextOccurredAt(db, vacancyId, now)`) (Assumption «Relógio da demo»)
-Proof: `RUN --test-name-pattern="occurredAt continua crescente quando o relógio recua" SVC`
+**C23** - **[relógio]** Depois de uma transição gravada com o relógio adiantado por `clock.advance(60)`, o relógio volta ao real por `clock.reset()` e a transição seguinte da mesma vaga grava `occurredAt` a ±1 s de `Date.now()`, menor que a anterior; com a anterior a `now + 500 ms` (dentro da tolerância de 1 s), grava anterior + 1 ms (D6 do HACK-29 dentro da época do relógio) (Assumption «Relógio da demo») (mudado na continuação, 08/11, decisão do Gustavo via maestro: `.specs/features/hack-32-continuacao/checks.md`). Antes: «grava anterior + 1 ms quando o relógio recua», o que travava a vaga no futuro.
+Proof: `RUN --test-name-pattern="HACK-32 C23 - depois do recuo do relógio occurredAt volta ao agora" SVC`
 
 **C24** - **[relógio]** Duas vagas `publicada` com `currentPriceCents = 72000`: A com `startsAt = Date.now() + 24 h`, B com `startsAt = Date.now() + 48 h` e degraus do C19. `clock.advance(25 * 60)` e `job.tick(clock.now())`: A fica `expirada`; B grava `currentPriceCents` igual a `currentPriceCents()` da `price-engine` para 23 h restantes com os degraus semeados, menor que 72000, e emite 1 `vagaPreco` com esse valor (S5, AC 17)
 Proof: `RUN --test-name-pattern="avançar 25 h expira a vencida e baixa o preço das outras" MOT`
@@ -122,11 +122,11 @@ Proof: `RUN --test-name-pattern="falha do socket não desfaz a onda" MOT`
 
 ### S7 - pendentes de vaga fechada · 2 arquivos · ~4k
 
-**C29** - Vagas em `reservada`, `expirada`, `cancelada`, `publicada` e `alertando`, cada uma com 1 `Alert` `pendente`, 1 `enviado` e 1 `falhou`: `cancelPendingOfClosedVacancies()` devolve 3; os 3 `pendente` das vagas `reservada`, `expirada` e `cancelada` viram `cancelado`; os `enviado` e `falhou` de todas e os `pendente` de `publicada` e `alertando` ficam como estavam (S7, AC 21 e 22; porta 4)
-Proof: `RUN --test-name-pattern="cancela só pendentes de vaga fechada" NOT`
+**C29** - Vagas em `reservada`, `realizada`, `expirada`, `cancelada`, `publicada` e `alertando`, cada uma com 1 `Alert` `pendente`, 1 `enviado` e 1 `falhou`: `cancelPendingOfFinishedVacancies()` devolve 3; os 3 `pendente` das vagas `realizada`, `expirada` e `cancelada` viram `cancelado`; os `enviado` e `falhou` de todas e os `pendente` de `reservada`, `publicada` e `alertando` ficam como estavam (S7, AC 21 e 22; porta 4) (mudado na continuação, 08/11, decisão do Gustavo via maestro: `.specs/features/hack-32-continuacao/checks.md`). Antes: `reservada` cancelava, e o método se chamava `cancelPendingOfClosedVacancies`.
+Proof: `RUN --test-name-pattern="HACK-32 C29 - cancela só pendentes de vaga em estado final" NOT`
 
-**C30** - O mesmo cenário do C29 pelo `tick(now)`: o resultado dos 15 `Alert` é o mesmo do C29 (a etapa `cancel-pending` chama o dono, porta 4)
-Proof: `RUN --test-name-pattern="tick cancela pendentes de vaga fechada" MOT`
+**C30** - O mesmo cenário do C29 pelo `tick(now)`: o resultado dos 18 `Alert` é o mesmo do C29 (a etapa `cancel-pending` chama o dono, porta 4) (mudado na continuação, 08/11, decisão do Gustavo via maestro: `.specs/features/hack-32-continuacao/checks.md`)
+Proof: `RUN --test-name-pattern="C30 - tick cancela pendentes de vaga em estado final" MOT`
 
 ### S8 - job registrado e sem sobreposição · 5 arquivos · ~3k
 
@@ -180,7 +180,7 @@ Proof: `npm run build`
 | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | Decide, com banco real (`WavesService`: estado, janela Z, candidatos, trava, número da onda)                    | integração contra o Postgres do worktree pelo `tick`/`dispatchDue`                                                                    | um caso por ramo da decisão da onda: C1, C3, C4, C5, C8, C9                |
 | Decide, com banco real (`VacancyMotorJob`: ordem, isolamento por etapa, guarda `running`, `refresh` do relógio) | integração pelo `tick` e pelo handler do cron                                                                                         | C15 tabela sobre as 4 etapas; C25, C32                                     |
-| Decide, com banco real (`NotificationsService.cancelPendingOfClosedVacancies`)                                  | na própria camada (C29) **e** pelo consumidor (C30)                                                                                   | os 5 estados × 3 resultados nos dois                                       |
+| Decide, com banco real (`NotificationsService.cancelPendingOfFinishedVacancies`)                                | na própria camada (C29) **e** pelo consumidor (C30)                                                                                   | os 6 estados × 3 resultados nos dois                                       |
 | Repasse (`expireDue`, `candidatos`, `enviar`, `PricingService.recalculatePrices` existentes)                    | nenhuma prova nova além da ressalva 2 (C16), das trocas de relógio (C22, C23) e da chamada pela etapa `prices` (C19, C20 pelo `tick`) | já provados nos HACK-29, 30, 31 e 34 e em `pricing.service.test.ts` da #17 |
 
 Evidence:

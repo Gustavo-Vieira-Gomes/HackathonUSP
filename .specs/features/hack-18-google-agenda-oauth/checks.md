@@ -174,7 +174,7 @@ Proof: `npm ls googleapis -w @hackathon/api` (da raiz; sai 0 só com a dependên
 
 ### Retrabalho da verificação (Maestro, 08/11) · 5 arquivos · ~20 KB · ~5k
 
-**C47** - Callback com state válido, partindo de `CONNECTED` com tokens, em 2 casos: `error=server_error` (diferente de `access_denied`) e sem `code` nem `error`: `302` com `google=google_unavailable`, `exchangeCode` 0 chamadas, state zerado, status, tokens e agenda iguais aos de antes (S2; L-006; bloqueio de `verification.md`)
+**C47** - Callback com state válido, partindo de `CONNECTED` com tokens, em 2 casos: `error=server_error` (diferente de `access_denied`) e sem `code` nem `error`: `302` com `google=google_unavailable`, `exchangeCode` 0 chamadas, state zerado, status, tokens e agenda iguais aos de antes (S2; L-007; bloqueio de `verification.md`)
 Proof: `RUN --test-name-pattern="^H18-C47 " HTTP` (2 casos)
 
 **C48** - Em `awaiting_calendar` com a lista de agendas vazia e com erro ao listar, a tela oferece o botão «Conectar Google Agenda» para reautorizar com outra conta; com agendas na lista, não oferece (S3, AC 22; decisão do Maestro, R3)
@@ -183,7 +183,7 @@ Proof: `npx tsx --conditions=react-server --test --test-name-pattern="^H18-C48 "
 **C49** - Quando o Google renova o access token durante `GET .../calendars` (clínica em `AWAITING_CALENDAR`), a coluna do access token passa a decifrar para o novo e a validade é a nova, pelo mesmo caminho do `getAuthorizedCalendar` (C41); o refresh token decifra para o mesmo de antes (S3; R6)
 Proof: `RUN --test-name-pattern="^H18-C49 " HTTP`
 
-**C50** - O adaptador real, contra o servidor local, com credenciais de access token vencido (`expiryDate` no passado) e o `/token` devolvendo um access token novo com `expires_in` 3600: `listOwnedCalendars(cred, onTokens)` e uma chamada do cliente de `calendarFor(cred, onTokens)` chamam `onTokens` cada um com o access token novo e validade entre agora + 3590 s e agora + 3610 s (S3, S5; L-007; bloqueio da rodada 2)
+**C50** - O adaptador real, contra o servidor local, com credenciais de access token vencido (`expiryDate` no passado) e o `/token` devolvendo um access token novo com `expires_in` 3600: `listOwnedCalendars(cred, onTokens)` e uma chamada do cliente de `calendarFor(cred, onTokens)` chamam `onTokens` cada um com o access token novo e validade entre agora + 3590 s e agora + 3610 s (S3, S5; L-008; bloqueio da rodada 2)
 Proof: `RUN --test-name-pattern="^H18-C50 " GOC` (2 chamadas)
 
 ## Coverage
