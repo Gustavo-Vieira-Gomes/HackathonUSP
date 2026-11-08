@@ -107,6 +107,11 @@ try {
     DEMO_CLOCK_ENABLED: 'true',
     DEMO_CLOCK_TOKEN: demoToken,
     WHATSAPP_MODE: 'simulated',
+    // HACK-18: smoke sem Google configurado (integração indisponível, 503).
+    GOOGLE_OAUTH_CLIENT_ID: '',
+    GOOGLE_OAUTH_CLIENT_SECRET: '',
+    GOOGLE_OAUTH_REDIRECT_URI: '',
+    GOOGLE_TOKEN_ENCRYPTION_KEY: '',
   });
   const apiResponse = await ready(`${apiUrl}/api/health`, api);
   assert.deepEqual(await apiResponse.json(), { status: 'ok', service: 'api' });
@@ -309,6 +314,44 @@ try {
   assert.ok(
     (await listedExams.text()).includes(mri.name),
     'H17-C37: exame cadastrado fora da lista',
+  );
+
+  // HACK-18: /clinica/agenda sem GOOGLE_* (indisponível), alerta do ?google= e login.
+  const agenda = await fetch(`${webUrl}/clinica/agenda`, {
+    headers: { cookie: clinicCookie },
+  });
+  assert.equal(agenda.status, 200, `H18-C6: /clinica/agenda ${agenda.status}`);
+  const agendaHtml = await agenda.text();
+  assert.ok(
+    agendaHtml.includes(
+      'Integração com a Google Agenda indisponível neste ambiente',
+    ),
+    'H18-C6: /clinica/agenda sem o aviso de indisponível',
+  );
+  assert.ok(
+    !agendaHtml.includes('Conectar Google Agenda'),
+    'H18-C6: /clinica/agenda indisponível mostra o botão de conectar',
+  );
+  const denied = await fetch(`${webUrl}/clinica/agenda?google=denied`, {
+    headers: { cookie: clinicCookie },
+  });
+  const deniedHtml = await denied.text();
+  assert.match(
+    deniedHtml,
+    /role="alert"[^>]*>Você não autorizou o acesso à Google Agenda\./,
+    'H18-C30: ?google=denied sem o alerta em role="alert"',
+  );
+  const anonymousAgenda = await fetch(`${webUrl}/clinica/agenda`, {
+    redirect: 'manual',
+  });
+  assert.ok(
+    [303, 307, 308].includes(anonymousAgenda.status),
+    `H18-C32: /clinica/agenda sem cookie ${anonymousAgenda.status}`,
+  );
+  assert.match(
+    anonymousAgenda.headers.get('location') ?? '',
+    /\/clinica\/login$/,
+    'H18-C32: /clinica/agenda sem cookie não vai ao login',
   );
 
   // HACK-38: token de uso único do socket pelo repasse /api/auth/* do Next.

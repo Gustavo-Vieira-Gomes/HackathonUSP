@@ -54,7 +54,7 @@ export class VacancyMotorJob {
       {
         name: 'cancel-pending',
         run: async () => {
-          await notifications.cancelPendingOfClosedVacancies();
+          await notifications.cancelPendingOfFinishedVacancies();
         },
       },
       { name: 'waves', run: (now) => waves.dispatchDue(now) },

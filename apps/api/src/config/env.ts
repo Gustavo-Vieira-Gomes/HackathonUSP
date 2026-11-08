@@ -7,6 +7,17 @@ export const REQUIRED_ENV = [
   'WEB_ORIGIN',
 ] as const;
 
+/**
+ * Google Agenda (HACK-18): opcionais em grupo. Nenhuma preenchida = integração
+ * indisponível (503); parte preenchida ou chave inválida = boot recusado.
+ */
+export const GOOGLE_CALENDAR_ENV = [
+  'GOOGLE_OAUTH_CLIENT_ID',
+  'GOOGLE_OAUTH_CLIENT_SECRET',
+  'GOOGLE_OAUTH_REDIRECT_URI',
+  'GOOGLE_TOKEN_ENCRYPTION_KEY',
+] as const;
+
 /** Opcionais: ausentes valem o padrão do schema. */
 export const OPTIONAL_ENV = [
   'DEMO_CLOCK_ENABLED',
@@ -19,6 +30,7 @@ export const OPTIONAL_ENV = [
   'EMAIL_FROM',
   'VACANCY_MOTOR_ENABLED',
   'WHATSAPP_MODE',
+  ...GOOGLE_CALENDAR_ENV,
 ] as const;
 
 /** Vazio (como no .env.example) conta como ausente. */
@@ -81,6 +93,21 @@ const envSchema = z
       blankAsUndefined,
       z.string().regex(/^\d+$/).default('1000').transform(Number),
     ),
+    GOOGLE_OAUTH_CLIENT_ID: z.preprocess(blankAsUndefined, filled.optional()),
+    GOOGLE_OAUTH_CLIENT_SECRET: z.preprocess(
+      blankAsUndefined,
+      filled.optional(),
+    ),
+    // {WEB_ORIGIN}/api/google-calendar/callback, cadastrada no Google Cloud.
+    GOOGLE_OAUTH_REDIRECT_URI: z.preprocess(
+      blankAsUndefined,
+      filled.pipe(z.url()).optional(),
+    ),
+    // Base64 de exatamente 32 bytes (AES-256-GCM dos tokens).
+    GOOGLE_TOKEN_ENCRYPTION_KEY: z.preprocess(
+      blankAsUndefined,
+      filled.refine(isBase64Key32).optional(),
+    ),
   })
   .superRefine((env, ctx) => {
     if (env.DEMO_CLOCK_ENABLED && !env.DEMO_CLOCK_TOKEN) {
@@ -97,9 +124,52 @@ const envSchema = z
         message: 'obrigatório com RESEND_API_KEY',
       });
     }
+    const missing = GOOGLE_CALENDAR_ENV.filter((name) => !env[name]);
+    if (missing.length > 0 && missing.length < GOOGLE_CALENDAR_ENV.length) {
+      for (const name of missing) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [name],
+          message: 'as quatro GOOGLE_* vêm juntas',
+        });
+      }
+    }
   });
 
+function isBase64Key32(value: string): boolean {
+  return (
+    /^[A-Za-z0-9+/]+={0,2}$/.test(value) &&
+    value.length % 4 === 0 &&
+    Buffer.from(value, 'base64').length === 32
+  );
+}
+
 export type AppEnv = z.infer<typeof envSchema>;
+
+export interface GoogleCalendarConfig {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  /** 32 bytes decodificados de GOOGLE_TOKEN_ENCRYPTION_KEY. */
+  encryptionKey: Buffer;
+}
+
+/** `null` = integração indisponível neste ambiente (nenhuma GOOGLE_* preenchida). */
+export function googleCalendarConfig(env: AppEnv): GoogleCalendarConfig | null {
+  const {
+    GOOGLE_OAUTH_CLIENT_ID: clientId,
+    GOOGLE_OAUTH_CLIENT_SECRET: clientSecret,
+    GOOGLE_OAUTH_REDIRECT_URI: redirectUri,
+    GOOGLE_TOKEN_ENCRYPTION_KEY: key,
+  } = env;
+  if (!clientId || !clientSecret || !redirectUri || !key) return null;
+  return {
+    clientId,
+    clientSecret,
+    redirectUri,
+    encryptionKey: Buffer.from(key, 'base64'),
+  };
+}
 
 /** Token de injeção da configuração validada no boot. */
 export const APP_ENV = Symbol('APP_ENV');
@@ -125,6 +195,6 @@ export function loadEnv(
   ];
   throw new EnvValidationError(
     `Configuração inválida ou ausente: ${names.join(', ')}. ` +
-      'Confira o .env (modelo em .env.example); BETTER_AUTH_SECRET e DEMO_CLOCK_TOKEN exigem 32 caracteres ou mais e não podem ser o valor de exemplo; DEMO_CLOCK_TOKEN é obrigatório com DEMO_CLOCK_ENABLED=true; EMAIL_FROM é obrigatório com RESEND_API_KEY; GEOCODER_URL é URL e GEOCODER_MIN_INTERVAL_MS é inteiro ≥ 0.',
+      'Confira o .env (modelo em .env.example); BETTER_AUTH_SECRET e DEMO_CLOCK_TOKEN exigem 32 caracteres ou mais e não podem ser o valor de exemplo; DEMO_CLOCK_TOKEN é obrigatório com DEMO_CLOCK_ENABLED=true; EMAIL_FROM é obrigatório com RESEND_API_KEY; GEOCODER_URL é URL e GEOCODER_MIN_INTERVAL_MS é inteiro ≥ 0; as quatro GOOGLE_* vêm juntas ou nenhuma, e GOOGLE_TOKEN_ENCRYPTION_KEY é base64 de 32 bytes.',
   );
 }

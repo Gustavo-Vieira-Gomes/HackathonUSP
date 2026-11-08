@@ -21,6 +21,19 @@ export type TransitionMeta = { origin: TransitionOrigin; reason: string };
 const REASON_MAX = 500;
 const EXPIRE_REASON = 'Horário do exame chegou sem reserva';
 
+/** Folga acima da qual uma transição no futuro indica recuo do relógio da demo. */
+const CLOCK_BACK_TOLERANCE_MS = 1_000;
+
+/**
+ * Limite da época atual do relógio da demo: transição gravada depois dele é de
+ * antes de um recuo (`ClockService.reset()` depois de `advance`); até 1 s acima do
+ * agora ainda é o +1 ms da D6. O `occurredAt` e a janela Z das ondas só olham
+ * transições até esse limite, para «recuo» valer igual nos dois.
+ */
+export function clockEpochLimit(now: Date): Date {
+  return new Date(now.getTime() + CLOCK_BACK_TOLERANCE_MS);
+}
+
 /**
  * Máquina de estados da vaga (RN-24) e log de transições (RN-50). Toda mudança de
  * `Vacancy.state` passa por aqui e grava a `Transition` na mesma transação. Com `tx`,
@@ -161,7 +174,10 @@ export class VacanciesService {
 
   /**
    * `occurredAt` estritamente crescente por vaga (porta 5): o update acima trava a
-   * linha da vaga, então duas transições da mesma vaga não intercalam aqui.
+   * linha da vaga, então duas transições da mesma vaga não intercalam aqui. Depois
+   * de um recuo do relógio da demo ignora as transições de antes dele
+   * (`clockEpochLimit`): herdar a anterior + 1 ms deixaria a vaga presa no futuro.
+   * A linha do tempo passa a ordenar pelo relógio novo, o que só acontece na demo.
    */
   private async nextOccurredAt(
     db: Prisma.TransactionClient,
@@ -169,7 +185,7 @@ export class VacanciesService {
     now: Date,
   ): Promise<Date> {
     const last = await db.transition.findFirst({
-      where: { vacancyId },
+      where: { vacancyId, occurredAt: { lte: clockEpochLimit(now) } },
       orderBy: { occurredAt: 'desc' },
       select: { occurredAt: true },
     });

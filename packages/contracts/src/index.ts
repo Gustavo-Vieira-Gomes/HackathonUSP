@@ -8,6 +8,7 @@ export * from './session';
 export * from './clinic';
 export * from './exams';
 export * from './whatsapp';
+export * from './google-calendar';
 
 export const healthResponseSchema = z.object({
   status: z.literal('ok'),
