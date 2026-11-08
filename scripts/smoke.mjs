@@ -316,6 +316,53 @@ try {
     'H17-C37: exame cadastrado fora da lista',
   );
 
+  // HACK-20: publicação real pelo Next, leitura SSR e autorização.
+  const examForVacancy = await createdExam.json();
+  const anonymousVacancies = await fetch(`${webUrl}/clinica/vagas`, {
+    redirect: 'manual',
+  });
+  assert.ok([303, 307, 308].includes(anonymousVacancies.status));
+  assert.match(
+    anonymousVacancies.headers.get('location') ?? '',
+    /\/clinica\/login$/,
+  );
+  const vacancyHeaders = {
+    'content-type': 'application/json',
+    origin: webUrl,
+    cookie: clinicCookie,
+  };
+  const startsAt = new Date(Date.now() + 24 * 60 * 60_000);
+  const vacancyBody = {
+    examId: examForVacancy.id,
+    startsAt: startsAt.toISOString(),
+    endsAt: new Date(startsAt.getTime() + 30 * 60_000).toISOString(),
+    reason: 'vazio',
+  };
+  const publishedVacancy = await fetch(`${webUrl}/api/clinic/vacancies`, {
+    method: 'POST',
+    headers: vacancyHeaders,
+    body: JSON.stringify(vacancyBody),
+  });
+  assert.equal(
+    publishedVacancy.status,
+    201,
+    `H20: publicação ${await publishedVacancy.text()}`,
+  );
+  const vacanciesPage = await fetch(`${webUrl}/clinica/vagas`, {
+    headers: { cookie: clinicCookie },
+  });
+  assert.equal(vacanciesPage.status, 200);
+  assert.ok(
+    (await vacanciesPage.text()).includes(mri.name),
+    'H20: vaga fora da tela',
+  );
+  const patientPublish = await fetch(`${webUrl}/api/clinic/vacancies`, {
+    method: 'POST',
+    headers: { ...vacancyHeaders, cookie },
+    body: JSON.stringify(vacancyBody),
+  });
+  assert.equal(patientPublish.status, 403, 'H20: paciente publicou vaga');
+
   // HACK-18: /clinica/agenda sem GOOGLE_* (indisponível), alerta do ?google= e login.
   const agenda = await fetch(`${webUrl}/clinica/agenda`, {
     headers: { cookie: clinicCookie },

@@ -17,3 +17,12 @@ Frontend alinhado à estrutura atual do Portal Speedmilhas, inspecionada localme
 Estrutura frontend aprovada: organização simplificada do Portal. Páginas simples podem permanecer em app; screens e subpastas dos módulos são extraídas conforme necessidade, sem estrutura obrigatória por rota.
 
 Políticas centralizadas em .claude/rules: project, engineering, security e design-patterns globais; frontend/backend/contracts com frontmatter paths. AGENTS e CLAUDE são pontos de entrada para a mesma fonte. Extração na segunda ocorrência da mesma regra com invariantes comuns; regras sensíveis têm dono único desde a primeira implementação. Padrões adotados por necessidade concreta, preservando os recursos nativos do Nest.
+
+## Decisões HACK-20
+
+- Autorizado executar até PR sem aprovação entre fases.
+- Início/fim explícitos no formulário, pois duração não existe em Exam; fuso America/Sao_Paulo.
+- NoShowMotorService é apenas ponto transacional para HACK-33, sem simular publicação. O sinal permanece registrado, sem reembolso.
+- Horários de negócio pelo ClockService; teto diário mantém semântica real do PricingService.
+- node_modules principal estava incompleto (Prisma ausente); cópia complementada a partir de HACK-17, sem instalar/alterar dependências. Banco isolado hack_20 na porta 54320, migrations existentes aplicadas.
+- HACK-20 concluído: check (352 API/43 web/19 contratos), build e smoke verdes; evidências em .specs/features/hack-20-clinic-vacancies/verification.md.
