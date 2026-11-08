@@ -9,17 +9,19 @@ export function salaDaVaga(vagaId: string): string {
   return `${PREFIXO_VAGA}${vagaId}`;
 }
 
-export function salaDoPaciente(pacienteId: string): string {
-  return `paciente:${pacienteId}`;
+/** Sala do paciente, chaveada pelo id de `User` (não `Patient.id`). */
+export function salaDoPaciente(pacienteUserId: string): string {
+  return `paciente:${pacienteUserId}`;
 }
 
-export function salaDaClinica(clinicaId: string): string {
-  return `clinica:${clinicaId}`;
+/** Sala da clínica, chaveada pelo id de `User` da conta (não `Clinic.id`). */
+export function salaDaClinica(clinicaUserId: string): string {
+  return `clinica:${clinicaUserId}`;
 }
 
 /**
- * Sala própria da conexão, derivada só da sessão. Ponto único a trocar quando o
- * HACK-13 ligar o usuário clínica à entidade `Clinica` (porta 6).
+ * Sala própria da conexão, derivada só da sessão e chaveada pelo id de `User`.
+ * Os emissores resolvem o `User` a partir de `Patient`/`Clinic` (desvio M3).
  */
 export function salaDoUsuario(user: SessionUser): string {
   return user.role === 'paciente'
