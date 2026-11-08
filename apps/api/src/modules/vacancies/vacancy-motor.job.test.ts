@@ -100,14 +100,15 @@ before(async () => {
   fixtures = createSchemaFixtures(prisma);
   await clock.reset();
 
-  const adapters: ChannelAdapter[] = (
-    ['push', 'email', 'whatsapp'] as const
-  ).map((channel) => ({
-    channel,
-    send: async () => {
-      if (adapterHook) await adapterHook();
-    },
-  }));
+  // Sem adapter de WhatsApp: o paciente só com esse canal recebe `sem_adapter` (C35).
+  const adapters: ChannelAdapter[] = (['push', 'email'] as const).map(
+    (channel) => ({
+      channel,
+      send: async () => {
+        if (adapterHook) await adapterHook();
+      },
+    }),
+  );
   notifications = new NotificationsService(prisma, adapters);
   const realEnviar = notifications.enviar.bind(notifications);
   notifications.enviar = async (patientId, message, context) => {
@@ -653,6 +654,43 @@ test('C12 - a marca da onda é confirmada antes do envio', async () => {
   };
   await waves.dispatchDue(T0);
   assert.deepEqual(seen, [1]);
+});
+
+test('C35 - onda pula paciente só com sem_adapter e conta até N', async () => {
+  const { vacancy, subscriptions } = await scenario(7);
+  for (const sub of subscriptions.slice(0, 2)) {
+    await prisma.patient.update({
+      where: { id: sub.patientId },
+      data: { alertChannels: ['whatsapp'], phoneVerifiedAt: new Date() },
+    });
+  }
+  const start = published.length;
+  const sent = await sendsDuring(vacancy.id, () => job.tick(T0));
+  assert.deepEqual(
+    sent.map((s) => s.context.subscriptionId),
+    subscriptions.map((s) => s.id),
+  );
+  const alerts = await prisma.alert.findMany({
+    where: { vacancyId: vacancy.id },
+  });
+  const alerted = new Set(alerts.map((a) => a.subscriptionId));
+  assert.deepEqual(
+    [...alerted].sort(),
+    subscriptions
+      .slice(2)
+      .map((s) => s.id)
+      .sort(),
+  );
+  assert.ok(alerts.every((a) => a.wave === 1));
+  const counted = await prisma.patient.findMany({
+    where: { id: { in: subscriptions.slice(2).map((s) => s.patientId) } },
+  });
+  const calls = published.slice(start).filter((p) => p.vagaId === vacancy.id);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(
+    new Set(calls[0]!.userIds),
+    new Set(counted.map((p) => p.userId)),
+  );
 });
 
 // S2 - falha isolada ------------------------------------------------------------

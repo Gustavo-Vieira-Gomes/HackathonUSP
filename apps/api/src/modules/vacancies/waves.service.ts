@@ -18,6 +18,9 @@ type Candidate = Awaited<ReturnType<MatchingService['candidatos']>>[number];
 interface Wave {
   vacancyId: string;
   number: number;
+  /** N da clínica: quantos pacientes alcançados a onda precisa. */
+  size: number;
+  /** A fila inteira, em ordem; o envio para em N alcançados. */
   candidates: Candidate[];
   message: Omit<NotificationMessage, 'distanceMeters'>;
   clinic: { latitude: number; longitude: number };
@@ -29,7 +32,10 @@ function errorMessage(error: unknown): string {
 
 /**
  * Ondas de alerta (RN-34, F9): a cada Z minutos, os N próximos candidatos da vaga
- * recebem o alerta. Uma onda por vez por vaga: a linha da vaga fica travada
+ * recebem o alerta. Só conta para N quem o `NotificationsService` alcançou por
+ * algum canal; quem só tem canal sem adapter não conta e a onda segue a fila
+ * (contorno do HACK-48: sem `Alert`, ele voltaria na onda seguinte e travaria a
+ * fila). Uma onda por vez por vaga: a linha da vaga fica travada
  * (`FOR UPDATE SKIP LOCKED`) enquanto a onda é decidida e marcada com a
  * `Transition` para `alertando`; outro tick, ou a reserva, que a encontra travada
  * pula a vaga neste minuto. O envio roda depois do commit, para não segurar a trava
@@ -102,10 +108,7 @@ export class WavesService {
         if (now.getTime() < windowEnds) return null;
       }
 
-      const candidates = (await this.matching.candidatos(vacancyId, now)).slice(
-        0,
-        slot.clinic.waveSize,
-      );
+      const candidates = await this.matching.candidatos(vacancyId, now);
       if (candidates.length === 0) {
         if (vacancy.state === 'alertando') {
           await this.vacancies.transition(
@@ -129,7 +132,7 @@ export class WavesService {
         'alertando',
         {
           origin: 'motor',
-          reason: `Onda ${number}: ${candidates.length} paciente(s)`,
+          reason: `Onda ${number}`,
         },
         tx,
         now,
@@ -137,6 +140,7 @@ export class WavesService {
       return {
         vacancyId,
         number,
+        size: slot.clinic.waveSize,
         candidates,
         clinic: slot.clinic,
         message: {
@@ -151,36 +155,55 @@ export class WavesService {
     });
   }
 
-  /** Envia a onda já marcada: um paciente que falha não derruba os outros. */
+  /**
+   * Envia a onda já marcada, em lotes na ordem da fila: o primeiro com os N
+   * primeiros, cada seguinte com o que falta para N. Conta o paciente com algum
+   * resultado diferente de `sem_adapter`; um paciente que falha não derruba os
+   * outros. A gravação de `Alert` é do `NotificationsService`.
+   */
   private async send(wave: Wave): Promise<void> {
-    const results = await Promise.allSettled(
-      wave.candidates.map((candidate) =>
-        this.notifications.enviar(
-          candidate.patientId,
-          {
-            ...wave.message,
-            distanceMeters: haversineMeters(candidate, wave.clinic),
-          },
-          {
-            vacancyId: wave.vacancyId,
-            subscriptionId: candidate.id,
-            wave: wave.number,
-          },
-        ),
-      ),
-    );
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') return;
-      this.logger.warn(
-        `Envio da onda ${wave.number} da vaga ${wave.vacancyId} falhou para a inscrição ${
-          wave.candidates[index]?.id ?? '?'
-        }: ${errorMessage(result.reason)}`,
+    const reached: Candidate[] = [];
+    let next = 0;
+    while (reached.length < wave.size && next < wave.candidates.length) {
+      const batch = wave.candidates.slice(
+        next,
+        next + wave.size - reached.length,
       );
-    });
+      next += batch.length;
+      const results = await Promise.allSettled(
+        batch.map((candidate) =>
+          this.notifications.enviar(
+            candidate.patientId,
+            {
+              ...wave.message,
+              distanceMeters: haversineMeters(candidate, wave.clinic),
+            },
+            {
+              vacancyId: wave.vacancyId,
+              subscriptionId: candidate.id,
+              wave: wave.number,
+            },
+          ),
+        ),
+      );
+      results.forEach((result, index) => {
+        const candidate = batch[index]!;
+        if (result.status === 'rejected') {
+          this.logger.warn(
+            `Envio da onda ${wave.number} da vaga ${wave.vacancyId} falhou para a inscrição ${candidate.id}: ${errorMessage(result.reason)}`,
+          );
+          return;
+        }
+        if (result.value.some((outcome) => outcome.result !== 'sem_adapter')) {
+          reached.push(candidate);
+        }
+      });
+    }
+    if (reached.length === 0) return;
 
     try {
       const patients = await this.prisma.patient.findMany({
-        where: { id: { in: wave.candidates.map((c) => c.patientId) } },
+        where: { id: { in: reached.map((c) => c.patientId) } },
         select: { userId: true },
       });
       // Ids de `User`, que são as salas do socket; nunca `Patient.id` (HACK-38).
