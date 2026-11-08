@@ -216,3 +216,7 @@ Cost: 7 provas na própria camada (CT ×2, PIPE, GEO ×3, WEB ×4 contando C27 a
 
 - S1 = 24k (contratos, pipe, módulo de clínicas, harness e 4 testes do HACK-12); S2 entra no módulo de clínicas a 32k; S3 entra no Next a 44k; S4 sem arquivo próprio. Total ~44k (`wc -c` dos arquivos existentes tocados = 75 KB, mais ~100 KB estimados de código e teste novos, ÷ 4), abaixo do orçamento de 150k - um construtor.
 - Mechanism: one builder (abaixo do orçamento, sem pergunta).
+
+- **Boundary:** C1-C38 fechados em `7c057bf` (um construtor; provas verdes: API 201/201, web 17/17, contratos 10/10, `npm run check` 0, `npm run build` 0, `npm run smoke` 0, portal P1-P6 em `portal.md`)
+- **Settled mid-build:** `GEOCODER_MIN_INTERVAL_MS` (Maestro, aprovação dos checks); rota `POST /api/sign-up/clinica` no `ClinicSignUpController` do `ClinicsModule` (adendo à porta 1, evita dependência circular com o `AuthModule`); espaçamento conta do fim da chamada anterior, com chamadas em série, e sem fila quando o intervalo é 0; `isUniqueViolation` extraído para `apps/api/src/prisma/prisma-errors.ts` (segunda ocorrência)
+- **Abandoned:** espaçar pelo início da chamada (o C16 mediu 966 ms de chegada entre a 2ª e a 3ª); fila também com intervalo 0 (serializava a corrida do C11)
