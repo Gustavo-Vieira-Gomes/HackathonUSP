@@ -1,14 +1,17 @@
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import type { UserRole } from '@hackathon/contracts';
 import type { INestApplication } from '@nestjs/common';
 import { createApp } from '../app';
 import { AuthSessionService } from '../auth/auth-session.service';
 import { type AppEnv, loadEnv } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
+import { type FakeGeocoder, startFakeGeocoder } from './fake-geocoder';
 
 /**
  * Sobe a API numa porta efêmera contra o Postgres do worktree (DATABASE_URL do
  * .env da API). Os e-mails de cada arquivo levam um marcador e são apagados no fim.
+ * Sem `GEOCODER_URL` nos overrides, sobe um geocodificador falso (`t.geocoder`) e
+ * zera o intervalo entre chamadas (`GEOCODER_MIN_INTERVAL_MS=0`).
  */
 export interface TestApp {
   app: INestApplication;
@@ -16,6 +19,8 @@ export interface TestApp {
   env: AppEnv;
   prisma: PrismaService;
   sessions: AuthSessionService;
+  /** Ausente quando o teste passou o próprio `GEOCODER_URL`. */
+  geocoder?: FakeGeocoder;
   email(): string;
   close(): Promise<void>;
 }
@@ -24,7 +29,15 @@ export interface TestApp {
 export async function startTestApp(
   overrides: Partial<Record<keyof AppEnv, string>> = {},
 ): Promise<TestApp> {
-  const env = loadEnv({ ...process.env, ...overrides });
+  const geocoder = overrides.GEOCODER_URL
+    ? undefined
+    : await startFakeGeocoder();
+  const env = loadEnv({
+    ...process.env,
+    GEOCODER_MIN_INTERVAL_MS: '0',
+    ...(geocoder ? { GEOCODER_URL: geocoder.url } : {}),
+    ...overrides,
+  });
   const app = await createApp({ logger: false, env });
   await app.listen(0, '127.0.0.1');
   const url = await app.getUrl();
@@ -37,10 +50,12 @@ export async function startTestApp(
     env,
     prisma,
     sessions: app.get(AuthSessionService),
+    geocoder,
     email: () => `${randomUUID()}${suffix}`,
     close: async () => {
       await prisma.user.deleteMany({ where: { email: { endsWith: suffix } } });
       await app.close();
+      await geocoder?.close();
     },
   };
 }
@@ -82,22 +97,64 @@ export function sessionCookie(response: Response): string {
   return cookie;
 }
 
+export function randomCnes(): string {
+  return String(randomInt(0, 10_000_000)).padStart(7, '0');
+}
+
+/** Corpo válido de `POST /api/sign-up/clinica` (HACK-16), com CNES aleatório. */
+export function clinicSignUpBody(
+  email: string,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    name: 'Teste clinica',
+    email,
+    password: 'senha-forte-1',
+    address: 'Av. Paulista, 1000',
+    cnes: randomCnes(),
+    technicalManager: 'Dra. Teste, CRM 123456',
+    openingHours: [
+      { weekday: 1, startMinute: 480, endMinute: 1080 },
+      { weekday: 2, startMinute: 480, endMinute: 720 },
+    ],
+    ...overrides,
+  };
+}
+
 export async function signUpWithCookie(
   t: TestApp,
   role: UserRole,
-): Promise<{ email: string; password: string; cookie: string; id: string }> {
+): Promise<{
+  email: string;
+  password: string;
+  cookie: string;
+  id: string;
+  /** Só para `clinica`: id do `Clinic` criado no cadastro. */
+  clinicId?: string;
+}> {
   const email = t.email();
   const password = 'senha-forte-1';
-  const response = await signUp(t, role, {
-    name: `Teste ${role}`,
-    email,
-    password,
-  });
+  const response = await signUp(
+    t,
+    role,
+    role === 'clinica'
+      ? clinicSignUpBody(email, { password })
+      : { name: `Teste ${role}`, email, password },
+  );
   if (response.status !== 200) {
     throw new Error(
       `Cadastro ${role} falhou: ${response.status} ${await response.text()}`,
     );
   }
-  const body = (await response.json()) as { user: { id: string } };
-  return { email, password, cookie: sessionCookie(response), id: body.user.id };
+  const body = (await response.json()) as {
+    user: { id: string };
+    clinic?: { id: string };
+  };
+  return {
+    email,
+    password,
+    cookie: sessionCookie(response),
+    id: body.user.id,
+    clinicId: body.clinic?.id,
+  };
 }

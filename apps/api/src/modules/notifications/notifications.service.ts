@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { isUniqueViolation } from '../../prisma/prisma-errors';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CHANNEL_ADAPTERS,
@@ -24,15 +25,6 @@ export interface ChannelOutcome {
    * sair da fila daquela vaga (HACK-48).
    */
   result: 'enviado' | 'falhou' | 'duplicado' | 'sem_canal';
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'P2002'
-  );
 }
 
 /**

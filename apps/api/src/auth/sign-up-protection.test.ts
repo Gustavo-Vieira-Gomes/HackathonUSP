@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type { UserRole } from '@hackathon/contracts';
-import { startTestApp, type TestApp } from '../testing/test-app';
+import {
+  clinicSignUpBody,
+  startTestApp,
+  type TestApp,
+} from '../testing/test-app';
 import { SIGN_UP_RATE_LIMIT } from './sign-up-protection';
 
 let t: TestApp;
@@ -29,8 +33,13 @@ function post(
   });
 }
 
-const jsonBody = (email: string) =>
-  JSON.stringify({ name: 'Fulana', email, password: '12345678' });
+/** Corpo JSON válido da rota: a de clínica exige o perfil completo (HACK-16). */
+const jsonBody = (email: string, role: UserRole = 'paciente') =>
+  JSON.stringify(
+    role === 'clinica'
+      ? clinicSignUpBody(email, { name: 'Fulana', password: '12345678' })
+      : { name: 'Fulana', email, password: '12345678' },
+  );
 
 test('C1 - formulário urlencoded de origem estranha responde 403, sem cookie e sem User', async () => {
   for (const role of roles) {
@@ -64,7 +73,7 @@ test('C2 - JSON com Origin ausente, estranho, null ou de outra porta responde 40
   for (const role of roles) {
     for (const origin of origins) {
       const email = t.email();
-      const response = await post(t, role, jsonBody(email), {
+      const response = await post(t, role, jsonBody(email, role), {
         'content-type': 'application/json',
         ...(origin === undefined ? {} : { origin }),
       });
@@ -91,7 +100,7 @@ test('C3 - Origin certo com corpo que não é JSON responde 415; application/jso
   for (const role of roles) {
     for (const contentType of refused) {
       const email = t.email();
-      const response = await post(t, role, jsonBody(email), {
+      const response = await post(t, role, jsonBody(email, role), {
         origin: t.env.WEB_ORIGIN,
         ...(contentType === undefined ? {} : { 'content-type': contentType }),
       });
@@ -101,7 +110,7 @@ test('C3 - Origin certo com corpo que não é JSON responde 415; application/jso
       cases++;
     }
     const email = t.email();
-    const accepted = await post(t, role, jsonBody(email), {
+    const accepted = await post(t, role, jsonBody(email, role), {
       origin: t.env.WEB_ORIGIN,
       'content-type': 'application/json; charset=utf-8',
     });
@@ -134,8 +143,49 @@ test('C6 - a N+1-ésima tentativa do mesmo IP na janela responde 429 sem criar U
     const blocked = await post(app, 'paciente', jsonBody(email), headers);
     assert.equal(blocked.status, 429);
     assert.equal(await countByEmail(app, email), 0);
-    const other = await post(app, 'clinica', jsonBody(app.email()), headers);
+    const other = await post(
+      app,
+      'clinica',
+      jsonBody(app.email(), 'clinica'),
+      headers,
+    );
     assert.equal(other.status, 200, '/clinica não divide a cota de /paciente');
+  } finally {
+    await app.close();
+  }
+});
+
+test('H16-C12 - a N+1-ésima tentativa em /clinica responde 429 sem criar User nem Clinic', async () => {
+  // Instância própria: a cota é em memória, por aplicação e por rota.
+  const app = await startTestApp();
+  try {
+    const { limit } = SIGN_UP_RATE_LIMIT;
+    const headers = {
+      origin: app.env.WEB_ORIGIN,
+      'content-type': 'application/json',
+    };
+    for (let i = 0; i < limit; i++) {
+      const response = await post(
+        app,
+        'clinica',
+        jsonBody(app.email(), 'clinica'),
+        headers,
+      );
+      assert.equal(response.status, 200, `tentativa ${i + 1}`);
+    }
+    const email = app.email();
+    const body = clinicSignUpBody(email, {
+      name: 'Fulana',
+      password: '12345678',
+    });
+    const blocked = await post(app, 'clinica', JSON.stringify(body), headers);
+    assert.equal(blocked.status, 429);
+    assert.deepEqual(blocked.headers.getSetCookie(), []);
+    assert.equal(await countByEmail(app, email), 0);
+    assert.equal(
+      await app.prisma.clinic.count({ where: { cnes: body.cnes as string } }),
+      0,
+    );
   } finally {
     await app.close();
   }
