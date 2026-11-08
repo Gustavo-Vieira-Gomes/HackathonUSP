@@ -86,7 +86,7 @@ Proof: `grep -qx 'BETTER_AUTH_SECRET=' apps/api/.env.example && grep -q 'openssl
 ## Out of scope
 
 - R2 (`x-forwarded-for` confiável atrás do Next) - vai ao HACK-14. Até lá, pelo Next todos os clientes chegam ao Nest com o IP do Next, então o limite de C6 vale, na prática, para o conjunto dos cadastros que passam pelo proxy.
-- Rotas do roteador do Better Auth (`/api/auth/*`) - já têm origem e rate limit próprios.
+- Rotas do roteador do Better Auth (`/api/auth/*`) - já têm checagem de origem própria; o rate limit do Better Auth só liga com `NODE_ENV=production` (`rateLimit.enabled ?? isProduction`, `better-auth/dist/context/create-context.mjs:172`), e o app não o configura. O limite novo (30 por 60 s por rota de cadastro, `@nestjs/throttler`) não depende de `NODE_ENV`.
 
 ## Handoff
 
